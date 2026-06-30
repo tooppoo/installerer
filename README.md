@@ -1,5 +1,9 @@
 # bun-react-tailwind-template
 
+## Documentation
+
+- [MVP Browser JS Installer Generator Policy](docs/adr/20260630T032548Z_mvp-browser-js-generator-policy.md)
+
 To install dependencies:
 
 ```bash
