@@ -10,6 +10,7 @@
     "test": "bun test",
     "lint": "oxlint --deny-warnings .",
     "format:check": "oxfmt --check .",
+    "format": "oxfmt .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

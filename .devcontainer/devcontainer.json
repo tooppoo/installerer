@@ -11,7 +11,7 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": ["EditorConfig.EditorConfig", "oven.bun-vscode"],
+      "extensions": ["EditorConfig.EditorConfig", "oven.bun-vscode", "skellock.just"],
       "settings": {
         "editor.formatOnSave": true,
         "files.eol": "\n"
