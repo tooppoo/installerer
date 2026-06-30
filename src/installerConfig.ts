@@ -1,11 +1,9 @@
 import {
-  buildInstallLatestGraph,
-  buildInstallPinGraph,
-  buildMainGraph,
   parseArchiveNameTemplate,
   validateArchiveTemplateForConfig,
   type ArchiveNamePreview,
   type ArchiveTemplateWarning,
+  type ContextPropagation,
   type ModeGraph,
 } from "./archiveTemplate";
 
@@ -59,6 +57,7 @@ export type ParseInstallerConfigResult =
       archivePreviews: ArchiveNamePreview[];
       warnings: ArchiveTemplateWarning[];
       dependencyGraphs: ModeGraph[];
+      contextPropagations: ContextPropagation[];
     }
   | {
       ok: false;
@@ -270,11 +269,8 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     config,
     archivePreviews: templateValidation.previews,
     warnings: templateValidation.warnings,
-    dependencyGraphs: [
-      buildMainGraph(),
-      buildInstallLatestGraph(config, templateResult.segments),
-      buildInstallPinGraph(config, templateResult.segments),
-    ],
+    dependencyGraphs: templateValidation.dependencyGraphs,
+    contextPropagations: templateValidation.contextPropagations,
   };
 }
 

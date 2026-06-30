@@ -27,10 +27,25 @@ export type ArchiveNamePreview = {
   warnings: ArchiveTemplateWarning[];
 };
 
+export type GraphVariableName = string;
+export type GraphContextName = string;
+export type DirectContextsByVariable = Record<GraphVariableName, GraphContextName[]>;
+export type ReachableContextsByVariable = Record<GraphVariableName, GraphContextName[]>;
+
+export type GraphEdge = {
+  derived: GraphVariableName;
+  source: GraphVariableName;
+};
+
 export type ModeGraph = {
   mode: "main" | "install_latest" | "install_pin";
-  edges: Array<[string, string]>;
-  directContexts: Record<string, string[]>;
+  edges: GraphEdge[];
+  directContexts: DirectContextsByVariable;
+};
+
+export type ContextPropagation = {
+  mode: ModeGraph["mode"];
+  reachableContextsByVariable: ReachableContextsByVariable;
 };
 
 const ALLOWED_PLACEHOLDERS = new Set<ArchivePlaceholder>([
@@ -199,10 +214,25 @@ export function validateArchiveFilename(
 export function validateArchiveTemplateForConfig(
   config: InstallerConfig,
   segments: ArchiveTemplateSegment[],
-): { errors: ValidationError[]; warnings: ArchiveTemplateWarning[]; previews: ArchiveNamePreview[] } {
+): {
+  errors: ValidationError[];
+  warnings: ArchiveTemplateWarning[];
+  previews: ArchiveNamePreview[];
+  dependencyGraphs: ModeGraph[];
+  contextPropagations: ContextPropagation[];
+} {
   const errors: ValidationError[] = [];
   const warnings: ArchiveTemplateWarning[] = [];
   const previews: ArchiveNamePreview[] = [];
+  const dependencyGraphs = [
+    buildMainGraph(),
+    buildInstallLatestGraph(config, segments),
+    buildInstallPinGraph(config, segments),
+  ];
+  const contextPropagations = dependencyGraphs.map(graph => ({
+    mode: graph.mode,
+    reachableContextsByVariable: propagateGraphContexts(graph),
+  }));
 
   if (config.versionResolver.type === "latest_asset" && templateUsesPlaceholder(segments, "version")) {
     errors.push({
@@ -222,6 +252,11 @@ export function validateArchiveTemplateForConfig(
         });
       }
     }
+  }
+
+  for (const propagation of contextPropagations) {
+    errors.push(...validateConcreteSourcesForContexts(config, propagation.reachableContextsByVariable));
+    errors.push(...validateGraphInvariants(propagation));
   }
 
   for (const target of config.targets) {
@@ -248,13 +283,61 @@ export function validateArchiveTemplateForConfig(
     });
   }
 
-  return { errors: dedupeErrors(errors), warnings: dedupeWarnings(warnings), previews };
+  return {
+    errors: dedupeErrors(errors),
+    warnings: dedupeWarnings(warnings),
+    previews,
+    dependencyGraphs,
+    contextPropagations,
+  };
+}
+
+export function propagateGraphContexts(graph: ModeGraph): ReachableContextsByVariable {
+  const contextSetByVariable = new Map<GraphVariableName, Set<GraphContextName>>();
+
+  for (const [variable, directContexts] of Object.entries(graph.directContexts)) {
+    contextSetByVariable.set(variable, new Set(directContexts));
+  }
+
+  for (const { derived, source } of graph.edges) {
+    if (!contextSetByVariable.has(derived)) {
+      contextSetByVariable.set(derived, new Set());
+    }
+    if (!contextSetByVariable.has(source)) {
+      contextSetByVariable.set(source, new Set());
+    }
+  }
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+
+    for (const { derived, source } of graph.edges) {
+      const derivedContexts = contextSetByVariable.get(derived);
+      const sourceContexts = contextSetByVariable.get(source);
+
+      if (!derivedContexts || !sourceContexts) {
+        continue;
+      }
+
+      for (const context of derivedContexts) {
+        if (!sourceContexts.has(context)) {
+          sourceContexts.add(context);
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return Object.fromEntries(
+    [...contextSetByVariable.entries()].map(([variable, contextSet]) => [variable, [...contextSet].sort()]),
+  );
 }
 
 export function buildMainGraph(): ModeGraph {
   return {
     mode: "main",
-    edges: [["dispatch", "version_arg"]],
+    edges: [{ derived: "dispatch", source: "version_arg" }],
     directContexts: {
       version_arg: ["shell command argument context", "Git tag context"],
       dispatch: ["argument parsing context"],
@@ -263,28 +346,28 @@ export function buildMainGraph(): ModeGraph {
 }
 
 export function buildInstallLatestGraph(config: InstallerConfig, segments: ArchiveTemplateSegment[]): ModeGraph {
-  const edges: Array<[string, string]> = [
-    ["target", "os"],
-    ["target", "arch"],
-    ["archive_url", "owner"],
-    ["archive_url", "repo"],
-    ["archive_url", "archive_asset_name"],
-    ["checksum_url", "owner"],
-    ["checksum_url", "repo"],
-    ["checksum_url", "checksum.fileName"],
-    ["checksum_lookup_key", "archive_asset_name"],
-    ["archive_path", "tmpdir"],
-    ["archive_path", "fixed local archive filename"],
+  const edges: GraphEdge[] = [
+    { derived: "target", source: "os" },
+    { derived: "target", source: "arch" },
+    { derived: "archive_url", source: "owner" },
+    { derived: "archive_url", source: "repo" },
+    { derived: "archive_url", source: "archive_asset_name" },
+    { derived: "checksum_url", source: "owner" },
+    { derived: "checksum_url", source: "repo" },
+    { derived: "checksum_url", source: "checksum.fileName" },
+    { derived: "checksum_lookup_key", source: "archive_asset_name" },
+    { derived: "archive_path", source: "tmpdir" },
+    { derived: "archive_path", source: "fixed local archive filename" },
   ];
 
   if (config.versionResolver.type === "release_version_file") {
     edges.push(
-      ["resolved_version", "versionResolver.fileName"],
-      ["archive_url", "resolved_version"],
-      ["checksum_url", "resolved_version"],
-      ["version_file_url", "owner"],
-      ["version_file_url", "repo"],
-      ["version_file_url", "versionResolver.fileName"],
+      { derived: "resolved_version", source: "versionResolver.fileName" },
+      { derived: "archive_url", source: "resolved_version" },
+      { derived: "checksum_url", source: "resolved_version" },
+      { derived: "version_file_url", source: "owner" },
+      { derived: "version_file_url", source: "repo" },
+      { derived: "version_file_url", source: "versionResolver.fileName" },
     );
   }
 
@@ -294,20 +377,20 @@ export function buildInstallLatestGraph(config: InstallerConfig, segments: Archi
 }
 
 export function buildInstallPinGraph(config: InstallerConfig, segments: ArchiveTemplateSegment[]): ModeGraph {
-  const edges: Array<[string, string]> = [
-    ["target", "os"],
-    ["target", "arch"],
-    ["archive_url", "owner"],
-    ["archive_url", "repo"],
-    ["archive_url", "pinned_version"],
-    ["archive_url", "archive_asset_name"],
-    ["checksum_url", "owner"],
-    ["checksum_url", "repo"],
-    ["checksum_url", "pinned_version"],
-    ["checksum_url", "checksum.fileName"],
-    ["checksum_lookup_key", "archive_asset_name"],
-    ["archive_path", "tmpdir"],
-    ["archive_path", "fixed local archive filename"],
+  const edges: GraphEdge[] = [
+    { derived: "target", source: "os" },
+    { derived: "target", source: "arch" },
+    { derived: "archive_url", source: "owner" },
+    { derived: "archive_url", source: "repo" },
+    { derived: "archive_url", source: "pinned_version" },
+    { derived: "archive_url", source: "archive_asset_name" },
+    { derived: "checksum_url", source: "owner" },
+    { derived: "checksum_url", source: "repo" },
+    { derived: "checksum_url", source: "pinned_version" },
+    { derived: "checksum_url", source: "checksum.fileName" },
+    { derived: "checksum_lookup_key", source: "archive_asset_name" },
+    { derived: "archive_path", source: "tmpdir" },
+    { derived: "archive_path", source: "fixed local archive filename" },
   ];
 
   addArchiveTemplateEdges(edges, segments, templateUsesPlaceholder(segments, "version") ? "pinned_version" : undefined);
@@ -320,24 +403,24 @@ export function archiveFormatSuffix(format: ArchiveFormat) {
 }
 
 function addArchiveTemplateEdges(
-  edges: Array<[string, string]>,
+  edges: GraphEdge[],
   segments: ArchiveTemplateSegment[],
   versionSymbol: "resolved_version" | "pinned_version" | undefined,
 ) {
-  edges.push(["archive_asset_name", "archive.nameTemplate literal segments"]);
+  edges.push({ derived: "archive_asset_name", source: "archive.nameTemplate literal segments" });
 
   for (const placeholder of ["owner", "repo", "bin", "os", "arch", "target"] as const) {
     if (templateUsesPlaceholder(segments, placeholder)) {
-      edges.push(["archive_asset_name", placeholder]);
+      edges.push({ derived: "archive_asset_name", source: placeholder });
     }
   }
 
   if (versionSymbol && templateUsesPlaceholder(segments, "version")) {
-    edges.push(["archive_asset_name", versionSymbol]);
+    edges.push({ derived: "archive_asset_name", source: versionSymbol });
   }
 }
 
-function installDirectContexts(config: InstallerConfig): Record<string, string[]> {
+function installDirectContexts(config: InstallerConfig): DirectContextsByVariable {
   return {
     archive_asset_name: ["archive filename context", "checksum lookup context", "shell literal context"],
     archive_url: ["Release URL context", "shell command argument context"],
@@ -397,6 +480,94 @@ function archiveFilenameWarnings(value: string, path: string): ArchiveTemplateWa
   }
 
   return warnings;
+}
+
+function validateConcreteSourcesForContexts(
+  config: InstallerConfig,
+  reachableContextsByVariable: ReachableContextsByVariable,
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const sourceValues: Record<string, { path: string; value: string }> = {
+    owner: { path: "$.owner", value: config.owner },
+    repo: { path: "$.repo", value: config.repo },
+    bin: { path: "$.binary.name", value: config.binary.name },
+    "checksum.fileName": { path: "$.checksum.fileName", value: config.checksum.fileName },
+    "archive.nameTemplate literal segments": {
+      path: "$.archive.nameTemplate",
+      value: config.archive.nameTemplate,
+    },
+    ...(config.versionResolver.type === "release_version_file"
+      ? {
+          "versionResolver.fileName": {
+            path: "$.versionResolver.fileName",
+            value: config.versionResolver.fileName,
+          },
+        }
+      : {}),
+  };
+
+  for (const [source, sourceValue] of Object.entries(sourceValues)) {
+    const contexts = reachableContextsByVariable[source] ?? [];
+
+    if (contexts.includes("archive filename context")) {
+      if (source === "archive.nameTemplate literal segments") {
+        for (const char of sourceValue.value) {
+          if (ARCHIVE_FILENAME_HARD_CHARS.test(char) && char !== "{" && char !== "}") {
+            errors.push({
+              path: sourceValue.path,
+              reason: "Archive filename template literal contains a character that is invalid in archive filenames.",
+              expected: "no slash, backslash, whitespace, or control characters",
+            });
+            break;
+          }
+        }
+      } else if (ARCHIVE_FILENAME_HARD_CHARS.test(sourceValue.value)) {
+        errors.push({
+          path: sourceValue.path,
+          reason: "Value flows into archive filename context and contains a forbidden filename character.",
+          expected: "no slash, backslash, whitespace, or control characters",
+        });
+      }
+    }
+
+    if (contexts.includes("Release URL path segment context") && /[\x00-\x1f\x7f]/.test(sourceValue.value)) {
+      errors.push({
+        path: sourceValue.path,
+        reason: "Value flows into a GitHub Release URL path segment and contains a control character.",
+        expected: "text that can be UTF-8 percent-encoded as one URL path segment",
+      });
+    }
+
+    if (contexts.includes("shell literal context") && sourceValue.value.includes("\0")) {
+      errors.push({
+        path: sourceValue.path,
+        reason: "Value cannot be safely embedded as a shell literal because it contains NUL.",
+        expected: "string without NUL",
+      });
+    }
+  }
+
+  return errors;
+}
+
+function validateGraphInvariants(propagation: ContextPropagation): ValidationError[] {
+  const archivePathContexts = propagation.reachableContextsByVariable.archive_path ?? [];
+  const archiveAssetContexts = propagation.reachableContextsByVariable.archive_asset_name ?? [];
+
+  if (
+    archivePathContexts.includes("archive filename context") ||
+    archiveAssetContexts.includes("local filesystem context")
+  ) {
+    return [
+      {
+        path: "$.archive.nameTemplate",
+        reason: "Remote archive asset name must not flow into local temporary archive path.",
+        expected: "archive_path depends only on tmpdir and a fixed local archive filename",
+      },
+    ];
+  }
+
+  return [];
 }
 
 function dedupeErrors(errors: ValidationError[]) {

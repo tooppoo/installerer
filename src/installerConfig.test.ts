@@ -42,8 +42,20 @@ describe("installer config validation", () => {
       ]);
       expect(result.warnings).toEqual([]);
       expect(result.dependencyGraphs.map(graph => graph.mode)).toEqual(["main", "install_latest", "install_pin"]);
-      expect(result.dependencyGraphs[1]?.edges).toContainEqual(["archive_path", "fixed local archive filename"]);
-      expect(result.dependencyGraphs[1]?.edges).not.toContainEqual(["archive_path", "archive_asset_name"]);
+      expect(result.dependencyGraphs[1]?.edges).toContainEqual({
+        derived: "archive_path",
+        source: "fixed local archive filename",
+      });
+      expect(result.dependencyGraphs[1]?.edges).not.toContainEqual({
+        derived: "archive_path",
+        source: "archive_asset_name",
+      });
+      expect(
+        result.contextPropagations.find(graph => graph.mode === "install_pin")?.reachableContextsByVariable.pinned_version,
+      ).toContain("archive filename context");
+      expect(
+        result.contextPropagations.find(graph => graph.mode === "install_pin")?.reachableContextsByVariable.pinned_version,
+      ).toContain("Release URL path segment context");
     }
   });
 
@@ -163,6 +175,50 @@ describe("installer config validation", () => {
     });
 
     expect(result.ok).toBe(true);
+  });
+
+  test("does not propagate archive filename context to pinned_version for versionless latest_asset templates", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      versionResolver: {
+        type: "latest_asset",
+      },
+      archive: {
+        format: "tar.gz",
+        nameTemplate: "{repo}_{target}.tar.gz",
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const pinContexts = result.contextPropagations.find(
+        graph => graph.mode === "install_pin",
+      )?.reachableContextsByVariable;
+
+      expect(pinContexts?.pinned_version).toContain("Git tag context");
+      expect(pinContexts?.pinned_version).toContain("Release URL path segment context");
+      expect(pinContexts?.pinned_version).not.toContain("archive filename context");
+    }
+  });
+
+  test("uses propagated archive filename context to reject hard characters in template literals", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      archive: {
+        format: "tar.gz",
+        nameTemplate: "{repo}/{target}.tar.gz",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({
+          path: "$.archive.nameTemplate",
+          reason: "Archive filename template literal contains a character that is invalid in archive filenames.",
+        }),
+      );
+    }
   });
 
   test("rejects defaults.version because runtime --version dispatch owns version selection", () => {
