@@ -28,15 +28,22 @@ const validConfig = {
 };
 
 describe("installer config validation", () => {
-  test("parses valid JSON and adds defaults", () => {
+  test("parses valid JSON, adds defaults, and returns archive previews plus dependency graphs", () => {
     const result = parseInstallerConfig(JSON.stringify(validConfig));
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.config.defaults).toEqual({
-        version: "latest",
         installDir: "$HOME/.local/bin",
       });
+      expect(result.archivePreviews.map(preview => preview.latestName)).toEqual([
+        "rellog_v1.2.3_linux_x86_64.tar.gz",
+        "rellog_v1.2.3_darwin_aarch64.tar.gz",
+      ]);
+      expect(result.warnings).toEqual([]);
+      expect(result.dependencyGraphs.map(graph => graph.mode)).toEqual(["main", "install_latest", "install_pin"]);
+      expect(result.dependencyGraphs[1]?.edges).toContainEqual(["archive_path", "fixed local archive filename"]);
+      expect(result.dependencyGraphs[1]?.edges).not.toContainEqual(["archive_path", "archive_asset_name"]);
     }
   });
 
@@ -46,6 +53,7 @@ describe("installer config validation", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors[0]?.path).toBe("$");
+      expect(result.warnings).toEqual([]);
     }
   });
 
@@ -73,7 +81,7 @@ describe("installer config validation", () => {
     }
   });
 
-  test("validates resolver-specific fields", () => {
+  test("validates resolver-specific fields and latest_asset versionless templates", () => {
     const latestAssetWithFile = validateInstallerConfig({
       ...validConfig,
       versionResolver: {
@@ -93,13 +101,24 @@ describe("installer config validation", () => {
         type: "redirect_tag",
       },
     });
+    const latestAssetWithVersionTemplate = validateInstallerConfig({
+      ...validConfig,
+      versionResolver: {
+        type: "latest_asset",
+      },
+      archive: {
+        format: "tar.gz",
+        nameTemplate: "{repo}_{version}_{target}.tar.gz",
+      },
+    });
 
     expect(latestAssetWithFile.ok).toBe(false);
     expect(releaseVersionWithoutFile.ok).toBe(false);
     expect(unsupportedResolver.ok).toBe(false);
+    expect(latestAssetWithVersionTemplate.ok).toBe(false);
   });
 
-  test("rejects unsafe filenames and archive paths", () => {
+  test("rejects unsafe config filenames and archive paths", () => {
     const result = validateInstallerConfig({
       ...validConfig,
       binary: {
@@ -120,53 +139,72 @@ describe("installer config validation", () => {
     }
   });
 
-  test("allows git tag names that need URL path encoding", () => {
+  test("rejects malformed and unknown archive template placeholders", () => {
+    for (const nameTemplate of ["{repo", "repo}", "{}", "{{repo}}", "{asset}"]) {
+      const result = validateInstallerConfig({
+        ...validConfig,
+        archive: {
+          format: "tar.gz",
+          nameTemplate,
+        },
+      });
+
+      expect(result.ok).toBe(false);
+    }
+  });
+
+  test("allows release_version_file template to contain version", () => {
     const result = validateInstallerConfig({
       ...validConfig,
-      defaults: {
-        version: "release/2026.06",
-        installDir: "~/bin",
+      archive: {
+        format: "tar.gz",
+        nameTemplate: "{repo}_{version}_{target}.tar.gz",
       },
     });
 
     expect(result.ok).toBe(true);
   });
 
-  test("rejects invalid default version and install directories", () => {
+  test("rejects defaults.version because runtime --version dispatch owns version selection", () => {
     const result = validateInstallerConfig({
       ...validConfig,
       defaults: {
-        version: "bad tag",
-        installDir: "$HOME/../bin",
+        version: "latest",
+        installDir: "$HOME/.local/bin",
       },
     });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors.map(error => error.path)).toEqual(
-        expect.arrayContaining(["$.defaults.version", "$.defaults.installDir"]),
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({ path: "$.defaults.version", reason: "Unknown field is not supported." }),
       );
     }
   });
 
-  test("allows dot-prefixed install dir segments that are not dot segments", () => {
+  test("validates install directories", () => {
     const homeResult = validateInstallerConfig({
       ...validConfig,
       defaults: {
-        version: "v1.0.0",
         installDir: "$HOME/.local/bin",
       },
     });
     const absoluteResult = validateInstallerConfig({
       ...validConfig,
       defaults: {
-        version: "v1.0.0",
         installDir: "/usr/local/bin",
+      },
+    });
+    const badResult = validateInstallerConfig({
+      ...validConfig,
+      defaults: {
+        installDir: "$HOME/../bin",
       },
     });
 
     expect(homeResult.ok).toBe(true);
     expect(absoluteResult.ok).toBe(true);
+    expect(badResult.ok).toBe(false);
   });
 
   test("rejects unsupported targets and duplicate entries", () => {
@@ -184,6 +222,51 @@ describe("installer config validation", () => {
       expect(result.errors.map(error => error.path)).toEqual(
         expect.arrayContaining(["$.targets[1]", "$.targets[2].os", "$.targets[2].arch"]),
       );
+    }
+  });
+
+  test("supports zip archives and rejects suffix mismatch", () => {
+    const zip = validateInstallerConfig({
+      ...validConfig,
+      archive: {
+        format: "zip",
+        nameTemplate: "{bin}_{target}.zip",
+      },
+      versionResolver: {
+        type: "latest_asset",
+      },
+    });
+    const mismatch = validateInstallerConfig({
+      ...validConfig,
+      archive: {
+        format: "zip",
+        nameTemplate: "{bin}_{target}.tar.gz",
+      },
+      versionResolver: {
+        type: "latest_asset",
+      },
+    });
+
+    expect(zip.ok).toBe(true);
+    expect(mismatch.ok).toBe(false);
+  });
+
+  test("returns user-facing archive filename warnings", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      archive: {
+        format: "tar.gz",
+        nameTemplate: "-{repo}_{target}.tar.gz",
+      },
+      versionResolver: {
+        type: "latest_asset",
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.warnings[0]?.reason).toContain("starts with '-'");
+      expect(result.warnings[0]?.recommended).toContain("Prefix");
     }
   });
 });

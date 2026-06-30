@@ -1,3 +1,14 @@
+import {
+  buildInstallLatestGraph,
+  buildInstallPinGraph,
+  buildMainGraph,
+  parseArchiveNameTemplate,
+  validateArchiveTemplateForConfig,
+  type ArchiveNamePreview,
+  type ArchiveTemplateWarning,
+  type ModeGraph,
+} from "./archiveTemplate";
+
 export type VersionResolver =
   | {
       type: "release_version_file";
@@ -19,7 +30,7 @@ export type InstallerConfig = {
   };
   versionResolver: VersionResolver;
   archive: {
-    format: "tar.gz";
+    format: "tar.gz" | "zip";
     nameTemplate: string;
   };
   checksum: {
@@ -31,7 +42,6 @@ export type InstallerConfig = {
     arch: TargetArch;
   }>;
   defaults: {
-    version: string;
     installDir: string;
   };
 };
@@ -46,15 +56,18 @@ export type ParseInstallerConfigResult =
   | {
       ok: true;
       config: InstallerConfig;
+      archivePreviews: ArchiveNamePreview[];
+      warnings: ArchiveTemplateWarning[];
+      dependencyGraphs: ModeGraph[];
     }
   | {
       ok: false;
       errors: ValidationError[];
+      warnings: ArchiveTemplateWarning[];
     };
 
 type JsonObject = Record<string, unknown>;
 
-const DEFAULT_VERSION = "latest";
 const DEFAULT_INSTALL_DIR = "$HOME/.local/bin";
 const SAFE_FILENAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
@@ -78,6 +91,7 @@ export function parseInstallerConfig(json: string): ParseInstallerConfigResult {
           expected: "valid JSON object",
         },
       ],
+      warnings: [],
     };
   }
 
@@ -89,7 +103,7 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
   const root = requireObject(value, "$", errors);
 
   if (!root) {
-    return { ok: false, errors };
+    return { ok: false, errors, warnings: [] };
   }
 
   rejectUnknownFields(root, "$", [
@@ -172,11 +186,11 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     rejectUnknownFields(archive, "$.archive", ["format", "nameTemplate"], errors);
   }
   const archiveFormat = archive ? requireString(archive.format, "$.archive.format", errors) : undefined;
-  if (archiveFormat !== undefined && archiveFormat !== "tar.gz") {
+  if (archiveFormat !== undefined && archiveFormat !== "tar.gz" && archiveFormat !== "zip") {
     errors.push({
       path: "$.archive.format",
       reason: "Unsupported archive format.",
-      expected: "tar.gz",
+      expected: "tar.gz | zip",
     });
   }
   const archiveNameTemplate = archive
@@ -212,44 +226,61 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     binaryName === undefined ||
     binaryPathInArchive === undefined ||
     normalizedVersionResolver === undefined ||
-    archiveFormat !== "tar.gz" ||
+    (archiveFormat !== "tar.gz" && archiveFormat !== "zip") ||
     archiveNameTemplate === undefined ||
     checksumFileName === undefined ||
     checksumAlgorithm !== "sha256" ||
     targets === undefined ||
     defaults === undefined
   ) {
-    return { ok: false, errors };
+    return { ok: false, errors, warnings: [] };
+  }
+
+  const config: InstallerConfig = {
+    owner,
+    repo,
+    binary: {
+      name: binaryName,
+      pathInArchive: binaryPathInArchive,
+    },
+    versionResolver: normalizedVersionResolver,
+    archive: {
+      format: archiveFormat,
+      nameTemplate: archiveNameTemplate,
+    },
+    checksum: {
+      fileName: checksumFileName,
+      algorithm: "sha256",
+    },
+    targets,
+    defaults,
+  };
+  const templateResult = parseArchiveNameTemplate(archiveNameTemplate);
+  if (!templateResult.ok) {
+    return { ok: false, errors: templateResult.errors, warnings: [] };
+  }
+
+  const templateValidation = validateArchiveTemplateForConfig(config, templateResult.segments);
+  if (templateValidation.errors.length > 0) {
+    return { ok: false, errors: templateValidation.errors, warnings: templateValidation.warnings };
   }
 
   return {
     ok: true,
-    config: {
-      owner,
-      repo,
-      binary: {
-        name: binaryName,
-        pathInArchive: binaryPathInArchive,
-      },
-      versionResolver: normalizedVersionResolver,
-      archive: {
-        format: "tar.gz",
-        nameTemplate: archiveNameTemplate,
-      },
-      checksum: {
-        fileName: checksumFileName,
-        algorithm: "sha256",
-      },
-      targets,
-      defaults,
-    },
+    config,
+    archivePreviews: templateValidation.previews,
+    warnings: templateValidation.warnings,
+    dependencyGraphs: [
+      buildMainGraph(),
+      buildInstallLatestGraph(config, templateResult.segments),
+      buildInstallPinGraph(config, templateResult.segments),
+    ],
   };
 }
 
 function validateDefaults(value: unknown, errors: ValidationError[]): InstallerConfig["defaults"] | undefined {
   if (value === undefined) {
     return {
-      version: DEFAULT_VERSION,
       installDir: DEFAULT_INSTALL_DIR,
     };
   }
@@ -259,19 +290,7 @@ function validateDefaults(value: unknown, errors: ValidationError[]): InstallerC
     return undefined;
   }
 
-  rejectUnknownFields(defaults, "$.defaults", ["version", "installDir"], errors);
-
-  const version =
-    defaults.version === undefined
-      ? DEFAULT_VERSION
-      : requireString(defaults.version, "$.defaults.version", errors);
-  if (version !== undefined && !isValidDefaultVersion(version)) {
-    errors.push({
-      path: "$.defaults.version",
-      reason: "Version must be latest or a valid Git tag name. latest is reserved for installer latest-release semantics.",
-      expected: "latest or a valid refs/tags/<version> refname",
-    });
-  }
+  rejectUnknownFields(defaults, "$.defaults", ["installDir"], errors);
 
   const installDir =
     defaults.installDir === undefined
@@ -281,11 +300,11 @@ function validateDefaults(value: unknown, errors: ValidationError[]): InstallerC
     validateInstallDir(installDir, "$.defaults.installDir", errors);
   }
 
-  if (version === undefined || installDir === undefined) {
+  if (installDir === undefined) {
     return undefined;
   }
 
-  return { version, installDir };
+  return { installDir };
 }
 
 function validateTargets(value: unknown, path: string, errors: ValidationError[]): InstallerConfig["targets"] | undefined {
@@ -426,15 +445,7 @@ function validateInstallDir(value: string, path: string, errors: ValidationError
   }
 }
 
-function isValidDefaultVersion(value: string) {
-  if (value === "latest") {
-    return true;
-  }
-
-  return isValidGitTagName(value);
-}
-
-function isValidGitTagName(value: string) {
+export function isValidGitTagName(value: string) {
   if (
     value.length === 0 ||
     value.startsWith("/") ||
