@@ -31,6 +31,33 @@ export type ContextPropagation = {
   reachableContextsByVariable: ReachableContextsByVariable;
 };
 
+type GraphValidationInput = {
+  config: InstallerConfig;
+  segments: ArchiveTemplateSegment[];
+  graph: ModeGraph;
+  reachableContextsByVariable: ReachableContextsByVariable;
+};
+
+type GraphSourceValue = {
+  path: string;
+  value: string;
+};
+
+type GraphSourceValuesByVariable = Record<string, GraphSourceValue>;
+
+type GraphValidationRule = {
+  name: string;
+  validate(input: GraphValidationInput): ValidationError[];
+};
+
+class CompositeGraphValidator {
+  constructor(private readonly rules: GraphValidationRule[]) {}
+
+  validate(input: GraphValidationInput): ValidationError[] {
+    return this.rules.flatMap(rule => rule.validate(input));
+  }
+}
+
 export function validateArchiveTemplateForConfig(
   config: InstallerConfig,
   segments: ArchiveTemplateSegment[],
@@ -53,6 +80,7 @@ export function validateArchiveTemplateForConfig(
     mode: graph.mode,
     reachableContextsByVariable: propagateGraphContexts(graph),
   }));
+  const graphValidator = createArchiveTemplateGraphValidator();
 
   if (config.versionResolver.type === "latest_asset" && templateUsesPlaceholder(segments, "version")) {
     errors.push({
@@ -74,9 +102,21 @@ export function validateArchiveTemplateForConfig(
     }
   }
 
-  for (const propagation of contextPropagations) {
-    errors.push(...validateConcreteSourcesForContexts(config, propagation.reachableContextsByVariable));
-    errors.push(...validateGraphInvariants(propagation));
+  for (const [index, propagation] of contextPropagations.entries()) {
+    const graph = dependencyGraphs[index];
+
+    if (!graph) {
+      continue;
+    }
+
+    errors.push(
+      ...graphValidator.validate({
+        config,
+        segments,
+        graph,
+        reachableContextsByVariable: propagation.reachableContextsByVariable,
+      }),
+    );
   }
 
   for (const target of config.targets) {
@@ -260,12 +300,17 @@ function installDirectContexts(config: InstallerConfig): DirectContextsByVariabl
   };
 }
 
-function validateConcreteSourcesForContexts(
-  config: InstallerConfig,
-  reachableContextsByVariable: ReachableContextsByVariable,
-): ValidationError[] {
-  const errors: ValidationError[] = [];
-  const sourceValues: Record<string, { path: string; value: string }> = {
+function createArchiveTemplateGraphValidator() {
+  return new CompositeGraphValidator([
+    archiveFilenameContextRule,
+    releaseUrlPathSegmentContextRule,
+    shellLiteralContextRule,
+    remoteArchiveAssetMustNotFlowIntoLocalArchivePathRule,
+  ]);
+}
+
+function graphSourceValuesForConfig(config: InstallerConfig): GraphSourceValuesByVariable {
+  return {
     owner: { path: "$.owner", value: config.owner },
     repo: { path: "$.repo", value: config.repo },
     bin: { path: "$.binary.name", value: config.binary.name },
@@ -283,11 +328,21 @@ function validateConcreteSourcesForContexts(
         }
       : {}),
   };
+}
 
-  for (const [source, sourceValue] of Object.entries(sourceValues)) {
-    const contexts = reachableContextsByVariable[source] ?? [];
+const archiveFilenameContextRule: GraphValidationRule = {
+  name: "archive-filename-context",
+  validate(input) {
+    const errors: ValidationError[] = [];
+    const sourceValues = graphSourceValuesForConfig(input.config);
 
-    if (contexts.includes("archive filename context")) {
+    for (const [source, sourceValue] of Object.entries(sourceValues)) {
+      const contexts = input.reachableContextsByVariable[source] ?? [];
+
+      if (!contexts.includes("archive filename context")) {
+        continue;
+      }
+
       if (source === "archive.nameTemplate literal segments") {
         for (const char of sourceValue.value) {
           if (ARCHIVE_FILENAME_HARD_CHARS.test(char) && char !== "{" && char !== "}") {
@@ -308,45 +363,76 @@ function validateConcreteSourcesForContexts(
       }
     }
 
-    if (contexts.includes("Release URL path segment context") && /[\x00-\x1f\x7f]/.test(sourceValue.value)) {
-      errors.push({
-        path: sourceValue.path,
-        reason: "Value flows into a GitHub Release URL path segment and contains a control character.",
-        expected: "text that can be UTF-8 percent-encoded as one URL path segment",
-      });
+    return errors;
+  },
+};
+
+const releaseUrlPathSegmentContextRule: GraphValidationRule = {
+  name: "release-url-path-segment-context",
+  validate(input) {
+    const errors: ValidationError[] = [];
+    const sourceValues = graphSourceValuesForConfig(input.config);
+
+    for (const [source, sourceValue] of Object.entries(sourceValues)) {
+      const contexts = input.reachableContextsByVariable[source] ?? [];
+
+      if (contexts.includes("Release URL path segment context") && /[\x00-\x1f\x7f]/.test(sourceValue.value)) {
+        errors.push({
+          path: sourceValue.path,
+          reason: "Value flows into a GitHub Release URL path segment and contains a control character.",
+          expected: "text that can be UTF-8 percent-encoded as one URL path segment",
+        });
+      }
     }
 
-    if (contexts.includes("shell literal context") && sourceValue.value.includes("\0")) {
-      errors.push({
-        path: sourceValue.path,
-        reason: "Value cannot be safely embedded as a shell literal because it contains NUL.",
-        expected: "string without NUL",
-      });
+    return errors;
+  },
+};
+
+const shellLiteralContextRule: GraphValidationRule = {
+  name: "shell-literal-context",
+  validate(input) {
+    const errors: ValidationError[] = [];
+    const sourceValues = graphSourceValuesForConfig(input.config);
+
+    for (const [source, sourceValue] of Object.entries(sourceValues)) {
+      const contexts = input.reachableContextsByVariable[source] ?? [];
+
+      if (contexts.includes("shell literal context") && sourceValue.value.includes("\0")) {
+        errors.push({
+          path: sourceValue.path,
+          reason: "Value cannot be safely embedded as a shell literal because it contains NUL.",
+          expected: "string without NUL",
+        });
+      }
     }
-  }
 
-  return errors;
-}
+    return errors;
+  },
+};
 
-function validateGraphInvariants(propagation: ContextPropagation): ValidationError[] {
-  const archivePathContexts = propagation.reachableContextsByVariable.archive_path ?? [];
-  const archiveAssetContexts = propagation.reachableContextsByVariable.archive_asset_name ?? [];
+const remoteArchiveAssetMustNotFlowIntoLocalArchivePathRule: GraphValidationRule = {
+  name: "remote-archive-asset-must-not-flow-into-local-archive-path",
+  validate(input) {
+    const archivePathContexts = input.reachableContextsByVariable.archive_path ?? [];
+    const archiveAssetContexts = input.reachableContextsByVariable.archive_asset_name ?? [];
 
-  if (
-    archivePathContexts.includes("archive filename context") ||
-    archiveAssetContexts.includes("local filesystem context")
-  ) {
-    return [
-      {
-        path: "$.archive.nameTemplate",
-        reason: "Remote archive asset name must not flow into local temporary archive path.",
-        expected: "archive_path depends only on tmpdir and a fixed local archive filename",
-      },
-    ];
-  }
+    if (
+      archivePathContexts.includes("archive filename context") ||
+      archiveAssetContexts.includes("local filesystem context")
+    ) {
+      return [
+        {
+          path: "$.archive.nameTemplate",
+          reason: "Remote archive asset name must not flow into local temporary archive path.",
+          expected: "archive_path depends only on tmpdir and a fixed local archive filename",
+        },
+      ];
+    }
 
-  return [];
-}
+    return [];
+  },
+};
 
 function dedupeErrors(errors: ValidationError[]) {
   const seen = new Set<string>();
