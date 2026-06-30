@@ -2,9 +2,16 @@
 default:
   @just check
 
-check fix="false" :
+check:
+  @just _check
+  bun run format:check
+
+check-fix:
+  @just _check
+  bun run format
+
+_check:
   bun install --frozen-lockfile
   bun test
   bun run build
-  {{ if fix == "true" { "bun run format" } else { "bun run format:check" } }}
   bun run typecheck
