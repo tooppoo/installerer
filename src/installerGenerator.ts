@@ -10,7 +10,7 @@ import type { InstallerConfig, TargetArch, TargetOS } from "./installerConfig";
 export function generateInstaller(config: InstallerConfig): string {
   const template = parseArchiveNameTemplate(config.archive.nameTemplate);
   if (!template.ok) {
-    throw new Error(template.errors.map(error => `${error.path}: ${error.reason}`).join("\n"));
+    throw new Error(template.errors.map((error) => `${error.path}: ${error.reason}`).join("\n"));
   }
 
   return `#!/bin/sh
@@ -273,7 +273,7 @@ export function previewArchiveNames(config: InstallerConfig, version: string) {
     return [];
   }
 
-  return config.targets.map(target => {
+  return config.targets.map((target) => {
     const name = expandArchiveNameTemplate(template.segments, {
       owner: config.owner,
       repo: config.repo,
@@ -296,7 +296,7 @@ export function shellLiteral(value: string) {
 
 function renderTemplatePrintfArguments(segments: ArchiveTemplateSegment[]) {
   return segments
-    .map(segment => {
+    .map((segment) => {
       if (segment.type === "literal") {
         return shellLiteral(segment.value);
       }
@@ -315,7 +315,7 @@ function renderTemplatePrintfArguments(segments: ArchiveTemplateSegment[]) {
 }
 
 function targetCases(targets: Array<{ os: TargetOS; arch: TargetArch }>) {
-  return targets.map(target => `    ${target.os}/${target.arch}) ;;`).join("\n");
+  return targets.map((target) => `    ${target.os}/${target.arch}) ;;`).join("\n");
 }
 
 function latestBody(config: InstallerConfig) {

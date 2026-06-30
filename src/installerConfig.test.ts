@@ -36,12 +36,16 @@ describe("installer config validation", () => {
       expect(result.config.defaults).toEqual({
         installDir: "$HOME/.local/bin",
       });
-      expect(result.archivePreviews.map(preview => preview.latestName)).toEqual([
+      expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
         "rellog_v1.2.3_linux_x86_64.tar.gz",
         "rellog_v1.2.3_darwin_aarch64.tar.gz",
       ]);
       expect(result.warnings).toEqual([]);
-      expect(result.dependencyGraphs.map(graph => graph.mode)).toEqual(["main", "install_latest", "install_pin"]);
+      expect(result.dependencyGraphs.map((graph) => graph.mode)).toEqual([
+        "main",
+        "install_latest",
+        "install_pin",
+      ]);
       expect(result.dependencyGraphs[1]?.edges).toContainEqual({
         derived: "archive_path",
         source: "fixed local archive filename",
@@ -51,10 +55,12 @@ describe("installer config validation", () => {
         source: "archive_asset_name",
       });
       expect(
-        result.contextPropagations.find(graph => graph.mode === "install_pin")?.reachableContextsByVariable.pinned_version,
+        result.contextPropagations.find((graph) => graph.mode === "install_pin")
+          ?.reachableContextsByVariable.pinned_version,
       ).toContain("archive filename context");
       expect(
-        result.contextPropagations.find(graph => graph.mode === "install_pin")?.reachableContextsByVariable.pinned_version,
+        result.contextPropagations.find((graph) => graph.mode === "install_pin")
+          ?.reachableContextsByVariable.pinned_version,
       ).toContain("Release URL path segment context");
     }
   });
@@ -85,10 +91,16 @@ describe("installer config validation", () => {
         expect.objectContaining({ path: "$.extra", reason: "Unknown field is not supported." }),
       );
       expect(result.errors).toContainEqual(
-        expect.objectContaining({ path: "$.checksum.fileName", reason: "Required field is missing." }),
+        expect.objectContaining({
+          path: "$.checksum.fileName",
+          reason: "Required field is missing.",
+        }),
       );
       expect(result.errors).toContainEqual(
-        expect.objectContaining({ path: "$.checksum.unknown", reason: "Unknown field is not supported." }),
+        expect.objectContaining({
+          path: "$.checksum.unknown",
+          reason: "Unknown field is not supported.",
+        }),
       );
     }
   });
@@ -145,7 +157,7 @@ describe("installer config validation", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors.map(error => error.path)).toEqual(
+      expect(result.errors.map((error) => error.path)).toEqual(
         expect.arrayContaining(["$.binary.name", "$.binary.pathInArchive", "$.checksum.fileName"]),
       );
     }
@@ -192,7 +204,7 @@ describe("installer config validation", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       const pinContexts = result.contextPropagations.find(
-        graph => graph.mode === "install_pin",
+        (graph) => graph.mode === "install_pin",
       )?.reachableContextsByVariable;
 
       expect(pinContexts?.pinned_version).toContain("Git tag context");
@@ -215,7 +227,8 @@ describe("installer config validation", () => {
       expect(result.errors).toContainEqual(
         expect.objectContaining({
           path: "$.archive.nameTemplate",
-          reason: "Archive filename template literal contains a character that is invalid in archive filenames.",
+          reason:
+            "Archive filename template literal contains a character that is invalid in archive filenames.",
         }),
       );
     }
@@ -233,7 +246,10 @@ describe("installer config validation", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors).toContainEqual(
-        expect.objectContaining({ path: "$.defaults.version", reason: "Unknown field is not supported." }),
+        expect.objectContaining({
+          path: "$.defaults.version",
+          reason: "Unknown field is not supported.",
+        }),
       );
     }
   });
@@ -275,7 +291,7 @@ describe("installer config validation", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors.map(error => error.path)).toEqual(
+      expect(result.errors.map((error) => error.path)).toEqual(
         expect.arrayContaining(["$.targets[1]", "$.targets[2].os", "$.targets[2].arch"]),
       );
     }

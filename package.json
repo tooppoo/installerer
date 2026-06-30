@@ -7,7 +7,10 @@
     "dev": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
     "build": "bun run build.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "lint": "oxlint --deny-warnings .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "bun-plugin-tailwind": "^0.1.2",
@@ -16,8 +19,11 @@
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
+    "@types/bun": "latest",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/bun": "latest"
+    "oxfmt": "^0.57.0",
+    "oxlint": "^1.72.0",
+    "typescript": "^6.0.3"
   }
 }

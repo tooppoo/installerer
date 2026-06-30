@@ -6,7 +6,11 @@ export type ValidationError = {
 
 export type JsonObject = Record<string, unknown>;
 
-export function requireObject(value: unknown, path: string, errors: ValidationError[]): JsonObject | undefined {
+export function requireObject(
+  value: unknown,
+  path: string,
+  errors: ValidationError[],
+): JsonObject | undefined {
   if (isJsonObject(value)) {
     return value;
   }
@@ -19,7 +23,11 @@ export function requireObject(value: unknown, path: string, errors: ValidationEr
   return undefined;
 }
 
-export function requireString(value: unknown, path: string, errors: ValidationError[]): string | undefined {
+export function requireString(
+  value: unknown,
+  path: string,
+  errors: ValidationError[],
+): string | undefined {
   if (typeof value === "string") {
     return value;
   }

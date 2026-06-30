@@ -43,7 +43,7 @@ describe("installer generation", () => {
     expect(script).toContain("download_and_install()");
     expect(script).toContain("printf '%s' \"$REPO\" '_' \"$version\" '_' \"$target\" '.tar.gz'");
     expect(script).toContain("--version latest is ambiguous");
-    expect(script).toContain("archive_path=\"$tmpdir/archive\"");
+    expect(script).toContain('archive_path="$tmpdir/archive"');
     expect(script).not.toContain("eval");
     expect(script).not.toContain("$tmpdir/$archive_asset_name");
   });

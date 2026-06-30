@@ -10,7 +10,10 @@ const SHELL_SENSITIVE_PATH_CHARS = /[ \t\r\n'"`$;&|<>()[\]{}*!?~#]/;
 export const TARGET_OS = new Set<TargetOS>(["linux", "darwin"]);
 export const TARGET_ARCH = new Set<TargetArch>(["x86_64", "aarch64"]);
 
-export function validateDefaults(value: unknown, errors: ValidationError[]): InstallerConfig["defaults"] | undefined {
+export function validateDefaults(
+  value: unknown,
+  errors: ValidationError[],
+): InstallerConfig["defaults"] | undefined {
   if (value === undefined) {
     return { installDir: DEFAULT_INSTALL_DIR };
   }
@@ -123,7 +126,11 @@ export function validateSafeFilename(value: string, path: string, errors: Valida
   }
 }
 
-export function validateArchiveRelativePath(value: string, path: string, errors: ValidationError[]) {
+export function validateArchiveRelativePath(
+  value: string,
+  path: string,
+  errors: ValidationError[],
+) {
   const segments = value.split("/");
 
   if (
@@ -132,7 +139,7 @@ export function validateArchiveRelativePath(value: string, path: string, errors:
     value.includes("\\") ||
     !isAscii(value) ||
     SHELL_SENSITIVE_PATH_CHARS.test(value) ||
-    segments.some(segment => segment === "" || segment === "." || segment === "..")
+    segments.some((segment) => segment === "" || segment === "." || segment === "..")
   ) {
     errors.push({
       path,
@@ -169,7 +176,7 @@ function validateInstallDir(value: string, path: string, errors: ValidationError
     value.startsWith("~user") ||
     value.includes("\\") ||
     (value !== "/" && relativePart === "") ||
-    segments.some(segment => segment === "" || segment === "." || segment === "..")
+    segments.some((segment) => segment === "" || segment === "." || segment === "..")
   ) {
     errors.push({
       path,

@@ -52,7 +52,9 @@ export function App() {
           <div
             className={[
               "w-fit border px-3 py-1.5 text-sm font-semibold",
-              result.ok ? "border-[#287047] bg-[#e2f2df] text-[#174c2e]" : "border-[#9d2d25] bg-[#f8dfda] text-[#762119]",
+              result.ok
+                ? "border-[#287047] bg-[#e2f2df] text-[#174c2e]"
+                : "border-[#9d2d25] bg-[#f8dfda] text-[#762119]",
             ].join(" ")}
           >
             {result.ok ? "Valid normalized config" : `${result.errors.length} validation error(s)`}
@@ -64,7 +66,7 @@ export function App() {
             <span className="text-sm font-semibold text-[#4a4037]">Input JSON</span>
             <textarea
               value={jsonInput}
-              onChange={event => setJsonInput(event.target.value)}
+              onChange={(event) => setJsonInput(event.target.value)}
               spellCheck={false}
               className="min-h-[420px] flex-1 resize-y border border-[#6f786e] bg-white p-4 font-mono text-sm leading-6 text-[#171717] outline-none focus:border-[#235b4d] focus:ring-2 focus:ring-[#93c7b8]"
             />
@@ -75,16 +77,21 @@ export function App() {
               <h2 className="text-sm font-semibold text-[#4a4037]">Validation</h2>
               {result.ok ? (
                 <div className="border border-[#78a86c] bg-[#edf8e9] p-4 text-sm text-[#174c2e]">
-                  The JSON input is valid. Archive template expansion, mode-specific dependency graphs, and installer
-                  generation are ready.
+                  The JSON input is valid. Archive template expansion, mode-specific dependency
+                  graphs, and installer generation are ready.
                 </div>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {result.errors.map((error, index) => (
-                    <li key={`${error.path}-${index}`} className="border border-[#d1887f] bg-[#fff4f1] p-3 text-sm">
+                    <li
+                      key={`${error.path}-${index}`}
+                      className="border border-[#d1887f] bg-[#fff4f1] p-3 text-sm"
+                    >
                       <div className="font-mono font-semibold text-[#762119]">{error.path}</div>
                       <div className="mt-1 text-[#3b2f2a]">{error.reason}</div>
-                      {error.expected ? <div className="mt-1 text-[#6d625a]">Expected: {error.expected}</div> : null}
+                      {error.expected ? (
+                        <div className="mt-1 text-[#6d625a]">Expected: {error.expected}</div>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -110,12 +117,14 @@ export function App() {
               <section className="flex flex-col gap-2">
                 <h2 className="text-sm font-semibold text-[#4a4037]">Archive Filename Preview</h2>
                 <ul className="grid gap-2">
-                  {result.archivePreviews.map(preview => (
+                  {result.archivePreviews.map((preview) => (
                     <li
                       key={`${preview.os}-${preview.arch}`}
                       className="border border-[#aeb8a8] bg-white p-3 font-mono text-sm"
                     >
-                      <div className="font-semibold text-[#235b4d]">{preview.os}/{preview.arch}</div>
+                      <div className="font-semibold text-[#235b4d]">
+                        {preview.os}/{preview.arch}
+                      </div>
                       <div className="mt-1 break-all">{preview.latestName}</div>
                     </li>
                   ))}
@@ -125,14 +134,21 @@ export function App() {
               <section className="flex flex-col gap-2">
                 <h2 className="text-sm font-semibold text-[#4a4037]">Warnings</h2>
                 {result.warnings.length === 0 ? (
-                  <div className="border border-[#aeb8a8] bg-white p-3 text-sm text-[#34423c]">No warnings.</div>
+                  <div className="border border-[#aeb8a8] bg-white p-3 text-sm text-[#34423c]">
+                    No warnings.
+                  </div>
                 ) : (
                   <ul className="grid gap-2">
                     {result.warnings.map((warning, index) => (
-                      <li key={`${warning.path}-${index}`} className="border border-[#d3a441] bg-[#fff8df] p-3 text-sm">
+                      <li
+                        key={`${warning.path}-${index}`}
+                        className="border border-[#d3a441] bg-[#fff8df] p-3 text-sm"
+                      >
                         <div className="font-mono font-semibold text-[#664800]">{warning.path}</div>
                         <div className="mt-1">{warning.reason}</div>
-                        <div className="mt-1 text-[#665b36]">Recommended: {warning.recommended}</div>
+                        <div className="mt-1 text-[#665b36]">
+                          Recommended: {warning.recommended}
+                        </div>
                       </li>
                     ))}
                   </ul>

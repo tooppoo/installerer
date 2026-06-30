@@ -1,8 +1,8 @@
 import type { InstallerConfig } from "./installerConfig";
 import type { ValidationError } from "./validation";
 import {
-  ARCHIVE_FILENAME_HARD_CHARS,
   expandArchiveNameTemplate,
+  hasArchiveFilenameHardChars,
   templateUsesPlaceholder,
   validateArchiveFilename,
   type ArchiveNamePreview,
@@ -54,7 +54,7 @@ class CompositeGraphValidator {
   constructor(private readonly rules: GraphValidationRule[]) {}
 
   validate(input: GraphValidationInput): ValidationError[] {
-    return this.rules.flatMap(rule => rule.validate(input));
+    return this.rules.flatMap((rule) => rule.validate(input));
   }
 }
 
@@ -76,13 +76,16 @@ export function validateArchiveTemplateForConfig(
     buildInstallLatestGraph(config, segments),
     buildInstallPinGraph(config, segments),
   ];
-  const contextPropagations = dependencyGraphs.map(graph => ({
+  const contextPropagations = dependencyGraphs.map((graph) => ({
     mode: graph.mode,
     reachableContextsByVariable: propagateGraphContexts(graph),
   }));
   const graphValidator = createArchiveTemplateGraphValidator();
 
-  if (config.versionResolver.type === "latest_asset" && templateUsesPlaceholder(segments, "version")) {
+  if (
+    config.versionResolver.type === "latest_asset" &&
+    templateUsesPlaceholder(segments, "version")
+  ) {
     errors.push({
       path: "$.archive.nameTemplate",
       reason: "latest_asset archives must use versionless archive filename templates.",
@@ -92,10 +95,11 @@ export function validateArchiveTemplateForConfig(
 
   for (const segment of segments) {
     if (segment.type === "literal") {
-      if (ARCHIVE_FILENAME_HARD_CHARS.test(segment.value)) {
+      if (hasArchiveFilenameHardChars(segment.value)) {
         errors.push({
           path: "$.archive.nameTemplate",
-          reason: "Archive filename template literal contains a character that is invalid in archive filenames.",
+          reason:
+            "Archive filename template literal contains a character that is invalid in archive filenames.",
           expected: "no slash, backslash, whitespace, or control characters",
         });
       }
@@ -128,7 +132,10 @@ export function validateArchiveTemplateForConfig(
       arch: target.arch,
     };
     const latestName = expandArchiveNameTemplate(segments, { ...baseValues, version: "v1.2.3" });
-    const pinnedName = expandArchiveNameTemplate(segments, { ...baseValues, version: "release/v1.2.3" });
+    const pinnedName = expandArchiveNameTemplate(segments, {
+      ...baseValues,
+      version: "release/v1.2.3",
+    });
     const latestValidation = validateArchiveFilename(latestName, config.archive.format);
     const pinnedValidation = validateArchiveFilename(pinnedName, config.archive.format);
 
@@ -190,7 +197,10 @@ export function propagateGraphContexts(graph: ModeGraph): ReachableContextsByVar
   }
 
   return Object.fromEntries(
-    [...contextSetByVariable.entries()].map(([variable, contextSet]) => [variable, [...contextSet].sort()]),
+    [...contextSetByVariable.entries()].map(([variable, contextSet]) => [
+      variable,
+      [...contextSet].sort(),
+    ]),
   );
 }
 
@@ -205,7 +215,10 @@ export function buildMainGraph(): ModeGraph {
   };
 }
 
-export function buildInstallLatestGraph(config: InstallerConfig, segments: ArchiveTemplateSegment[]): ModeGraph {
+export function buildInstallLatestGraph(
+  config: InstallerConfig,
+  segments: ArchiveTemplateSegment[],
+): ModeGraph {
   const edges: GraphEdge[] = [
     { derived: "target", source: "os" },
     { derived: "target", source: "arch" },
@@ -240,7 +253,10 @@ export function buildInstallLatestGraph(config: InstallerConfig, segments: Archi
   return { mode: "install_latest", edges, directContexts: installDirectContexts(config) };
 }
 
-export function buildInstallPinGraph(config: InstallerConfig, segments: ArchiveTemplateSegment[]): ModeGraph {
+export function buildInstallPinGraph(
+  config: InstallerConfig,
+  segments: ArchiveTemplateSegment[],
+): ModeGraph {
   const edges: GraphEdge[] = [
     { derived: "target", source: "os" },
     { derived: "target", source: "arch" },
@@ -286,16 +302,30 @@ function addArchiveTemplateEdges(
 
 function installDirectContexts(config: InstallerConfig): DirectContextsByVariable {
   return {
-    archive_asset_name: ["archive filename context", "checksum lookup context", "shell literal context"],
+    archive_asset_name: [
+      "archive filename context",
+      "checksum lookup context",
+      "shell literal context",
+    ],
     archive_url: ["Release URL context", "shell command argument context"],
     checksum_url: ["Release URL context", "shell command argument context"],
     checksum_lookup_key: ["checksum lookup context"],
-    "checksum.fileName": ["safe filename context", "Release URL path segment context", "shell literal context"],
+    "checksum.fileName": [
+      "safe filename context",
+      "Release URL path segment context",
+      "shell literal context",
+    ],
     archive_path: ["local filesystem context", "shell command argument context"],
     resolved_version: ["Git tag context", "Release URL path segment context"],
     pinned_version: ["Git tag context", "Release URL path segment context"],
     ...(config.versionResolver.type === "release_version_file"
-      ? { "versionResolver.fileName": ["safe filename context", "Release URL path segment context", "shell literal context"] }
+      ? {
+          "versionResolver.fileName": [
+            "safe filename context",
+            "Release URL path segment context",
+            "shell literal context",
+          ],
+        }
       : {}),
   };
 }
@@ -345,19 +375,21 @@ const archiveFilenameContextRule: GraphValidationRule = {
 
       if (source === "archive.nameTemplate literal segments") {
         for (const char of sourceValue.value) {
-          if (ARCHIVE_FILENAME_HARD_CHARS.test(char) && char !== "{" && char !== "}") {
+          if (hasArchiveFilenameHardChars(char) && char !== "{" && char !== "}") {
             errors.push({
               path: sourceValue.path,
-              reason: "Archive filename template literal contains a character that is invalid in archive filenames.",
+              reason:
+                "Archive filename template literal contains a character that is invalid in archive filenames.",
               expected: "no slash, backslash, whitespace, or control characters",
             });
             break;
           }
         }
-      } else if (ARCHIVE_FILENAME_HARD_CHARS.test(sourceValue.value)) {
+      } else if (hasArchiveFilenameHardChars(sourceValue.value)) {
         errors.push({
           path: sourceValue.path,
-          reason: "Value flows into archive filename context and contains a forbidden filename character.",
+          reason:
+            "Value flows into archive filename context and contains a forbidden filename character.",
           expected: "no slash, backslash, whitespace, or control characters",
         });
       }
@@ -376,10 +408,14 @@ const releaseUrlPathSegmentContextRule: GraphValidationRule = {
     for (const [source, sourceValue] of Object.entries(sourceValues)) {
       const contexts = input.reachableContextsByVariable[source] ?? [];
 
-      if (contexts.includes("Release URL path segment context") && /[\x00-\x1f\x7f]/.test(sourceValue.value)) {
+      if (
+        contexts.includes("Release URL path segment context") &&
+        hasControlChar(sourceValue.value)
+      ) {
         errors.push({
           path: sourceValue.path,
-          reason: "Value flows into a GitHub Release URL path segment and contains a control character.",
+          reason:
+            "Value flows into a GitHub Release URL path segment and contains a control character.",
           expected: "text that can be UTF-8 percent-encoded as one URL path segment",
         });
       }
@@ -436,7 +472,7 @@ const remoteArchiveAssetMustNotFlowIntoLocalArchivePathRule: GraphValidationRule
 
 function dedupeErrors(errors: ValidationError[]) {
   const seen = new Set<string>();
-  return errors.filter(error => {
+  return errors.filter((error) => {
     const key = `${error.path}\0${error.reason}\0${error.expected ?? ""}`;
     if (seen.has(key)) {
       return false;
@@ -446,9 +482,21 @@ function dedupeErrors(errors: ValidationError[]) {
   });
 }
 
+function hasControlChar(value: string) {
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+
+    if (code <= 31 || code === 127) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function dedupeWarnings(warnings: ArchiveTemplateWarning[]) {
   const seen = new Set<string>();
-  return warnings.filter(warning => {
+  return warnings.filter((warning) => {
     const key = `${warning.path}\0${warning.reason}\0${warning.recommended}`;
     if (seen.has(key)) {
       return false;

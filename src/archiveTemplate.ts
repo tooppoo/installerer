@@ -37,8 +37,47 @@ const ALLOWED_PLACEHOLDERS = new Set<ArchivePlaceholder>([
   "arch",
   "target",
 ]);
-export const ARCHIVE_FILENAME_HARD_CHARS = /[\/\\\s\x00-\x1f\x7f]/;
-const ARCHIVE_FILENAME_WARNING_CHARS = /['"`$;&|<>()\[\]*?~#]/;
+const ARCHIVE_FILENAME_WARNING_CHARS = new Set([
+  "'",
+  '"',
+  "`",
+  "$",
+  ";",
+  "&",
+  "|",
+  "<",
+  ">",
+  "(",
+  ")",
+  "[",
+  "]",
+  "*",
+  "?",
+  "~",
+  "#",
+]);
+
+export function hasArchiveFilenameHardChars(value: string) {
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+
+    if (char === "/" || char === "\\" || /\s/.test(char) || code <= 31 || code === 127) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function hasArchiveFilenameWarningChars(value: string) {
+  for (const char of value) {
+    if (ARCHIVE_FILENAME_WARNING_CHARS.has(char)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export function parseArchiveNameTemplate(
   template: string,
@@ -120,8 +159,11 @@ export function parseArchiveNameTemplate(
   return { ok: true, segments };
 }
 
-export function templateUsesPlaceholder(segments: ArchiveTemplateSegment[], name: ArchivePlaceholder) {
-  return segments.some(segment => segment.type === "placeholder" && segment.name === name);
+export function templateUsesPlaceholder(
+  segments: ArchiveTemplateSegment[],
+  name: ArchivePlaceholder,
+) {
+  return segments.some((segment) => segment.type === "placeholder" && segment.name === name);
 }
 
 export function expandArchiveNameTemplate(
@@ -136,7 +178,7 @@ export function expandArchiveNameTemplate(
   },
 ) {
   return segments
-    .map(segment => {
+    .map((segment) => {
       if (segment.type === "literal") {
         return segment.value;
       }
@@ -175,10 +217,11 @@ export function validateArchiveFilename(
     });
   }
 
-  if (ARCHIVE_FILENAME_HARD_CHARS.test(value)) {
+  if (hasArchiveFilenameHardChars(value)) {
     errors.push({
       path,
-      reason: "Archive filename must not contain path separators, whitespace, or control characters.",
+      reason:
+        "Archive filename must not contain path separators, whitespace, or control characters.",
       expected: "a single GitHub Release asset filename",
     });
   }
@@ -201,7 +244,8 @@ function archiveFilenameWarnings(value: string, path: string): ArchiveTemplateWa
   if (value.startsWith("-")) {
     warnings.push({
       path,
-      reason: "Archive filename starts with '-'. The generated installer uses fixed local paths, but external tools may interpret this as an option.",
+      reason:
+        "Archive filename starts with '-'. The generated installer uses fixed local paths, but external tools may interpret this as an option.",
       recommended: "Prefix the filename with the repository or binary name.",
     });
   }
@@ -209,7 +253,8 @@ function archiveFilenameWarnings(value: string, path: string): ArchiveTemplateWa
   if (value.startsWith(".")) {
     warnings.push({
       path,
-      reason: "Archive filename starts with '.'. Hidden-style asset names are easy to miss in local tooling.",
+      reason:
+        "Archive filename starts with '.'. Hidden-style asset names are easy to miss in local tooling.",
       recommended: "Prefix the filename with the repository or binary name.",
     });
   }
@@ -217,26 +262,39 @@ function archiveFilenameWarnings(value: string, path: string): ArchiveTemplateWa
   if (value.endsWith(".")) {
     warnings.push({
       path,
-      reason: "Archive filename ends with '.'. Some tools and filesystems handle trailing dots inconsistently.",
+      reason:
+        "Archive filename ends with '.'. Some tools and filesystems handle trailing dots inconsistently.",
       recommended: "End the filename with the archive suffix only.",
     });
   }
 
-  if (!/^[\x00-\x7f]*$/.test(value)) {
+  if (!isAsciiByteString(value)) {
     warnings.push({
       path,
-      reason: "Archive filename contains non-ASCII characters. The installer percent-encodes URL path segments, but older tools can display these inconsistently.",
+      reason:
+        "Archive filename contains non-ASCII characters. The installer percent-encodes URL path segments, but older tools can display these inconsistently.",
       recommended: "Use ASCII letters, digits, '.', '_', and '-'.",
     });
   }
 
-  if (ARCHIVE_FILENAME_WARNING_CHARS.test(value)) {
+  if (hasArchiveFilenameWarningChars(value)) {
     warnings.push({
       path,
-      reason: "Archive filename contains shell-metacharacter-looking characters. The installer quotes values, but the name is harder to audit.",
+      reason:
+        "Archive filename contains shell-metacharacter-looking characters. The installer quotes values, but the name is harder to audit.",
       recommended: "Use ASCII letters, digits, '.', '_', and '-'.",
     });
   }
 
   return warnings;
+}
+
+function isAsciiByteString(value: string) {
+  for (const char of value) {
+    if (char.charCodeAt(0) > 127) {
+      return false;
+    }
+  }
+
+  return true;
 }

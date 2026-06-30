@@ -103,16 +103,12 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     return { ok: false, errors, warnings: [] };
   }
 
-  rejectUnknownFields(root, "$", [
-    "owner",
-    "repo",
-    "binary",
-    "versionResolver",
-    "archive",
-    "checksum",
-    "targets",
-    "defaults",
-  ], errors);
+  rejectUnknownFields(
+    root,
+    "$",
+    ["owner", "repo", "binary", "versionResolver", "archive", "checksum", "targets", "defaults"],
+    errors,
+  );
 
   const owner = requireString(root.owner, "$.owner", errors);
   if (owner !== undefined && !GITHUB_OWNER_PATTERN.test(owner)) {
@@ -154,7 +150,11 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     const resolverType = requireString(versionResolver.type, "$.versionResolver.type", errors);
 
     if (resolverType === "release_version_file") {
-      const fileName = requireString(versionResolver.fileName, "$.versionResolver.fileName", errors);
+      const fileName = requireString(
+        versionResolver.fileName,
+        "$.versionResolver.fileName",
+        errors,
+      );
       if (fileName !== undefined) {
         validateSafeFilename(fileName, "$.versionResolver.fileName", errors);
         normalizedVersionResolver = { type: "release_version_file", fileName };
@@ -182,7 +182,9 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
   if (archive) {
     rejectUnknownFields(archive, "$.archive", ["format", "nameTemplate"], errors);
   }
-  const archiveFormat = archive ? requireString(archive.format, "$.archive.format", errors) : undefined;
+  const archiveFormat = archive
+    ? requireString(archive.format, "$.archive.format", errors)
+    : undefined;
   if (archiveFormat !== undefined && archiveFormat !== "tar.gz" && archiveFormat !== "zip") {
     errors.push({
       path: "$.archive.format",
@@ -198,7 +200,9 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
   if (checksum) {
     rejectUnknownFields(checksum, "$.checksum", ["fileName", "algorithm"], errors);
   }
-  const checksumFileName = checksum ? requireString(checksum.fileName, "$.checksum.fileName", errors) : undefined;
+  const checksumFileName = checksum
+    ? requireString(checksum.fileName, "$.checksum.fileName", errors)
+    : undefined;
   if (checksumFileName !== undefined) {
     validateSafeFilename(checksumFileName, "$.checksum.fileName", errors);
   }
@@ -282,10 +286,28 @@ export function isValidGitTagName(value: string) {
     value.includes("//") ||
     value.includes("..") ||
     value.includes("@{") ||
-    /[\x00-\x20\x7f~^:?*[\\]/.test(value)
+    hasUnsafeGitTagChar(value)
   ) {
     return false;
   }
 
-  return value.split("/").every(segment => segment.length > 0 && !segment.startsWith(".") && !segment.endsWith(".lock"));
+  return value
+    .split("/")
+    .every(
+      (segment) => segment.length > 0 && !segment.startsWith(".") && !segment.endsWith(".lock"),
+    );
+}
+
+function hasUnsafeGitTagChar(value: string) {
+  const unsafeChars = new Set(["~", "^", ":", "?", "*", "[", "\\"]);
+
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+
+    if (code <= 32 || code === 127 || unsafeChars.has(char)) {
+      return true;
+    }
+  }
+
+  return false;
 }

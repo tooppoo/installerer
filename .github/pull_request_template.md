@@ -1,4 +1,3 @@
-
 resolve #<issue-number>
 
 ## 変更の概要
