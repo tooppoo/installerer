@@ -8,12 +8,14 @@
   ],
   "postCreateCommand": "sh scripts/setup-dev.sh",
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-extra/features/bun:1": {}
   },
   "customizations": {
     "vscode": {
       "extensions": [
-        "EditorConfig.EditorConfig"
+        "EditorConfig.EditorConfig",
+        "oven.bun-vscode"
       ],
       "settings": {
         "editor.formatOnSave": true,
