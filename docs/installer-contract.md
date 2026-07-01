@@ -63,7 +63,11 @@ Required commands for every generated installer:
 - `tr`
 - `cut`
 - `sha256sum` or `shasum`
-- `tar`
+
+Archive-format-specific commands:
+
+- `tar` when `archive.format` is `tar.gz`
+- `unzip` when `archive.format` is `zip`
 
 If any required command is missing, the generated installer should stop with a clear error.
 
