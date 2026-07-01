@@ -25,7 +25,8 @@ REPO=${shellLiteral(config.repo)}
 BINARY_NAME=${shellLiteral(config.binary.name)}
 BINARY_PATH_IN_ARCHIVE=${shellLiteral(config.binary.pathInArchive)}
 CHECKSUM_FILE_NAME=${shellLiteral(config.checksum.fileName)}
-INSTALL_DIR=${shellLiteral(config.defaults.installDir)}
+DEFAULT_INSTALL_DIR=${shellLiteral(config.defaults.installDir)}
+INSTALL_DIR=
 ARCHIVE_FORMAT=${shellLiteral(config.archive.format)}
 ARCHIVE_SUFFIX=${shellLiteral(archiveFormatSuffix(config.archive.format))}
 ${config.versionResolver.type === "release_version_file" ? `VERSION_FILE_NAME=${shellLiteral(config.versionResolver.fileName)}` : ""}
@@ -33,6 +34,43 @@ ${config.versionResolver.type === "release_version_file" ? `VERSION_FILE_NAME=${
 fail() {
   printf '%s\\n' "installerer: $*" >&2
   exit 1
+}
+
+usage() {
+  printf '%s\\n' "usage: $0 [--version <version>] [--install-dir <dir>]"
+  printf '%s\\n' "       $0 --help"
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || fail "$1 is required"
+}
+
+check_runtime_dependencies() {
+  require_command uname
+  require_command mktemp
+  require_command rm
+  require_command mkdir
+  require_command cp
+  require_command mv
+  require_command chmod
+  require_command curl
+  require_command awk
+  require_command grep
+  require_command od
+  require_command tr
+  require_command cut
+  case "$ARCHIVE_FORMAT" in
+    tar.gz) require_command tar ;;
+    zip) require_command unzip ;;
+    *) fail "unsupported archive format: $ARCHIVE_FORMAT" ;;
+  esac
+  if command -v sha256sum >/dev/null 2>&1; then
+    CHECKSUM_COMMAND=sha256sum
+  elif command -v shasum >/dev/null 2>&1; then
+    CHECKSUM_COMMAND=shasum
+  else
+    fail "sha256sum or shasum is required"
+  fi
 }
 
 url_encode_segment() {
@@ -149,6 +187,35 @@ validate_archive_asset_name() {
   esac
 }
 
+validate_binary_path_in_archive() {
+  path=$1
+  [ -n "$path" ] || fail "binary.pathInArchive is empty"
+  case "$path" in
+    /*|*/|*\\\\*) fail "binary.pathInArchive must be a relative file path: $path" ;;
+  esac
+  old_ifs=$IFS
+  IFS=/
+  set -- $path
+  IFS=$old_ifs
+  for segment do
+    case "$segment" in
+      ""|.|..) fail "binary.pathInArchive contains an unsafe path segment: $path" ;;
+    esac
+  done
+}
+
+resolve_install_dir() {
+  raw=$1
+  case "$raw" in
+    '$HOME') printf '%s' "$HOME" ;;
+    '$HOME/'*) printf '%s/%s' "$HOME" "\${raw#\\$HOME/}" ;;
+    '~') printf '%s' "$HOME" ;;
+    '~/'*) printf '%s/%s' "$HOME" "\${raw#\\~/}" ;;
+    /*) printf '%s' "$raw" ;;
+    *) printf '%s' "$raw" ;;
+  esac
+}
+
 detect_target() {
   os=$(uname -s | tr '[:upper:]' '[:lower:]')
   arch=$(uname -m)
@@ -193,32 +260,50 @@ download_and_install() {
   extract_dir="$tmpdir/extract"
   mkdir -p "$extract_dir" || fail "failed to create extract directory"
 
-  command -v curl >/dev/null 2>&1 || fail "curl is required"
-  command -v sha256sum >/dev/null 2>&1 || fail "sha256sum is required"
   curl -fsSL "$archive_url" -o "$archive_path" || fail "failed to download archive"
   curl -fsSL "$checksum_url" -o "$checksum_path" || fail "failed to download checksum file"
 
   expected_checksum=$(awk -v name="$archive_asset_name" '$2 == name { print $1; found=1; exit } END { if (!found) exit 1 }' "$checksum_path") \\
     || fail "checksum entry not found for $archive_asset_name"
-  printf '%s  %s\\n' "$expected_checksum" "$archive_path" | sha256sum -c - >/dev/null \\
-    || fail "archive checksum mismatch"
+  case "$CHECKSUM_COMMAND" in
+    sha256sum)
+      printf '%s  %s\\n' "$expected_checksum" "$archive_path" | sha256sum -c - >/dev/null \\
+        || fail "archive checksum mismatch"
+      ;;
+    shasum)
+      actual_checksum=$(shasum -a 256 "$archive_path" | awk '{ print $1 }') \\
+        || fail "failed to compute archive checksum"
+      [ "$actual_checksum" = "$expected_checksum" ] || fail "archive checksum mismatch"
+      ;;
+    *)
+      fail "checksum command was not initialized"
+      ;;
+  esac
 
   case "$ARCHIVE_FORMAT" in
     tar.gz)
-      tar -xzf "$archive_path" -C "$extract_dir" || fail "failed to extract tar.gz archive"
+      tar -xzf "$archive_path" -C "$extract_dir" -- "$BINARY_PATH_IN_ARCHIVE" \\
+        || fail "failed to extract $BINARY_PATH_IN_ARCHIVE from tar.gz archive"
       ;;
     zip)
-      command -v unzip >/dev/null 2>&1 || fail "unzip is required for zip archives"
-      unzip -q "$archive_path" -d "$extract_dir" || fail "failed to extract zip archive"
+      unzip -q "$archive_path" "$BINARY_PATH_IN_ARCHIVE" -d "$extract_dir" \\
+        || fail "failed to extract $BINARY_PATH_IN_ARCHIVE from zip archive"
       ;;
     *)
       fail "unsupported archive format: $ARCHIVE_FORMAT"
       ;;
   esac
 
+  extracted_binary="$extract_dir/$BINARY_PATH_IN_ARCHIVE"
+  [ ! -L "$extracted_binary" ] || fail "archive binary entry must not be a symlink: $BINARY_PATH_IN_ARCHIVE"
+  [ -f "$extracted_binary" ] || fail "archive binary entry is not a regular file: $BINARY_PATH_IN_ARCHIVE"
+
   mkdir -p "$INSTALL_DIR" || fail "failed to create install directory: $INSTALL_DIR"
-  cp "$extract_dir/$BINARY_PATH_IN_ARCHIVE" "$INSTALL_DIR/$BINARY_NAME" || fail "failed to install binary"
-  chmod +x "$INSTALL_DIR/$BINARY_NAME" || fail "failed to mark binary executable"
+  install_tmp="$INSTALL_DIR/.$BINARY_NAME.tmp.$$"
+  rm -f "$install_tmp" || fail "failed to remove stale temporary install file: $install_tmp"
+  cp "$extracted_binary" "$install_tmp" || fail "failed to copy binary to temporary install path"
+  chmod +x "$install_tmp" || fail "failed to mark binary executable"
+  mv "$install_tmp" "$INSTALL_DIR/$BINARY_NAME" || fail "failed to place binary in install directory"
   printf '%s\\n' "installed $BINARY_NAME to $INSTALL_DIR/$BINARY_NAME"
 }
 
@@ -248,19 +333,43 @@ install_pin() {
 }
 
 main() {
-  case "$#" in
-    0)
-      install_latest
-      ;;
-    2)
-      [ "$1" = "--version" ] || fail "usage: $0 [--version <version>]"
-      [ "$2" != "latest" ] || fail "--version latest is ambiguous; omit --version for latest install"
-      install_pin "$2"
-      ;;
-    *)
-      fail "usage: $0 [--version <version>]"
-      ;;
-  esac
+  version=
+  install_dir_raw=$DEFAULT_INSTALL_DIR
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --help)
+        usage
+        exit 0
+        ;;
+      --version)
+        [ "$#" -ge 2 ] || fail "--version requires a value"
+        version=$2
+        shift 2
+        ;;
+      --install-dir)
+        [ "$#" -ge 2 ] || fail "--install-dir requires a value"
+        install_dir_raw=$2
+        shift 2
+        ;;
+      *)
+        usage >&2
+        fail "unknown argument: $1"
+        ;;
+    esac
+  done
+
+  [ "$version" != "latest" ] || fail "--version latest is ambiguous; omit --version for latest install"
+  INSTALL_DIR=$(resolve_install_dir "$install_dir_raw")
+  [ -n "$INSTALL_DIR" ] || fail "install directory must not be empty"
+  validate_binary_path_in_archive "$BINARY_PATH_IN_ARCHIVE"
+  check_runtime_dependencies
+
+  if [ -n "$version" ]; then
+    install_pin "$version"
+  else
+    install_latest
+  fi
 }
 
 main "$@"
