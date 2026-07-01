@@ -87,7 +87,7 @@ url_encode_segment() {
     case "$byte" in
       2d) encoded="$encoded-" ;;
       2e) encoded="$encoded." ;;
-      5f) encoded="$encoded_" ;;
+      5f) encoded="$encoded"_ ;;
       7e) encoded="$encoded~" ;;
       30) encoded="$encoded"0 ;;
       31) encoded="$encoded"1 ;;
@@ -472,7 +472,8 @@ function latestBody(config: InstallerConfig) {
   download_and_install "$archive_url" "$checksum_url" "$archive_asset_name"`;
   }
 
-  return `  archive_asset_name=$(render_archive_asset_name "" "$os" "$arch")
+  return `  printf '%s\\n' "installerer: install source latest"
+  archive_asset_name=$(render_archive_asset_name "" "$os" "$arch")
   validate_archive_asset_name "$archive_asset_name"
   owner_path=$(url_encode_segment "$OWNER")
   repo_path=$(url_encode_segment "$REPO")

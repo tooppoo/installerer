@@ -136,6 +136,39 @@ describe("installer generation", () => {
     expect(latestAssetScript).not.toContain("VERSION_FILE_NAME");
   });
 
+  test("latest_asset latest install uses versionless latest/download URLs and logs latest as the source", () => {
+    const result = validateInstallerConfig({
+      ...configInput,
+      versionResolver: { type: "latest_asset" },
+      archive: { format: "tar.gz", nameTemplate: "{repo}_{target}.tar.gz" },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    const script = generateInstaller(result.config);
+
+    // latest install fetches versionless assets directly from latest/download.
+    expect(script).toContain(
+      'archive_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$archive_path_segment"',
+    );
+    expect(script).toContain(
+      'checksum_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$checksum_path_segment"',
+    );
+    // The archive name is rendered from a versionless template (empty version).
+    expect(script).toContain('render_archive_asset_name "" "$os" "$arch"');
+    // Install source is logged as latest; the resolved release tag is not.
+    expect(script).toContain("installerer: install source latest");
+    expect(script).not.toContain("resolved latest version");
+    // pinned install still uses the release-tag download path.
+    expect(script).toContain(
+      'archive_url="https://github.com/$owner_path/$repo_path/releases/download/$version_path/$archive_path_segment"',
+    );
+    // No GitHub API access and no VERSION asset handling.
+    expect(script).not.toContain("api.github.com");
+    expect(script).not.toContain("VERSION_FILE_NAME");
+  });
+
   const readVersionFile = (fixture: string) => {
     const result = validateInstallerConfig(configInput);
     if (!result.ok) {
@@ -181,6 +214,32 @@ fi
     const embeddedCrRun = readVersionFile("v0.1.2\rextra\n");
     expect(embeddedCrRun.stdout).toBe("FAIL");
     expect(embeddedCrRun.stderr).toContain("VERSION file must contain a single line");
+  });
+
+  const urlEncodeSegment = (value: string) => {
+    const result = validateInstallerConfig(configInput);
+    if (!result.ok) {
+      throw new Error("config should be valid");
+    }
+    const harness = `printf '%s' "$(url_encode_segment "$ENCODE_FIXTURE")"`;
+    const script = generateInstaller(result.config).replace('\nmain "$@"\n', `\n${harness}\n`);
+    return spawnSync("sh", ["-s"], {
+      input: script,
+      env: { ...process.env, ENCODE_FIXTURE: value },
+      encoding: "utf8",
+    });
+  };
+
+  test("url_encode_segment preserves unreserved bytes and encodes the rest under set -u", () => {
+    // Underscores are unreserved and must survive verbatim, even under `set -u`.
+    const underscore = urlEncodeSegment("rellog_linux_x86_64.tar.gz");
+    expect(underscore.stderr).toBe("");
+    expect(underscore.stdout).toBe("rellog_linux_x86_64.tar.gz");
+
+    // Other unreserved characters pass through; reserved ones are percent-encoded.
+    expect(urlEncodeSegment("a-b.c~d").stdout).toBe("a-b.c~d");
+    expect(urlEncodeSegment("release/v1.2.3").stdout).toBe("release%2Fv1.2.3");
+    expect(urlEncodeSegment("a b").stdout).toBe("a%20b");
   });
 
   const isValidGitTag = (tag: string) => {
