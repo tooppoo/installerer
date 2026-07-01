@@ -320,9 +320,20 @@ export function App() {
             </section>
 
             {/* Bundled at build time from docs/installer-contract.md — no runtime fetch. */}
-            <details className="border border-[#aeb8a8] bg-white">
-              <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-2 text-sm font-semibold text-[#4a4037]">
-                Installer contract (docs)
+            <details className="group border border-[#aeb8a8] bg-white">
+              <summary className="flex cursor-pointer select-none items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-[#4a4037]">
+                <span className="flex items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className="inline-block text-[#6d625a] transition-transform duration-150 group-open:rotate-90"
+                  >
+                    ▶
+                  </span>
+                  Installer contract (docs)
+                  <span className="text-xs font-normal text-[#6d625a] group-open:hidden">
+                    (click to expand)
+                  </span>
+                </span>
                 <button
                   type="button"
                   onClick={(event) => {
