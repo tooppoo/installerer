@@ -1,6 +1,6 @@
 # Variable Dependency Graph And Context-Specific Validation
 
-`installerer` validates `archive.nameTemplate` and the config fields that feed it by building a small variable dependency graph per runtime mode and propagating the *contexts* each variable's value is used in. A fixed set of context-specific rules then checks only the config values that actually reach a dangerous context. This design was introduced to answer [issue #4](https://github.com/tooppoo/installerer/issues/4): the same value (for example a release tag) is safe in one context (a Git ref name) and unsafe in another (an archive filename), so validation must be aware of *where a value flows*, not just what type it declares.
+`installerer` validates `archive.nameTemplate` and the config fields that feed it by building a small variable dependency graph per runtime mode and propagating the _contexts_ each variable's value is used in. A fixed set of context-specific rules then checks only the config values that actually reach a dangerous context. This design was introduced to answer [issue #4](https://github.com/tooppoo/installerer/issues/4): the same value (for example a release tag) is safe in one context (a Git ref name) and unsafe in another (an archive filename), so validation must be aware of _where a value flows_, not just what type it declares.
 
 Implementation lives in [`src/archiveTemplateValidation.ts`](../src/archiveTemplateValidation.ts).
 
@@ -16,7 +16,7 @@ Each graph is validated on its own; **they are never unioned**. A context that o
 
 ## Graph Model
 
-A graph is a set of directed edges `derived ← source` (a derived variable is computed from a source variable) plus a table of the contexts each variable is *directly* used in (`directContexts`). Propagation then computes, for every variable, every context it can *reach* transitively through the graph (`reachableContextsByVariable`).
+A graph is a set of directed edges `derived ← source` (a derived variable is computed from a source variable) plus a table of the contexts each variable is _directly_ used in (`directContexts`). Propagation then computes, for every variable, every context it can _reach_ transitively through the graph (`reachableContextsByVariable`).
 
 ```mermaid
 classDiagram
@@ -61,23 +61,23 @@ For example, in `install_pin`, `pinned_version` only gains `"archive filename co
 
 `main` declares two variables directly:
 
-| Variable | Direct contexts |
-|---|---|
+| Variable      | Direct contexts                                     |
+| ------------- | --------------------------------------------------- |
 | `version_arg` | `shell command argument context`, `Git tag context` |
-| `dispatch` | `argument parsing context` |
+| `dispatch`    | `argument parsing context`                          |
 
 `install_latest` and `install_pin` share the same direct-context table (`installDirectContexts`), plus `versionResolver.fileName` when `versionResolver.type === "release_version_file"`:
 
-| Variable | Direct contexts |
-|---|---|
-| `archive_asset_name` | `archive filename context`, `checksum lookup context`, `shell literal context` |
-| `archive_url` | `Release URL context`, `shell command argument context` |
-| `checksum_url` | `Release URL context`, `shell command argument context` |
-| `checksum_lookup_key` | `checksum lookup context` |
-| `checksum.fileName` | `safe filename context`, `Release URL path segment context`, `shell literal context` |
-| `archive_path` | `local filesystem context`, `shell command argument context` |
-| `resolved_version` (`install_latest` only) | `Git tag context`, `Release URL path segment context` |
-| `pinned_version` (`install_pin` only) | `Git tag context`, `Release URL path segment context` |
+| Variable                                                     | Direct contexts                                                                      |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `archive_asset_name`                                         | `archive filename context`, `checksum lookup context`, `shell literal context`       |
+| `archive_url`                                                | `Release URL context`, `shell command argument context`                              |
+| `checksum_url`                                               | `Release URL context`, `shell command argument context`                              |
+| `checksum_lookup_key`                                        | `checksum lookup context`                                                            |
+| `checksum.fileName`                                          | `safe filename context`, `Release URL path segment context`, `shell literal context` |
+| `archive_path`                                               | `local filesystem context`, `shell command argument context`                         |
+| `resolved_version` (`install_latest` only)                   | `Git tag context`, `Release URL path segment context`                                |
+| `pinned_version` (`install_pin` only)                        | `Git tag context`, `Release URL path segment context`                                |
 | `versionResolver.fileName` (only for `release_version_file`) | `safe filename context`, `Release URL path segment context`, `shell literal context` |
 
 Edges then connect config-derived source variables (`owner`, `repo`, `bin`, `os`, `arch`, `target`, template literal segments, and — for `install_latest` with `release_version_file` — `versionResolver.fileName` → `resolved_version`) up into `archive_asset_name`, `archive_url`, `checksum_url`, `checksum_lookup_key`, and `archive_path`. `addArchiveTemplateEdges` adds one `archive_asset_name ← <placeholder>` edge per placeholder actually present in `archive.nameTemplate`, so unused placeholders never contribute contexts.

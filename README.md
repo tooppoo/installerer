@@ -5,6 +5,7 @@
 - [MVP Browser JS Installer Generator Policy](docs/adr/20260630T032548Z_mvp-browser-js-generator-policy.md)
 - [Generated Installer Runtime](docs/generated-installer-runtime.md)
 - [Generated Installer Runtime ADR](docs/adr/20260630T174038Z_generated-installer-runtime-single-posix-sh.md)
+- [latest_asset Resolver ADR](docs/adr/20260701T143939Z_latest-asset-resolver-versionless-direct-download.md)
 
 ## JSON config validation and installer generation
 

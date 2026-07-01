@@ -46,6 +46,14 @@ The release tag version is used two ways, which are kept distinct: it is percent
 
 The `installerer` browser app never fetches, generates, places, or manages the `VERSION` asset. It only emits an installer script that performs this resolution at runtime.
 
+For the `latest_asset` resolver, `install_latest` does not resolve a release tag at all. It downloads the checksum file and the archive asset directly from the GitHub Release `latest/download` URL:
+
+- The archive filename is rendered from a versionless template. Because no release tag is resolved, `latest_asset` rejects `archive.nameTemplate` values that contain `{version}` at generation time as a hard error.
+- The install source is logged as `latest`; no resolved version is logged.
+- The checksum file and the archive asset are fetched with two separate requests to `latest/download`. If the latest release changes between those requests, the checksum file and the archive can come from different releases. That inconsistency surfaces as a checksum mismatch and stops with a hard error. `latest_asset` does not pin the latest install to a single release tag; use `release_version_file` when an atomic latest resolution is required.
+
+`install_pin` for `latest_asset` behaves like the pinned install for `release_version_file`: the `--version` value is validated as a Git tag name, percent-encoded as a URL path segment, and used in the `/releases/download/<encoded version>/<asset>` URL. The archive filename is still rendered from the versionless template, so the URL-encoded version is never used as part of the archive filename.
+
 ## Runtime Dependencies
 
 The generated script is POSIX `sh`, but it intentionally depends on external commands for practical and safer runtime behavior.
