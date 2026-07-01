@@ -5,7 +5,8 @@ import { useMemo, useState } from "react";
 import { validateInstallerConfig } from "./installerConfig";
 import { generateInstaller } from "./installerGenerator";
 import {
-  ARCHIVE_FORMAT,
+  ARCHIVE_FORMAT_OPTIONS,
+  ARCHIVE_FORMAT_SUFFIXES,
   buildInstallerConfig,
   CHECKSUM_ALGORITHM,
   initialFormState,
@@ -196,7 +197,25 @@ export function App() {
             <div className="grid gap-4 sm:grid-cols-2">
               <label className={labelClassName}>
                 archive.format
-                <input className={readOnlyFieldClassName} value={ARCHIVE_FORMAT} readOnly />
+                <select
+                  className={fieldClassName}
+                  value={form.archiveFormat}
+                  onChange={(event) =>
+                    update(
+                      "archiveFormat",
+                      event.target.value as InstallerFormState["archiveFormat"],
+                    )
+                  }
+                >
+                  {ARCHIVE_FORMAT_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs font-normal leading-snug text-[#6d625a]">
+                  archive.nameTemplate must end with {ARCHIVE_FORMAT_SUFFIXES[form.archiveFormat]}
+                </span>
               </label>
               <label className={labelClassName}>
                 archive.nameTemplate

@@ -1,4 +1,8 @@
-import { expandArchiveNameTemplate, parseArchiveNameTemplate } from "./archiveTemplate";
+import {
+  expandArchiveNameTemplate,
+  parseArchiveNameTemplate,
+  type ArchiveFormat,
+} from "./archiveTemplate";
 import type { TargetArch, TargetOS } from "./installerConfig";
 
 /**
@@ -25,6 +29,7 @@ export type InstallerFormState = {
   binaryPathInArchive: string;
   versionResolverType: VersionResolverType;
   versionResolverFileName: string;
+  archiveFormat: ArchiveFormat;
   archiveNameTemplate: string;
   checksumFileName: string;
   targets: TargetOption[];
@@ -51,8 +56,13 @@ export const VERSION_RESOLVER_DESCRIPTIONS: Record<VersionResolverType, string> 
     "Downloads assets straight from the latest release. No VERSION file; templates must be versionless.",
 };
 
-// Only tar.gz is offered by the form; the core still accepts zip, but the UI does not expose it.
-export const ARCHIVE_FORMAT = "tar.gz" as const;
+export const ARCHIVE_FORMAT_OPTIONS: readonly ArchiveFormat[] = ["tar.gz", "zip"];
+
+/** Expected filename suffix for each archive format, shown as a hint next to the select. */
+export const ARCHIVE_FORMAT_SUFFIXES: Record<ArchiveFormat, string> = {
+  "tar.gz": ".tar.gz",
+  zip: ".zip",
+};
 
 export const CHECKSUM_ALGORITHM = "sha256" as const;
 
@@ -63,6 +73,7 @@ export const initialFormState: InstallerFormState = {
   binaryPathInArchive: "rellog",
   versionResolverType: "release_version_file",
   versionResolverFileName: "VERSION",
+  archiveFormat: "tar.gz",
   archiveNameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",
   checksumFileName: "checksums.txt",
   targets: [
@@ -177,7 +188,7 @@ export function buildInstallerConfig(form: InstallerFormState): Record<string, u
     },
     versionResolver,
     archive: {
-      format: ARCHIVE_FORMAT,
+      format: form.archiveFormat,
       nameTemplate: form.archiveNameTemplate,
     },
     checksum: {

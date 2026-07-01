@@ -50,6 +50,16 @@ describe("buildInstallerConfig", () => {
     expect(validateInstallerConfig(config).ok).toBe(true);
   });
 
+  test("zip format is selectable and validates against the core", () => {
+    const config = buildInstallerConfig({
+      ...initialFormState,
+      archiveFormat: "zip",
+      archiveNameTemplate: "{repo}_{version}_{os}_{arch}.zip",
+    }) as { archive: { format: string } };
+    expect(config.archive.format).toBe("zip");
+    expect(validateInstallerConfig(config).ok).toBe(true);
+  });
+
   test("checksum.algorithm is always sha256", () => {
     const config = buildInstallerConfig(initialFormState) as {
       checksum: { algorithm: string };
