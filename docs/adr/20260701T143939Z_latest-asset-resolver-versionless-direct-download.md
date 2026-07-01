@@ -1,4 +1,4 @@
-# latest_asset Resolver Does Not Resolve A Latest Release Tag And Fetches Versionless Assets Directly
+# latest_asset Resolver Does Not Resolve the Latest Release Tag And Fetches Versionless Assets Directly
 
 - Status: Accepted
 - Created: 2026-07-01T14:39:39Z

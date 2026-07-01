@@ -233,9 +233,23 @@ fi
   test("url_encode_segment preserves unreserved bytes and encodes the rest under set -u", () => {
     // Underscores are unreserved and must survive verbatim, even under `set -u`.
     const underscore = urlEncodeSegment("rellog_linux_x86_64.tar.gz");
+    expect(underscore.status).toBe(0);
     expect(underscore.stderr).toBe("");
     expect(underscore.stdout).toBe("rellog_linux_x86_64.tar.gz");
 
+    // Other unreserved characters pass through; reserved ones are percent-encoded.
+    const unreserved = urlEncodeSegment("a-b.c~d");
+    expect(unreserved.status).toBe(0);
+    expect(unreserved.stdout).toBe("a-b.c~d");
+
+    const slash = urlEncodeSegment("release/v1.2.3");
+    expect(slash.status).toBe(0);
+    expect(slash.stdout).toBe("release%2Fv1.2.3");
+
+    const space = urlEncodeSegment("a b");
+    expect(space.status).toBe(0);
+    expect(space.stdout).toBe("a%20b");
+  });
     // Other unreserved characters pass through; reserved ones are percent-encoded.
     expect(urlEncodeSegment("a-b.c~d").stdout).toBe("a-b.c~d");
     expect(urlEncodeSegment("release/v1.2.3").stdout).toBe("release%2Fv1.2.3");
