@@ -21,6 +21,18 @@ The browser app itself:
 
 The generated installer script performs runtime work such as target detection, version resolution, download, checksum verification, archive extraction, and binary placement.
 
+## Browser UI Boundary
+
+The primary input surface of the browser app is the form. Users are not asked to hand-write JSON.
+
+- The form values are used to build the JSON config that is handed to the generator core.
+- The generated JSON config is shown as a read-only preview. It is collapsed by default.
+- The generated installer is shown as text. Users copy and paste it to save it as `install.sh`.
+- The MVP does not provide a file download UI for the generated installer.
+- The MVP does not allow editing this document from the UI.
+
+The browser app displays this contract document from a build-time generated module. It does not fetch documentation from GitHub or a backend at runtime.
+
 ## Generated Installer Boundary
 
 The generated installer is a single POSIX `sh` script named `install.sh`.
@@ -33,7 +45,7 @@ The script contains a small runtime with separate latest and pinned install path
 
 `--version latest` is rejected because latest installs are represented by omitting `--version`.
 
-Version selection belongs to the generated installer's runtime interface, not to the generator config.
+Version selection belongs to the generated installer's runtime interface, not to the generator config. The JSON config therefore has no `defaults.version` field.
 
 The generated installer does not:
 
@@ -42,6 +54,20 @@ The generated installer does not:
 - perform cosign verification in the MVP
 - verify SBOMs or provenance in the MVP
 - generate a Windows-native installer
+
+## Archive Format Contract
+
+The generator core supports two archive formats, selectable as `archive.format` in the browser form:
+
+- `tar.gz`
+- `zip`
+
+The archive format determines an archive-format-specific runtime dependency of the generated installer:
+
+- `archive.format = "tar.gz"` requires `tar` at runtime
+- `archive.format = "zip"` requires `unzip` at runtime
+
+The `archive.nameTemplate` must end with the suffix matching the selected format (`.tar.gz` or `.zip`).
 
 ## Runtime Dependencies
 
@@ -142,7 +168,7 @@ Checksum verification detects download corruption and inconsistencies among rele
 
 ## Config Examples
 
-These examples show the generator core config produced from form input. They are not the primary user input surface.
+These examples show the generator core config produced from form input. They are not the primary user input surface, and none of them contain a `defaults.version` field.
 
 ### `release_version_file`
 
@@ -206,6 +232,19 @@ These examples show the generator core config produced from form input. They are
   }
 }
 ```
+
+### `zip` variant
+
+Either resolver can use `archive.format = "zip"`. Compared to the examples above, only the archive section changes:
+
+```json
+"archive": {
+  "format": "zip",
+  "nameTemplate": "{repo}_{version}_{os}_{arch}.zip"
+}
+```
+
+A `zip` config produces an installer that requires `unzip` at runtime instead of `tar`, and the `nameTemplate` must end with `.zip`. For `latest_asset`, the template must still omit `{version}` (for example `{repo}_{os}_{arch}.zip`).
 
 ## Detailed Runtime Behavior
 

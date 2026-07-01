@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 
 import { validateInstallerConfig } from "./installerConfig";
 import { generateInstaller } from "./installerGenerator";
+import { INSTALLER_CONTRACT_MARKDOWN } from "./generated/installerContract";
 import {
   ARCHIVE_FORMAT_OPTIONS,
+  ARCHIVE_FORMAT_RUNTIME_DEPENDENCIES,
   ARCHIVE_FORMAT_SUFFIXES,
   buildInstallerConfig,
   CHECKSUM_ALGORITHM,
@@ -214,7 +216,9 @@ export function App() {
                   ))}
                 </select>
                 <span className="text-xs font-normal leading-snug text-[#6d625a]">
-                  archive.nameTemplate must end with {ARCHIVE_FORMAT_SUFFIXES[form.archiveFormat]}
+                  archive.nameTemplate must end with {ARCHIVE_FORMAT_SUFFIXES[form.archiveFormat]}.
+                  The generated installer requires{" "}
+                  <code>{ARCHIVE_FORMAT_RUNTIME_DEPENDENCIES[form.archiveFormat]}</code> at runtime.
                 </span>
               </label>
               <label className={labelClassName}>
@@ -311,6 +315,16 @@ export function App() {
               </summary>
               <pre className="max-h-[320px] overflow-auto border-t border-[#aeb8a8] bg-[#211d1a] p-4 font-mono text-xs leading-5 text-[#f7f3ea]">
                 {configJson}
+              </pre>
+            </details>
+
+            {/* Bundled at build time from docs/installer-contract.md — no runtime fetch. */}
+            <details className="border border-[#aeb8a8] bg-white">
+              <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-[#4a4037]">
+                Installer contract (docs)
+              </summary>
+              <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap border-t border-[#aeb8a8] bg-[#f7f6f2] p-4 font-mono text-xs leading-5 text-[#3b2f2a]">
+                {INSTALLER_CONTRACT_MARKDOWN}
               </pre>
             </details>
           </div>
