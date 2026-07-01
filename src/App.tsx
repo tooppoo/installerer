@@ -31,10 +31,10 @@ const labelClassName = "flex flex-col gap-1 text-sm font-semibold text-[#4a4037]
 export function App() {
   const [form, setForm] = useState<InstallerFormState>(initialFormState);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [contractCopyState, setContractCopyState] = useState<"idle" | "copied" | "error">("idle");
 
   const resolverExample = useMemo(() => versionResolverExample(form), [form]);
   const configForCore = useMemo(() => buildInstallerConfig(form), [form]);
-  const configJson = useMemo(() => JSON.stringify(configForCore, null, 2), [configForCore]);
   const result = useMemo(() => validateInstallerConfig(configForCore), [configForCore]);
 
   // Generation runs only on a validated config; capture any generation error so we
@@ -73,6 +73,16 @@ export function App() {
       setCopyState("error");
     }
     window.setTimeout(() => setCopyState("idle"), 2000);
+  };
+
+  const onCopyContract = async () => {
+    try {
+      await navigator.clipboard.writeText(INSTALLER_CONTRACT_MARKDOWN);
+      setContractCopyState("copied");
+    } catch {
+      setContractCopyState("error");
+    }
+    window.setTimeout(() => setContractCopyState("idle"), 2000);
   };
 
   const statusOk = result.ok && generation.error === null;
@@ -309,19 +319,24 @@ export function App() {
               )}
             </section>
 
-            <details className="border border-[#aeb8a8] bg-white">
-              <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-[#4a4037]">
-                Generated JSON config (read-only)
-              </summary>
-              <pre className="max-h-[320px] overflow-auto border-t border-[#aeb8a8] bg-[#211d1a] p-4 font-mono text-xs leading-5 text-[#f7f3ea]">
-                {configJson}
-              </pre>
-            </details>
-
             {/* Bundled at build time from docs/installer-contract.md — no runtime fetch. */}
             <details className="border border-[#aeb8a8] bg-white">
-              <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-[#4a4037]">
+              <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-2 text-sm font-semibold text-[#4a4037]">
                 Installer contract (docs)
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void onCopyContract();
+                  }}
+                  className="border border-[#287047] bg-[#e2f2df] px-3 py-1 text-xs font-semibold text-[#174c2e] transition-colors hover:bg-[#d0ebca]"
+                >
+                  {contractCopyState === "copied"
+                    ? "Copied!"
+                    : contractCopyState === "error"
+                      ? "Copy failed"
+                      : "Copy"}
+                </button>
               </summary>
               <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap border-t border-[#aeb8a8] bg-[#f7f6f2] p-4 font-mono text-xs leading-5 text-[#3b2f2a]">
                 {INSTALLER_CONTRACT_MARKDOWN}

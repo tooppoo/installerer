@@ -6,7 +6,7 @@ Fill in a form and the app generates a single POSIX `sh` `install.sh` for your p
 
 ## How it works
 
-- The form input builds a JSON config for the generator core, shown as a read-only preview.
+- The form input builds a JSON config that is handed to the generator core internally.
 - The generated `install.sh` installs the latest release when `--version` is omitted, or a pinned release with `--version <version>`.
 - Two version resolvers are supported: `release_version_file` (resolves the latest tag via a `VERSION` release asset) and `latest_asset` (downloads versionless assets directly from the latest release).
 

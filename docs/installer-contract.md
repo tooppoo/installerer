@@ -25,8 +25,7 @@ The generated installer script performs runtime work such as target detection, v
 
 The primary input surface of the browser app is the form. Users are not asked to hand-write JSON.
 
-- The form values are used to build the JSON config that is handed to the generator core.
-- The generated JSON config is shown as a read-only preview. It is collapsed by default.
+- The form values are used to build the JSON config that is handed to the generator core. The UI does not display this JSON config; it is an internal handoff to the generator, not a user-facing artifact.
 - The generated installer is shown as text. Users copy and paste it to save it as `install.sh`.
 - The MVP does not provide a file download UI for the generated installer.
 - The MVP does not allow editing this document from the UI.
