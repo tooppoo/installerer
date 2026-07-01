@@ -21,16 +21,6 @@ The browser app itself:
 
 The generated installer script performs runtime work such as target detection, version resolution, download, checksum verification, archive extraction, and binary placement.
 
-## Browser UI Boundary
-
-The primary user interface is form input.
-
-Users should not be asked to hand-write JSON as the primary workflow. The UI builds the generator core config from form values.
-
-The generated JSON config may be shown as a read-only preview for inspection and debugging. That preview should be collapsed by default and editable only through the form controls.
-
-The generated installer is shown as text and copied by the user. The MVP does not provide a file download mechanism for generated installers.
-
 ## Generated Installer Boundary
 
 The generated installer is a single POSIX `sh` script named `install.sh`.
@@ -43,7 +33,7 @@ The script contains a small runtime with separate latest and pinned install path
 
 `--version latest` is rejected because latest installs are represented by omitting `--version`.
 
-JSON config intentionally has no `defaults.version` field. Version selection belongs to the generated installer's runtime interface, not to the generator config.
+Version selection belongs to the generated installer's runtime interface, not to the generator config.
 
 The generated installer does not:
 
@@ -55,7 +45,7 @@ The generated installer does not:
 
 ## Runtime Dependencies
 
-The generated artifact is a POSIX `sh` script, but it intentionally depends on documented external commands.
+The generated artifact is a POSIX `sh` script, but it depends on documented external commands.
 
 Required commands for every generated installer:
 
@@ -73,24 +63,20 @@ Required commands for every generated installer:
 - `tr`
 - `cut`
 - `sha256sum` or `shasum`
-
-Archive-format-specific commands:
-
-- `tar` when `archive.format` is `tar.gz`
-- `unzip` when `archive.format` is `zip`
+- `tar`
 
 If any required command is missing, the generated installer should stop with a clear error.
 
 ## Supported Resolvers
 
-The MVP supports two resolver types:
+`installerer` supports two resolver types:
 
 - `release_version_file`
 - `latest_asset`
 
 ### `release_version_file`
 
-Use `release_version_file` when latest installs should resolve to an actual release tag without using the GitHub API.
+Use `release_version_file` when latest installs should resolve to an actual release tag.
 
 Each release must provide:
 
@@ -219,4 +205,4 @@ These examples show the generator core config produced from form input. They are
 
 ## Detailed Runtime Behavior
 
-This document intentionally describes the minimum contract. Detailed runtime behavior, resolver semantics, URL encoding policy, extraction policy, and binary placement rules are documented in `docs/generated-installer-runtime.md` and resolver ADRs.
+This document intentionally describes the minimum contract. Detailed runtime behavior, resolver semantics, URL encoding policy, extraction policy, and binary placement rules are documented in [`docs/generated-installer-runtime.md`](https://github.com/tooppoo/installerer/blob/main/docs/generated-installer-runtime.md).
