@@ -43,6 +43,20 @@ The generated installer does not:
 - verify SBOMs or provenance in the MVP
 - generate a Windows-native installer
 
+## Archive Format Contract
+
+The generator core supports two archive formats, selectable as `archive.format` in the browser form:
+
+- `tar.gz`
+- `zip`
+
+The archive format determines an archive-format-specific runtime dependency of the generated installer:
+
+- `archive.format = "tar.gz"` requires `tar` at runtime
+- `archive.format = "zip"` requires `unzip` at runtime
+
+The `archive.nameTemplate` must end with the suffix matching the selected format (`.tar.gz` or `.zip`).
+
 ## Runtime Dependencies
 
 The generated artifact is a POSIX `sh` script, but it depends on documented external commands.
@@ -140,72 +154,15 @@ Checksum verification is mandatory before installation.
 
 Checksum verification detects download corruption and inconsistencies among release assets. It does not prove maintainer identity, release asset authenticity, supply-chain provenance, or immutability of an already-published GitHub Release asset.
 
-## Config Examples
+### Archive format and version resolver
 
-These examples show the generator core config produced from form input. They are not the primary user input surface.
+Archive format and version resolver are independent choices.
 
-### `release_version_file`
+Any supported resolver can use either `tar.gz` or `zip`.
 
-```json
-{
-  "owner": "tooppoo",
-  "repo": "rellog",
-  "binary": {
-    "name": "rellog",
-    "pathInArchive": "rellog"
-  },
-  "versionResolver": {
-    "type": "release_version_file",
-    "fileName": "VERSION"
-  },
-  "archive": {
-    "format": "tar.gz",
-    "nameTemplate": "{repo}_{version}_{os}_{arch}.tar.gz"
-  },
-  "checksum": {
-    "fileName": "checksums.txt",
-    "algorithm": "sha256"
-  },
-  "targets": [
-    { "os": "linux", "arch": "x86_64" },
-    { "os": "darwin", "arch": "aarch64" }
-  ],
-  "defaults": {
-    "installDir": "$HOME/.local/bin"
-  }
-}
-```
+The archive filename pattern must satisfy both selected options:
 
-### `latest_asset`
-
-```json
-{
-  "owner": "tooppoo",
-  "repo": "rellog",
-  "binary": {
-    "name": "rellog",
-    "pathInArchive": "rellog"
-  },
-  "versionResolver": {
-    "type": "latest_asset"
-  },
-  "archive": {
-    "format": "tar.gz",
-    "nameTemplate": "{repo}_{os}_{arch}.tar.gz"
-  },
-  "checksum": {
-    "fileName": "checksums.txt",
-    "algorithm": "sha256"
-  },
-  "targets": [
-    { "os": "linux", "arch": "x86_64" },
-    { "os": "darwin", "arch": "aarch64" }
-  ],
-  "defaults": {
-    "installDir": "$HOME/.local/bin"
-  }
-}
-```
+Changing the archive format or resolver does not automatically rewrite the archive filename pattern. The pattern must be updated explicitly when its suffix or `{version}` usage no longer matches the selected options.
 
 ## Detailed Runtime Behavior
 

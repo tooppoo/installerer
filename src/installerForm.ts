@@ -64,6 +64,16 @@ export const ARCHIVE_FORMAT_SUFFIXES: Record<ArchiveFormat, string> = {
   zip: ".zip",
 };
 
+/**
+ * Archive-format-specific runtime dependency of the generated installer, shown as a
+ * hint next to the select. Must stay consistent with the generated installer's
+ * dependency checks and docs/installer-contract.md.
+ */
+export const ARCHIVE_FORMAT_RUNTIME_DEPENDENCIES: Record<ArchiveFormat, string> = {
+  "tar.gz": "tar",
+  zip: "unzip",
+};
+
 export const CHECKSUM_ALGORITHM = "sha256" as const;
 
 export const initialFormState: InstallerFormState = {
