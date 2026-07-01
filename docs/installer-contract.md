@@ -154,85 +154,15 @@ Checksum verification is mandatory before installation.
 
 Checksum verification detects download corruption and inconsistencies among release assets. It does not prove maintainer identity, release asset authenticity, supply-chain provenance, or immutability of an already-published GitHub Release asset.
 
-## Config Examples
+### Archive format and version resolver
 
-These examples show the generator core config produced from form input. They are not the primary user input surface, and none of them contain a `defaults.version` field.
+Archive format and version resolver are independent choices.
 
-### `release_version_file`
+Any supported resolver can use either `tar.gz` or `zip`.
 
-```json
-{
-  "owner": "tooppoo",
-  "repo": "rellog",
-  "binary": {
-    "name": "rellog",
-    "pathInArchive": "rellog"
-  },
-  "versionResolver": {
-    "type": "release_version_file",
-    "fileName": "VERSION"
-  },
-  "archive": {
-    "format": "tar.gz",
-    "nameTemplate": "{repo}_{version}_{os}_{arch}.tar.gz"
-  },
-  "checksum": {
-    "fileName": "checksums.txt",
-    "algorithm": "sha256"
-  },
-  "targets": [
-    { "os": "linux", "arch": "x86_64" },
-    { "os": "darwin", "arch": "aarch64" }
-  ],
-  "defaults": {
-    "installDir": "$HOME/.local/bin"
-  }
-}
-```
+The archive filename pattern must satisfy both selected options:
 
-### `latest_asset`
-
-```json
-{
-  "owner": "tooppoo",
-  "repo": "rellog",
-  "binary": {
-    "name": "rellog",
-    "pathInArchive": "rellog"
-  },
-  "versionResolver": {
-    "type": "latest_asset"
-  },
-  "archive": {
-    "format": "tar.gz",
-    "nameTemplate": "{repo}_{os}_{arch}.tar.gz"
-  },
-  "checksum": {
-    "fileName": "checksums.txt",
-    "algorithm": "sha256"
-  },
-  "targets": [
-    { "os": "linux", "arch": "x86_64" },
-    { "os": "darwin", "arch": "aarch64" }
-  ],
-  "defaults": {
-    "installDir": "$HOME/.local/bin"
-  }
-}
-```
-
-### `zip` variant
-
-Either resolver can use `archive.format = "zip"`. Compared to the examples above, only the archive section changes:
-
-```json
-"archive": {
-  "format": "zip",
-  "nameTemplate": "{repo}_{version}_{os}_{arch}.zip"
-}
-```
-
-A `zip` config produces an installer that requires `unzip` at runtime instead of `tar`, and the `nameTemplate` must end with `.zip`. For `latest_asset`, the template must still omit `{version}` (for example `{repo}_{os}_{arch}.zip`).
+Changing the archive format or resolver does not automatically rewrite the archive filename pattern. The pattern must be updated explicitly when its suffix or `{version}` usage no longer matches the selected options.
 
 ## Detailed Runtime Behavior
 
