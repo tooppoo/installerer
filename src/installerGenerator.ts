@@ -34,6 +34,46 @@ LF='
 '
 CR=$(printf '\\r')
 
+main() {
+  version=
+  install_dir_raw=$DEFAULT_INSTALL_DIR
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --help)
+        usage
+        exit 0
+        ;;
+      --version)
+        [ "$#" -ge 2 ] || fail "--version requires a value"
+        version=$2
+        shift 2
+        ;;
+      --install-dir)
+        [ "$#" -ge 2 ] || fail "--install-dir requires a value"
+        install_dir_raw=$2
+        shift 2
+        ;;
+      *)
+        usage >&2
+        fail "unknown argument: $1"
+        ;;
+    esac
+  done
+
+  [ "$version" != "latest" ] || fail "--version latest is ambiguous; omit --version for latest install"
+  INSTALL_DIR=$(resolve_install_dir "$install_dir_raw")
+  [ -n "$INSTALL_DIR" ] || fail "install directory must not be empty"
+  validate_binary_path_in_archive "$BINARY_PATH_IN_ARCHIVE"
+  check_runtime_dependencies
+
+  if [ -n "$version" ]; then
+    install_pin "$version"
+  else
+    install_latest
+  fi
+}
+
 fail() {
   printf '%s\\n' "installerer: $*" >&2
   exit 1
@@ -356,46 +396,6 @@ install_pin() {
   archive_url="https://github.com/$owner_path/$repo_path/releases/download/$version_path/$archive_path_segment"
   checksum_url="https://github.com/$owner_path/$repo_path/releases/download/$version_path/$checksum_path_segment"
   download_and_install "$archive_url" "$checksum_url" "$archive_asset_name"
-}
-
-main() {
-  version=
-  install_dir_raw=$DEFAULT_INSTALL_DIR
-
-  while [ "$#" -gt 0 ]; do
-    case "$1" in
-      --help)
-        usage
-        exit 0
-        ;;
-      --version)
-        [ "$#" -ge 2 ] || fail "--version requires a value"
-        version=$2
-        shift 2
-        ;;
-      --install-dir)
-        [ "$#" -ge 2 ] || fail "--install-dir requires a value"
-        install_dir_raw=$2
-        shift 2
-        ;;
-      *)
-        usage >&2
-        fail "unknown argument: $1"
-        ;;
-    esac
-  done
-
-  [ "$version" != "latest" ] || fail "--version latest is ambiguous; omit --version for latest install"
-  INSTALL_DIR=$(resolve_install_dir "$install_dir_raw")
-  [ -n "$INSTALL_DIR" ] || fail "install directory must not be empty"
-  validate_binary_path_in_archive "$BINARY_PATH_IN_ARCHIVE"
-  check_runtime_dependencies
-
-  if [ -n "$version" ]; then
-    install_pin "$version"
-  else
-    install_latest
-  fi
 }
 
 main "$@"
