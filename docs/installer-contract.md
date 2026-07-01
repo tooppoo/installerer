@@ -21,17 +21,6 @@ The browser app itself:
 
 The generated installer script performs runtime work such as target detection, version resolution, download, checksum verification, archive extraction, and binary placement.
 
-## Browser UI Boundary
-
-The primary input surface of the browser app is the form. Users are not asked to hand-write JSON.
-
-- The form values are used to build the JSON config that is handed to the generator core. The UI does not display this JSON config; it is an internal handoff to the generator, not a user-facing artifact.
-- The generated installer is shown as text. Users copy and paste it to save it as `install.sh`.
-- The MVP does not provide a file download UI for the generated installer.
-- The MVP does not allow editing this document from the UI.
-
-The browser app displays this contract document from a build-time generated module. It does not fetch documentation from GitHub or a backend at runtime.
-
 ## Generated Installer Boundary
 
 The generated installer is a single POSIX `sh` script named `install.sh`.
