@@ -109,6 +109,111 @@ describe("installer generation", () => {
     expect(shellLiteral("foo'bar")).toBe("'foo'\\''bar'");
   });
 
+  test("release_version_file latest install resolves and logs the version, latest_asset does not", () => {
+    const result = validateInstallerConfig(configInput);
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    const script = generateInstaller(result.config);
+    expect(script).toContain("read_version_file()");
+    expect(script).toContain("VERSION file must contain a single line");
+    expect(script).toContain("VERSION file is empty");
+    expect(script).toContain('resolved_version=$(read_version_file "$version_file_url") || exit 1');
+    expect(script).toContain("installerer: resolved latest version $resolved_version");
+
+    const latestAssetResult = validateInstallerConfig({
+      ...configInput,
+      versionResolver: { type: "latest_asset" },
+      archive: { format: "tar.gz", nameTemplate: "{repo}_{target}.tar.gz" },
+    });
+    expect(latestAssetResult.ok).toBe(true);
+    if (!latestAssetResult.ok) {
+      return;
+    }
+    const latestAssetScript = generateInstaller(latestAssetResult.config);
+    expect(latestAssetScript).not.toContain("read_version_file");
+    expect(latestAssetScript).not.toContain("VERSION_FILE_NAME");
+  });
+
+  const readVersionFile = (fixture: string) => {
+    const result = validateInstallerConfig(configInput);
+    if (!result.ok) {
+      throw new Error("config should be valid");
+    }
+    const harness = `
+curl() { printf '%s' "$VERSION_FIXTURE"; }
+if out=$(read_version_file "https://example.com/VERSION"); then
+  printf 'OK:[%s]' "$out"
+else
+  printf 'FAIL'
+fi
+`;
+    const script = generateInstaller(result.config).replace('\nmain "$@"\n', `\n${harness}\n`);
+    return spawnSync("sh", ["-s"], {
+      input: script,
+      env: { ...process.env, VERSION_FIXTURE: fixture },
+      encoding: "utf8",
+    });
+  };
+
+  test("read_version_file strips a single trailing LF or CRLF without trimming whitespace", () => {
+    expect(readVersionFile("v0.1.2\n").stdout).toBe("OK:[v0.1.2]");
+    expect(readVersionFile("v0.1.2\r\n").stdout).toBe("OK:[v0.1.2]");
+    expect(readVersionFile("v0.1.2").stdout).toBe("OK:[v0.1.2]");
+    // Leading/trailing whitespace is preserved, not auto-trimmed.
+    expect(readVersionFile(" v0.1.2 \n").stdout).toBe("OK:[ v0.1.2 ]");
+  });
+
+  test("read_version_file rejects empty and multiple-line VERSION content", () => {
+    const emptyRun = readVersionFile("");
+    expect(emptyRun.stdout).toBe("FAIL");
+    expect(emptyRun.stderr).toContain("VERSION file is empty");
+
+    const onlyNewlineRun = readVersionFile("\n");
+    expect(onlyNewlineRun.stdout).toBe("FAIL");
+    expect(onlyNewlineRun.stderr).toContain("VERSION file is empty");
+
+    const multiLineRun = readVersionFile("v0.1.2\nextra\n");
+    expect(multiLineRun.stdout).toBe("FAIL");
+    expect(multiLineRun.stderr).toContain("VERSION file must contain a single line");
+
+    const embeddedCrRun = readVersionFile("v0.1.2\rextra\n");
+    expect(embeddedCrRun.stdout).toBe("FAIL");
+    expect(embeddedCrRun.stderr).toContain("VERSION file must contain a single line");
+  });
+
+  const isValidGitTag = (tag: string) => {
+    const result = validateInstallerConfig(configInput);
+    if (!result.ok) {
+      throw new Error("config should be valid");
+    }
+    const harness = `
+if is_valid_git_tag "$TAG_FIXTURE"; then
+  printf 'VALID'
+else
+  printf 'INVALID'
+fi
+`;
+    const script = generateInstaller(result.config).replace('\nmain "$@"\n', `\n${harness}\n`);
+    return spawnSync("sh", ["-s"], {
+      input: script,
+      env: { ...process.env, TAG_FIXTURE: tag },
+      encoding: "utf8",
+    }).stdout;
+  };
+
+  test("is_valid_git_tag rejects whitespace, control chars, and latest", () => {
+    expect(isValidGitTag("v0.1.2")).toBe("VALID");
+    expect(isValidGitTag("release/v1.2.3")).toBe("VALID");
+    expect(isValidGitTag("v0.1.2 ")).toBe("INVALID");
+    expect(isValidGitTag(" v0.1.2")).toBe("INVALID");
+    expect(isValidGitTag("v0 1.2")).toBe("INVALID");
+    expect(isValidGitTag("v0.1.2\t")).toBe("INVALID");
+    expect(isValidGitTag("latest")).toBe("INVALID");
+    expect(isValidGitTag("")).toBe("INVALID");
+  });
+
   test("previews runtime-expanded archive names and flags unsafe version filenames before download", () => {
     const result = validateInstallerConfig(configInput);
 

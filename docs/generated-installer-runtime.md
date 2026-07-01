@@ -22,6 +22,30 @@ If `--install-dir` is omitted, the generated script uses `defaults.installDir` f
 
 JSON config intentionally has no `defaults.version` field.
 
+## Version Resolution
+
+`main` dispatches on the presence of `--version`:
+
+- omitted → `install_latest`
+- `--version <version>` → `install_pin`
+- `--version latest` → rejected, matching the exact lowercase string `latest` only
+
+Both `install_latest` and `install_pin` validate the version as a Git tag name inside the runtime, using a helper that mirrors checking `refs/tags/<version>` as a Git refname. The generated script does not depend on the `git` command. Empty values, `latest`, whitespace, control characters, and other refname-invalid values are rejected as unsafe version strings.
+
+For the `release_version_file` resolver, `install_latest` downloads the configured `VERSION` asset from the GitHub Release `latest/download` URL and reads its content as the release tag name:
+
+- The content is treated as a single line holding the release tag name.
+- Only a single trailing `LF` or `CRLF` is removed as a line terminator.
+- Any remaining `CR` or `LF` makes it a multiple-line `VERSION`, which is rejected.
+- Empty content is rejected.
+- Leading and trailing whitespace is not auto-trimmed; whitespace that violates Git tag validation is rejected as an unsafe version string.
+
+The resolved version is logged before download. `install_pin` never fetches the `VERSION` asset.
+
+The release tag version is used two ways, which are kept distinct: it is percent-encoded as a URL path segment for the GitHub Release URL, and it is expanded raw (not URL-encoded) into the `{version}` placeholder of the archive filename template. The expanded archive filename is then re-validated so that a Git-tag-valid version producing an unsafe archive filename (for example a tag containing `/`) is rejected.
+
+The `installerer` browser app never fetches, generates, places, or manages the `VERSION` asset. It only emits an installer script that performs this resolution at runtime.
+
 ## Runtime Dependencies
 
 The generated script is POSIX `sh`, but it intentionally depends on external commands for practical and safer runtime behavior.

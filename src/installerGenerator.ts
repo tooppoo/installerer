@@ -30,6 +30,9 @@ INSTALL_DIR=
 ARCHIVE_FORMAT=${shellLiteral(config.archive.format)}
 ARCHIVE_SUFFIX=${shellLiteral(archiveFormatSuffix(config.archive.format))}
 ${config.versionResolver.type === "release_version_file" ? `VERSION_FILE_NAME=${shellLiteral(config.versionResolver.fileName)}` : ""}
+LF='
+'
+CR=$(printf '\\r')
 
 fail() {
   printf '%s\\n' "installerer: $*" >&2
@@ -159,7 +162,11 @@ is_valid_git_tag() {
   tag=$1
   case "$tag" in
     ""|latest|/*|*/|*.|@|*//*|*..*|*@{*|*~*|*^*|*:*|*\\?*|*\\**|*\\[*|*\\\\*) return 1 ;;
+    *"$CR"*|*"$LF"*) return 1 ;;
   esac
+  if LC_ALL=C printf '%s' "$tag" | grep -q '[[:cntrl:][:space:]]'; then
+    return 1
+  fi
   old_ifs=$IFS
   IFS=/
   set -- $tag
@@ -171,7 +178,26 @@ is_valid_git_tag() {
   done
   return 0
 }
-
+${
+  config.versionResolver.type === "release_version_file"
+    ? `
+read_version_file() {
+  url=$1
+  content=$(curl -fsSL "$url" && printf x) || fail "failed to resolve latest version from $url"
+  content=\${content%x}
+  case "$content" in
+    *"$CR$LF") content=\${content%"$CR$LF"} ;;
+    *"$LF") content=\${content%"$LF"} ;;
+  esac
+  [ -n "$content" ] || fail "VERSION file is empty"
+  case "$content" in
+    *"$CR"*|*"$LF"*) fail "VERSION file must contain a single line" ;;
+  esac
+  printf '%s' "$content"
+}
+`
+    : ""
+}
 validate_archive_asset_name() {
   name=$1
   [ -n "$name" ] || fail "archive filename is empty"
@@ -433,8 +459,9 @@ function latestBody(config: InstallerConfig) {
   repo_path=$(url_encode_segment "$REPO")
   version_file_path=$(url_encode_segment "$VERSION_FILE_NAME")
   version_file_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$version_file_path"
-  resolved_version=$(curl -fsSL "$version_file_url" | tr -d '\\r\\n') || fail "failed to resolve latest version"
+  resolved_version=$(read_version_file "$version_file_url") || exit 1
   is_valid_git_tag "$resolved_version" || fail "resolved version is not a valid Git tag: $resolved_version"
+  printf '%s\\n' "installerer: resolved latest version $resolved_version"
   archive_asset_name=$(render_archive_asset_name "$resolved_version" "$os" "$arch")
   validate_archive_asset_name "$archive_asset_name"
   version_path=$(url_encode_segment "$resolved_version")

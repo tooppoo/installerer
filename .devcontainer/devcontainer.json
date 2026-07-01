@@ -3,7 +3,9 @@
   "image": "mcr.microsoft.com/devcontainers/base:2.1.9-trixie",
   "workspaceFolder": "/workspaces/installerer",
   "remoteUser": "vscode",
-  "runArgs": ["--init"],
+  "runArgs": [
+    "--init"
+  ],
   "postCreateCommand": "sh scripts/setup-dev.sh",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
@@ -11,7 +13,11 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": ["EditorConfig.EditorConfig", "oven.bun-vscode", "skellock.just"],
+      "extensions": [
+        "EditorConfig.EditorConfig",
+        "oven.bun-vscode",
+        "skellock.just"
+      ],
       "settings": {
         "editor.formatOnSave": true,
         "files.eol": "\n"
