@@ -33,7 +33,7 @@ The script contains a small runtime with separate latest and pinned install path
 
 `--version latest` is rejected because latest installs are represented by omitting `--version`.
 
-Version selection belongs to the generated installer's runtime interface, not to the generator config. The JSON config therefore has no `defaults.version` field.
+Version selection belongs to the generated installer's runtime interface, not to the generator config.
 
 The generated installer does not:
 
