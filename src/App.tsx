@@ -2,84 +2,272 @@ import "./index.css";
 
 import { useMemo, useState } from "react";
 
-import { parseInstallerConfig } from "./installerConfig";
+import { validateInstallerConfig } from "./installerConfig";
 import { generateInstaller } from "./installerGenerator";
+import {
+  ARCHIVE_FORMAT,
+  buildInstallerConfig,
+  CHECKSUM_ALGORITHM,
+  initialFormState,
+  isTargetSelected,
+  TARGET_OPTIONS,
+  targetKey,
+  toggleTarget,
+  VERSION_RESOLVER_DESCRIPTIONS,
+  VERSION_RESOLVER_OPTIONS,
+  versionResolverExample,
+  type InstallerFormState,
+  type TargetOption,
+} from "./installerForm";
 
-const sampleConfig = {
-  owner: "tooppoo",
-  repo: "rellog",
-  binary: {
-    name: "rellog",
-    pathInArchive: "rellog",
-  },
-  versionResolver: {
-    type: "release_version_file",
-    fileName: "VERSION",
-  },
-  archive: {
-    format: "tar.gz",
-    nameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",
-  },
-  checksum: {
-    fileName: "checksums.txt",
-    algorithm: "sha256",
-  },
-  targets: [
-    { os: "linux", arch: "x86_64" },
-    { os: "linux", arch: "aarch64" },
-    { os: "darwin", arch: "x86_64" },
-    { os: "darwin", arch: "aarch64" },
-  ],
-  defaults: {
-    installDir: "$HOME/.local/bin",
-  },
-};
+const fieldClassName =
+  "border border-[#6f786e] bg-white px-3 py-2 font-mono text-sm text-[#171717] outline-none focus:border-[#235b4d] focus:ring-2 focus:ring-[#93c7b8]";
+const readOnlyFieldClassName = `${fieldClassName} bg-[#eef0ec] text-[#4a4037]`;
+const labelClassName = "flex flex-col gap-1 text-sm font-semibold text-[#4a4037]";
 
 export function App() {
-  const [jsonInput, setJsonInput] = useState(() => JSON.stringify(sampleConfig, null, 2));
-  const result = useMemo(() => parseInstallerConfig(jsonInput), [jsonInput]);
-  const output = result.ok ? JSON.stringify(result.config, null, 2) : "";
-  const installer = result.ok ? generateInstaller(result.config) : "";
+  const [form, setForm] = useState<InstallerFormState>(initialFormState);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+
+  const resolverExample = useMemo(() => versionResolverExample(form), [form]);
+  const configForCore = useMemo(() => buildInstallerConfig(form), [form]);
+  const configJson = useMemo(() => JSON.stringify(configForCore, null, 2), [configForCore]);
+  const result = useMemo(() => validateInstallerConfig(configForCore), [configForCore]);
+
+  // Generation runs only on a validated config; capture any generation error so we
+  // never fall back to a previously generated installer as if it were current output.
+  const generation = useMemo(() => {
+    if (!result.ok) {
+      return { installer: null as string | null, error: null as string | null };
+    }
+    try {
+      return { installer: generateInstaller(result.config), error: null };
+    } catch (error) {
+      return {
+        installer: null,
+        error: error instanceof Error ? error.message : "Failed to generate installer.",
+      };
+    }
+  }, [result]);
+
+  const installer = generation.installer;
+
+  const update = <Key extends keyof InstallerFormState>(
+    key: Key,
+    value: InstallerFormState[Key],
+  ) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const onCopy = async () => {
+    if (installer === null) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(installer);
+      setCopyState("copied");
+    } catch {
+      setCopyState("error");
+    }
+    window.setTimeout(() => setCopyState("idle"), 2000);
+  };
+
+  const statusOk = result.ok && generation.error === null;
 
   return (
     <main className="min-h-screen w-full bg-[#f4f6f1] text-[#171717]">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-6 md:px-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-6 md:px-8">
         <header className="flex flex-col gap-2 border-b border-[#b8c0b0] pb-5 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase text-[#235b4d]">installerer</p>
             <h1 className="mt-1 text-3xl font-bold md:text-4xl">Installer Generator</h1>
+            <p className="mt-2 max-w-2xl text-sm text-[#4a4037]">
+              Fill in the form to generate a POSIX <code>install.sh</code>. Copy the output and save
+              it as <code>install.sh</code>. POSIX shell behavior, download, checksum verification,
+              and version-file resolution are the generated installer&apos;s responsibility — this
+              page never calls GitHub or fetches a <code>VERSION</code> asset.
+            </p>
           </div>
           <div
             className={[
               "w-fit border px-3 py-1.5 text-sm font-semibold",
-              result.ok
+              statusOk
                 ? "border-[#287047] bg-[#e2f2df] text-[#174c2e]"
                 : "border-[#9d2d25] bg-[#f8dfda] text-[#762119]",
             ].join(" ")}
           >
-            {result.ok ? "Valid normalized config" : `${result.errors.length} validation error(s)`}
+            {statusOk
+              ? "Installer ready"
+              : result.ok
+                ? "Generation error"
+                : `${result.errors.length} validation error(s)`}
           </div>
         </header>
 
-        <section className="grid min-h-[640px] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
-          <label className="flex min-h-[420px] flex-col gap-2">
-            <span className="text-sm font-semibold text-[#4a4037]">Input JSON</span>
-            <textarea
-              value={jsonInput}
-              onChange={(event) => setJsonInput(event.target.value)}
-              spellCheck={false}
-              className="min-h-[420px] flex-1 resize-y border border-[#6f786e] bg-white p-4 font-mono text-sm leading-6 text-[#171717] outline-none focus:border-[#235b4d] focus:ring-2 focus:ring-[#93c7b8]"
-            />
-          </label>
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
+          <form className="flex flex-col gap-4" onSubmit={(event) => event.preventDefault()}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className={labelClassName}>
+                owner
+                <input
+                  className={fieldClassName}
+                  value={form.owner}
+                  onChange={(event) => update("owner", event.target.value)}
+                  spellCheck={false}
+                />
+              </label>
+              <label className={labelClassName}>
+                repo
+                <input
+                  className={fieldClassName}
+                  value={form.repo}
+                  onChange={(event) => update("repo", event.target.value)}
+                  spellCheck={false}
+                />
+              </label>
+              <label className={labelClassName}>
+                binary.name
+                <input
+                  className={fieldClassName}
+                  value={form.binaryName}
+                  onChange={(event) => update("binaryName", event.target.value)}
+                  spellCheck={false}
+                />
+              </label>
+              <label className={labelClassName}>
+                binary.pathInArchive
+                <input
+                  className={fieldClassName}
+                  value={form.binaryPathInArchive}
+                  onChange={(event) => update("binaryPathInArchive", event.target.value)}
+                  spellCheck={false}
+                />
+              </label>
+            </div>
 
-          <div className="flex min-h-[420px] flex-col gap-4">
-            <section className="flex min-h-[220px] flex-col gap-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className={labelClassName}>
+                versionResolver.type
+                <select
+                  className={fieldClassName}
+                  value={form.versionResolverType}
+                  onChange={(event) =>
+                    update(
+                      "versionResolverType",
+                      event.target.value as InstallerFormState["versionResolverType"],
+                    )
+                  }
+                >
+                  {VERSION_RESOLVER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs font-normal leading-snug text-[#6d625a]">
+                  {VERSION_RESOLVER_DESCRIPTIONS[form.versionResolverType]}
+                </span>
+              </label>
+              {form.versionResolverType === "release_version_file" ? (
+                <label className={labelClassName}>
+                  versionResolver.fileName
+                  <input
+                    className={fieldClassName}
+                    value={form.versionResolverFileName}
+                    onChange={(event) => update("versionResolverFileName", event.target.value)}
+                    spellCheck={false}
+                  />
+                </label>
+              ) : null}
+            </div>
+
+            <div className="border border-[#cdd6c6] bg-[#f0f4ec] p-3 text-xs">
+              <div className="font-semibold text-[#4a4037]">Example resolution</div>
+              <ol className="mt-1.5 flex flex-col gap-1.5">
+                {resolverExample.map((step, index) => (
+                  <li key={index} className="flex flex-col gap-0.5">
+                    <span className="text-[#6d625a]">{step.label}</span>
+                    <code className="break-all font-mono text-[#235b4d]">{step.url}</code>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className={labelClassName}>
+                archive.format
+                <input className={readOnlyFieldClassName} value={ARCHIVE_FORMAT} readOnly />
+              </label>
+              <label className={labelClassName}>
+                archive.nameTemplate
+                <input
+                  className={fieldClassName}
+                  value={form.archiveNameTemplate}
+                  onChange={(event) => update("archiveNameTemplate", event.target.value)}
+                  spellCheck={false}
+                />
+              </label>
+              <label className={labelClassName}>
+                checksum.fileName
+                <input
+                  className={fieldClassName}
+                  value={form.checksumFileName}
+                  onChange={(event) => update("checksumFileName", event.target.value)}
+                  spellCheck={false}
+                />
+              </label>
+              <label className={labelClassName}>
+                checksum.algorithm
+                <input className={readOnlyFieldClassName} value={CHECKSUM_ALGORITHM} readOnly />
+              </label>
+            </div>
+
+            <fieldset className="flex flex-col gap-2 border border-[#aeb8a8] p-3">
+              <legend className="px-1 text-sm font-semibold text-[#4a4037]">targets</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {TARGET_OPTIONS.map((option: TargetOption) => (
+                  <label
+                    key={targetKey(option)}
+                    className="flex items-center gap-2 font-mono text-sm text-[#171717]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isTargetSelected(form, option)}
+                      onChange={() => setForm((current) => toggleTarget(current, option))}
+                    />
+                    {targetKey(option)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <label className={labelClassName}>
+              defaults.installDir
+              <input
+                className={fieldClassName}
+                value={form.installDir}
+                onChange={(event) => update("installDir", event.target.value)}
+                spellCheck={false}
+              />
+            </label>
+          </form>
+
+          <div className="flex flex-col gap-4">
+            <section className="flex flex-col gap-2">
               <h2 className="text-sm font-semibold text-[#4a4037]">Validation</h2>
               {result.ok ? (
-                <div className="border border-[#78a86c] bg-[#edf8e9] p-4 text-sm text-[#174c2e]">
-                  The JSON input is valid. Archive template expansion, mode-specific dependency
-                  graphs, and installer generation are ready.
-                </div>
+                generation.error === null ? (
+                  <div className="border border-[#78a86c] bg-[#edf8e9] p-4 text-sm text-[#174c2e]">
+                    The config is valid. The generated installer is ready below.
+                  </div>
+                ) : (
+                  <div className="border border-[#d1887f] bg-[#fff4f1] p-3 text-sm">
+                    <div className="font-semibold text-[#762119]">Generation error</div>
+                    <div className="mt-1 whitespace-pre-wrap text-[#3b2f2a]">
+                      {generation.error}
+                    </div>
+                  </div>
+                )
               ) : (
                 <ul className="flex flex-col gap-2">
                   {result.errors.map((error, index) => (
@@ -98,73 +286,39 @@ export function App() {
               )}
             </section>
 
-            <label className="flex min-h-[320px] flex-1 flex-col gap-2">
-              <span className="text-sm font-semibold text-[#4a4037]">Normalized Config</span>
-              <textarea
-                value={output}
-                readOnly
-                placeholder="Normalized config appears after successful validation."
-                spellCheck={false}
-                className="min-h-[320px] flex-1 resize-y border border-[#82776a] bg-[#211d1a] p-4 font-mono text-sm leading-6 text-[#f7f3ea] outline-none placeholder:text-[#b8aa98]"
-              />
-            </label>
+            <details className="border border-[#aeb8a8] bg-white">
+              <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-[#4a4037]">
+                Generated JSON config (read-only)
+              </summary>
+              <pre className="max-h-[320px] overflow-auto border-t border-[#aeb8a8] bg-[#211d1a] p-4 font-mono text-xs leading-5 text-[#f7f3ea]">
+                {configJson}
+              </pre>
+            </details>
           </div>
         </section>
 
-        {result.ok ? (
-          <section className="grid gap-4 lg:grid-cols-[minmax(320px,0.7fr)_minmax(0,1fr)]">
-            <div className="flex flex-col gap-4">
-              <section className="flex flex-col gap-2">
-                <h2 className="text-sm font-semibold text-[#4a4037]">Archive Filename Preview</h2>
-                <ul className="grid gap-2">
-                  {result.archivePreviews.map((preview) => (
-                    <li
-                      key={`${preview.os}-${preview.arch}`}
-                      className="border border-[#aeb8a8] bg-white p-3 font-mono text-sm"
-                    >
-                      <div className="font-semibold text-[#235b4d]">
-                        {preview.os}/{preview.arch}
-                      </div>
-                      <div className="mt-1 break-all">{preview.latestName}</div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="flex flex-col gap-2">
-                <h2 className="text-sm font-semibold text-[#4a4037]">Warnings</h2>
-                {result.warnings.length === 0 ? (
-                  <div className="border border-[#aeb8a8] bg-white p-3 text-sm text-[#34423c]">
-                    No warnings.
-                  </div>
-                ) : (
-                  <ul className="grid gap-2">
-                    {result.warnings.map((warning, index) => (
-                      <li
-                        key={`${warning.path}-${index}`}
-                        className="border border-[#d3a441] bg-[#fff8df] p-3 text-sm"
-                      >
-                        <div className="font-mono font-semibold text-[#664800]">{warning.path}</div>
-                        <div className="mt-1">{warning.reason}</div>
-                        <div className="mt-1 text-[#665b36]">
-                          Recommended: {warning.recommended}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
+        {statusOk && installer !== null ? (
+          <section className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[#4a4037]">Generated install.sh</h2>
+              <button
+                type="button"
+                onClick={onCopy}
+                className="border border-[#287047] bg-[#e2f2df] px-4 py-1.5 text-sm font-semibold text-[#174c2e] transition-colors hover:bg-[#d0ebca]"
+              >
+                {copyState === "copied"
+                  ? "Copied!"
+                  : copyState === "error"
+                    ? "Copy failed"
+                    : "Copy"}
+              </button>
             </div>
-
-            <label className="flex min-h-[520px] flex-col gap-2">
-              <span className="text-sm font-semibold text-[#4a4037]">Generated install.sh</span>
-              <textarea
-                value={installer}
-                readOnly
-                spellCheck={false}
-                className="min-h-[520px] flex-1 resize-y border border-[#4d5c57] bg-[#111816] p-4 font-mono text-xs leading-5 text-[#e9f0ea] outline-none"
-              />
-            </label>
+            <textarea
+              value={installer}
+              readOnly
+              spellCheck={false}
+              className="min-h-[520px] resize-y border border-[#4d5c57] bg-[#111816] p-4 font-mono text-xs leading-5 text-[#e9f0ea] outline-none"
+            />
           </section>
         ) : null}
       </div>
