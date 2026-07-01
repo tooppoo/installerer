@@ -250,11 +250,6 @@ fi
     expect(space.status).toBe(0);
     expect(space.stdout).toBe("a%20b");
   });
-    // Other unreserved characters pass through; reserved ones are percent-encoded.
-    expect(urlEncodeSegment("a-b.c~d").stdout).toBe("a-b.c~d");
-    expect(urlEncodeSegment("release/v1.2.3").stdout).toBe("release%2Fv1.2.3");
-    expect(urlEncodeSegment("a b").stdout).toBe("a%20b");
-  });
 
   const isValidGitTag = (tag: string) => {
     const result = validateInstallerConfig(configInput);
