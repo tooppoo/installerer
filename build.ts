@@ -24,8 +24,8 @@ const result = await Bun.build({
   target: "browser",
   naming: {
     entry: "[dir]/[name].[ext]",
-    chunk: "assets/[name]-[hash].[ext]",
-    asset: "assets/[name]-[hash].[ext]",
+    chunk: "chunks/[name]-[hash].[ext]",
+    asset: "chunks/[name]-[hash].[ext]",
   },
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),

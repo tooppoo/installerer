@@ -3,7 +3,6 @@ import "./index.css";
 import { useMemo, useState } from "react";
 
 import packageJson from "../package.json";
-import githubLogoUrl from "./assets/GitHub_Invertocat_Black.svg";
 import { validateInstallerConfig } from "./installerConfig";
 import { buildInstallerDiagnostics } from "./installerDiagnostics";
 import { generateInstaller } from "./installerGenerator";
@@ -107,7 +106,7 @@ export function App() {
                 aria-label="View installerer on GitHub"
                 className="shrink-0 p-1"
               >
-                <img src={githubLogoUrl} alt="GitHub" className="h-7 w-7" />
+                <img src="/assets/GitHub_Invertocat_Black.svg" alt="GitHub" className="h-7 w-7" />
               </a>
               <a
                 href="https://www.apache.org/licenses/LICENSE-2.0"
@@ -116,7 +115,7 @@ export function App() {
                 aria-label="Apache 2.0 License"
               >
                 <img
-                  src="https://img.shields.io/badge/License-Apache--2.0-blue.svg"
+                  src="/assets/License-Apache_2.0-blue.svg"
                   alt="License: Apache 2.0"
                 />
               </a>
