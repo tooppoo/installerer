@@ -2,6 +2,7 @@ import "./index.css";
 
 import { useMemo, useState } from "react";
 
+import packageJson from "../package.json";
 import { validateInstallerConfig } from "./installerConfig";
 import { buildInstallerDiagnostics } from "./installerDiagnostics";
 import { generateInstaller } from "./installerGenerator";
@@ -95,7 +96,9 @@ export function App() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-6 md:px-8">
         <header className="flex flex-col gap-2 border-b border-[#b8c0b0] pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase text-[#235b4d]">installerer</p>
+            <p className="text-sm font-semibold uppercase text-[#235b4d]">
+              installerer <span className="normal-case text-[#6f786e]">v{packageJson.version}</span>
+            </p>
             <h1 className="mt-1 text-3xl font-bold md:text-4xl">Installer Generator</h1>
             <p className="mt-2 max-w-2xl text-sm text-[#4a4037]">
               Fill in the form to generate a POSIX <code>install.sh</code>. Copy the output and save
