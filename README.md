@@ -7,6 +7,8 @@
 
 `installerer` is a browser-based installer generator for GitHub Releases.
 
+<https://installerer.philomagi.dev/>
+
 Fill in a form and the app generates a single POSIX `sh` `install.sh` for your project. The SPA itself does not depend on the GitHub API, a backend, credentials, or any external communication — everything runs in the browser. The generated installer is what downloads GitHub Release assets, verifies checksums, and installs the binary at runtime.
 
 ## How it works
