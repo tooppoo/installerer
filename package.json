@@ -23,6 +23,7 @@
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@types/bun": "latest",
     "@types/react": "^19",
     "@types/react-dom": "^19",
