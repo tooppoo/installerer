@@ -170,6 +170,6 @@ Changing the archive format or resolver does not automatically rewrite the archi
 
 This document intentionally describes the minimum contract.
 
-Resolver semantics, the network access boundary, latest/pinned install reproducibility, and the guarantees and limits of checksum verification are documented in [`docs/resolver-semantics.md`](https://github.com/tooppoo/installerer/blob/main/docs/resolver-semantics.md).
+Resolver semantics, the network access boundary, latest/pinned install reproducibility, and the guarantees and limits of checksum verification are documented in [`resolver-semantics.md`](./resolver-semantics.md).
 
-Runtime mechanics such as argument parsing, URL encoding policy, extraction policy, and binary placement rules are documented in [`docs/generated-installer-runtime.md`](https://github.com/tooppoo/installerer/blob/main/docs/generated-installer-runtime.md).
+Runtime mechanics such as argument parsing, URL encoding policy, extraction policy, and binary placement rules are documented in [`generated-installer-runtime.md`](./generated-installer-runtime.md).
