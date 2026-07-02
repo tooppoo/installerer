@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --hot src/index.ts",
-    "start": "NODE_ENV=production bun src/index.ts",
+    "dev": "BUN_PUBLIC_COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo unknown) bun --hot src/index.ts",
+    "start": "NODE_ENV=production BUN_PUBLIC_COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo unknown) bun src/index.ts",
     "build": "bun run build.ts",
     "docs:generate": "bun scripts/generate-installer-contract.ts",
     "docs:check": "bun scripts/generate-installer-contract.ts --check",

@@ -29,6 +29,10 @@ import {
   type TargetOption,
 } from "./installerForm";
 
+// Statically replaced at bundle time (see bunfig.toml `[serve.static].env` for `bun dev`,
+// and the `env` option passed to `Bun.build` in build.ts for `bun run build`).
+const commitHash = process.env.BUN_PUBLIC_COMMIT_HASH || "unknown";
+
 const fieldClassName =
   "border border-[#6f786e] bg-white px-3 py-2 font-mono text-sm text-[#171717] outline-none focus:border-[#235b4d] focus:ring-2 focus:ring-[#93c7b8]";
 const readOnlyFieldClassName = `${fieldClassName} bg-[#eef0ec] text-[#4a4037]`;
@@ -104,6 +108,7 @@ export function App() {
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-bold text-[#235b4d] md:text-4xl">installerer</h1>
               <span className="text-sm font-semibold text-[#6f786e]">v{packageJson.version}</span>
+              <span className="font-mono text-xs text-[#6f786e]">{commitHash}</span>
               <a
                 href="https://github.com/tooppoo/installerer"
                 target="_blank"

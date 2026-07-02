@@ -8,6 +8,15 @@ const root = process.cwd();
 const outdir = path.join(process.cwd(), "dist");
 await rm(outdir, { recursive: true, force: true });
 
+function resolveCommitHash(): string {
+  const result = Bun.spawnSync(["git", "rev-parse", "--short", "HEAD"], { cwd: root });
+  if (result.exitCode !== 0) {
+    return "unknown";
+  }
+  return result.stdout.toString().trim() || "unknown";
+}
+process.env.BUN_PUBLIC_COMMIT_HASH ??= resolveCommitHash();
+
 const entrypoints = [...new Bun.Glob("src/**/*.html").scanSync()];
 const staticFiles = [
   {
@@ -22,6 +31,7 @@ const result = await Bun.build({
   plugins: [tailwind],
   minify: true,
   target: "browser",
+  env: "BUN_PUBLIC_*",
   naming: {
     entry: "[dir]/[name].[ext]",
     chunk: "chunks/[name]-[hash].[ext]",
