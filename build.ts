@@ -39,6 +39,7 @@ const result = await Bun.build({
   },
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
+    "process.env.BUN_PUBLIC_COMMIT_HASH": JSON.stringify(process.env.BUN_PUBLIC_COMMIT_HASH),
   },
 });
 
