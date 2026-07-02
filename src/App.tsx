@@ -3,6 +3,7 @@ import "./index.css";
 import { useMemo, useState } from "react";
 
 import packageJson from "../package.json";
+import githubLogoUrl from "./GitHub_Invertocat_Black.svg";
 import { validateInstallerConfig } from "./installerConfig";
 import { buildInstallerDiagnostics } from "./installerDiagnostics";
 import { generateInstaller } from "./installerGenerator";
@@ -99,7 +100,18 @@ export function App() {
             <p className="text-sm font-semibold uppercase text-[#235b4d]">
               installerer <span className="normal-case text-[#6f786e]">v{packageJson.version}</span>
             </p>
-            <h1 className="mt-1 text-3xl font-bold md:text-4xl">Installer Generator</h1>
+            <div className="mt-1 flex items-center gap-3">
+              <h1 className="text-3xl font-bold md:text-4xl">Installer Generator</h1>
+              <a
+                href="https://github.com/tooppoo/installerer"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="View installerer on GitHub"
+                className="shrink-0 p-1"
+              >
+                <img src={githubLogoUrl} alt="GitHub" className="h-7 w-7" />
+              </a>
+            </div>
             <p className="mt-2 max-w-2xl text-sm text-[#4a4037]">
               Fill in the form to generate a POSIX <code>install.sh</code>. Copy the output and save
               it as <code>install.sh</code>. POSIX shell behavior, download, checksum verification,
