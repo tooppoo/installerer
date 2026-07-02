@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseInstallerConfig, validateInstallerConfig } from "./installerConfig";
+import {
+  isValidGitTagName,
+  parseInstallerConfig,
+  validateInstallerConfig,
+} from "./installerConfig";
 
 const validConfig = {
   owner: "tooppoo",
@@ -101,6 +105,61 @@ describe("installer config validation", () => {
           path: "$.checksum.unknown",
           reason: "Unknown field is not supported.",
         }),
+      );
+    }
+  });
+
+  test("rejects non-object roots and non-string scalar fields", () => {
+    const rootResult = validateInstallerConfig(null);
+    const scalarResult = validateInstallerConfig({
+      ...validConfig,
+      owner: 1,
+      binary: "rellog",
+      targets: "linux-x86_64",
+      defaults: "$HOME/.local/bin",
+    });
+
+    expect(rootResult.ok).toBe(false);
+    if (!rootResult.ok) {
+      expect(rootResult.errors).toContainEqual(
+        expect.objectContaining({ path: "$", reason: "Value must be an object." }),
+      );
+    }
+
+    expect(scalarResult.ok).toBe(false);
+    if (!scalarResult.ok) {
+      expect(scalarResult.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "$.owner", reason: "Value must be a string." }),
+          expect.objectContaining({ path: "$.binary", reason: "Value must be an object." }),
+          expect.objectContaining({ path: "$.targets", reason: "Value must be an array." }),
+          expect.objectContaining({ path: "$.defaults", reason: "Value must be an object." }),
+        ]),
+      );
+    }
+  });
+
+  test("rejects unsafe owner, repo, checksum algorithm, and empty targets", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      owner: "-tooppoo",
+      repo: "rellog/rellog",
+      checksum: {
+        fileName: "checksums.txt",
+        algorithm: "sha512",
+      },
+      targets: [],
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "$.owner" }),
+          expect.objectContaining({ path: "$.repo" }),
+          expect.objectContaining({ path: "$.checksum.algorithm" }),
+          expect.objectContaining({ path: "$.targets" }),
+        ]),
       );
     }
   });
@@ -339,6 +398,75 @@ describe("installer config validation", () => {
     if (result.ok) {
       expect(result.warnings[0]?.reason).toContain("starts with '-'");
       expect(result.warnings[0]?.recommended).toContain("Prefix");
+    }
+  });
+
+  test("returns warnings for hidden, trailing-dot, non-ASCII, and metacharacter archive names", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      archive: {
+        format: "zip",
+        nameTemplate: ".rellog_é_$.zip",
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.warnings.map((warning) => warning.reason)).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("starts with '.'"),
+          expect.stringContaining("non-ASCII"),
+          expect.stringContaining("shell-metacharacter-looking"),
+        ]),
+      );
+    }
+
+    const trailingDot = validateInstallerConfig({
+      ...validConfig,
+      archive: {
+        format: "zip",
+        nameTemplate: "{repo}.zip.",
+      },
+    });
+
+    expect(trailingDot.ok).toBe(false);
+    if (!trailingDot.ok) {
+      expect(trailingDot.warnings.map((warning) => warning.reason)).toContain(
+        "Archive filename ends with '.'. Some tools and filesystems handle trailing dots inconsistently.",
+      );
+    }
+  });
+});
+
+describe("isValidGitTagName", () => {
+  test("accepts ordinary Git tag names", () => {
+    expect(isValidGitTagName("v1.2.3")).toBe(true);
+    expect(isValidGitTagName("release/v1.2.3")).toBe(true);
+  });
+
+  test("rejects empty names, path-like names, ref syntax, lock suffixes, and unsafe chars", () => {
+    for (const tag of [
+      "",
+      "/v1.2.3",
+      "v1.2.3/",
+      "v1.2.3.",
+      "@",
+      "release//v1.2.3",
+      "release..v1.2.3",
+      "release@{v1.2.3",
+      ".hidden/v1.2.3",
+      "release.lock",
+      "v1.2.3~",
+      "v1.2.3^",
+      "v1.2.3:",
+      "v1.2.3?",
+      "v1.2.3*",
+      "v1.2.3[",
+      "v1.2.3\\",
+      "v1.2.3 ",
+      "v1.2.3\u007f",
+    ]) {
+      expect(isValidGitTagName(tag)).toBe(false);
     }
   });
 });

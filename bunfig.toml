@@ -7,6 +7,4 @@ env = "BUN_PUBLIC_*"
 coverage = true
 coverageThreshold = 0.9
 coverageReporter = ["text", "lcov"]
-coveragePathIgnorePatterns = [
-  "test/**/*.ts"
-]
+coveragePathIgnorePatterns = ["test/**/*.ts"]
