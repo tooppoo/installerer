@@ -16,7 +16,7 @@ The browser app itself:
 - does not call a backend
 - does not require authentication or tokens
 - does not fetch Release assets
-- does not fetch, generate, place, or manage a `VERSION` asset
+- does not fetch, generate, place, or manage a version file asset (represented as `VERSION` below; the actual asset name is `versionResolver.fileName`)
 - does not verify checksums at generation time
 
 The generated installer script performs runtime work such as target detection, version resolution, download, checksum verification, archive extraction, and binary placement.
@@ -92,6 +92,8 @@ If any required command is missing, the generated installer should stop with a c
 - `release_version_file`
 - `latest_asset`
 
+Below, `VERSION` and `checksums.txt` are representative example names, not fixed names. The actual asset names come from the config: the version file asset is `versionResolver.fileName`, and the checksum file asset is `checksum.fileName`. See [`docs/resolver-semantics.md`](https://github.com/tooppoo/installerer/blob/main/docs/resolver-semantics.md) for the full distinction and resolver semantics.
+
 ### `release_version_file`
 
 Use `release_version_file` when latest installs should resolve to an actual release tag.
@@ -104,7 +106,7 @@ checksums.txt
 <archive assets>
 ```
 
-`VERSION` must contain the release tag name as a single line. The generated installer downloads the `VERSION` asset from the latest release URL, reads it as the resolved release tag, and then downloads the checksum file and archive assets from the resolved release tag URL.
+The version file asset (`versionResolver.fileName`, represented above as `VERSION`) must contain the release tag name as a single line. The generated installer downloads this asset from the latest release URL, reads it as the resolved release tag, and then downloads the checksum file and archive assets from the resolved release tag URL.
 
 Archive filename templates may include `{version}` for this resolver.
 
@@ -166,4 +168,8 @@ Changing the archive format or resolver does not automatically rewrite the archi
 
 ## Detailed Runtime Behavior
 
-This document intentionally describes the minimum contract. Detailed runtime behavior, resolver semantics, URL encoding policy, extraction policy, and binary placement rules are documented in [`docs/generated-installer-runtime.md`](https://github.com/tooppoo/installerer/blob/main/docs/generated-installer-runtime.md).
+This document intentionally describes the minimum contract.
+
+Resolver semantics, the network access boundary, latest/pinned install reproducibility, and the guarantees and limits of checksum verification are documented in [`docs/resolver-semantics.md`](https://github.com/tooppoo/installerer/blob/main/docs/resolver-semantics.md).
+
+Runtime mechanics such as argument parsing, URL encoding policy, extraction policy, and binary placement rules are documented in [`docs/generated-installer-runtime.md`](https://github.com/tooppoo/installerer/blob/main/docs/generated-installer-runtime.md).

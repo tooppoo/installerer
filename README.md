@@ -14,7 +14,8 @@ Your releases must follow a small contract for asset naming and checksum files. 
 
 ## Documentation
 
-- [Installer Contract](docs/installer-contract.md) — the release asset contract, resolver overview, runtime dependencies, and config examples. Also viewable from the browser UI.
+- [Installer Contract](docs/installer-contract.md) — the release asset contract, resolver overview, and runtime dependencies. Also viewable from the browser UI.
+- [Resolver Semantics](docs/resolver-semantics.md) — detailed resolver semantics, network access boundary, latest/pinned reproducibility, checksum verification guarantees and limits, and per-resolver JSON config examples.
 - [Generated Installer Runtime](docs/generated-installer-runtime.md) — detailed runtime behavior of the generated installer.
 - [MVP Browser JS Installer Generator Policy](docs/adr/20260630T032548Z_mvp-browser-js-generator-policy.md)
 - [Generated Installer Runtime ADR](docs/adr/20260630T174038Z_generated-installer-runtime-single-posix-sh.md)

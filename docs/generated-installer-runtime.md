@@ -4,6 +4,8 @@
 
 The generated script contains a small runtime that parses arguments, detects the host target, resolves GitHub Release asset URLs, downloads an archive and checksum file, verifies the archive checksum, extracts the configured binary entry, and places the binary in the install directory.
 
+This document describes runtime mechanics: how arguments are parsed, how URLs are encoded, how checksum lookup is implemented, and how extraction and binary placement work. Resolver-specific semantics (what a latest vs. pinned install actually resolves to, the network access boundary per resolver, reproducibility differences, and the guarantees and limits of checksum verification) are documented in [`docs/resolver-semantics.md`](./resolver-semantics.md). This document does not redefine that semantics; it references it where relevant.
+
 ## Arguments
 
 The generated installer accepts:
@@ -32,7 +34,7 @@ JSON config intentionally has no `defaults.version` field.
 
 Both `install_latest` and `install_pin` validate the version as a Git tag name inside the runtime, using a helper that mirrors checking `refs/tags/<version>` as a Git refname. The generated script does not depend on the `git` command. Empty values, `latest`, whitespace, control characters, and other refname-invalid values are rejected as unsafe version strings.
 
-For the `release_version_file` resolver, `install_latest` downloads the configured `VERSION` asset from the GitHub Release `latest/download` URL and reads its content as the release tag name:
+For the `release_version_file` resolver, `install_latest` downloads the configured version file asset (`versionResolver.fileName`; represented below as `VERSION`) from the GitHub Release `latest/download` URL and reads its content as the release tag name:
 
 - The content is treated as a single line holding the release tag name.
 - Only a single trailing `LF` or `CRLF` is removed as a line terminator.
@@ -40,7 +42,7 @@ For the `release_version_file` resolver, `install_latest` downloads the configur
 - Empty content is rejected.
 - Leading and trailing whitespace is not auto-trimmed; whitespace that violates Git tag validation is rejected as an unsafe version string.
 
-The resolved version is logged before download. `install_pin` never fetches the `VERSION` asset.
+The resolved version is logged before download. `install_pin` never fetches the version file asset.
 
 The release tag version is used two ways, which are kept distinct: it is percent-encoded as a URL path segment for the GitHub Release URL, and it is expanded raw (not URL-encoded) into the `{version}` placeholder of the archive filename template. The expanded archive filename is then re-validated so that a Git-tag-valid version producing an unsafe archive filename (for example a tag containing `/`) is rejected.
 
