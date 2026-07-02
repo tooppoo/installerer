@@ -223,8 +223,9 @@ is_valid_git_tag() {
   done
   return 0
 }
-${config.versionResolver.type === "release_version_file"
-      ? `
+${
+  config.versionResolver.type === "release_version_file"
+    ? `
 read_version_file() {
   url=$1
   content=$(curl -fsSL "$url" && printf x) || fail "failed to resolve latest version from $url"
@@ -240,8 +241,8 @@ read_version_file() {
   printf '%s' "$content"
 }
 `
-      : ""
-    }
+    : ""
+}
 validate_archive_asset_name() {
   name=$1
   [ -n "$name" ] || fail "archive filename is empty"
