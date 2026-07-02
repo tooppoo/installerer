@@ -102,10 +102,11 @@ describe("generated installer runtime dispatch", () => {
     }
     // "Latest" is a syntactically valid Git tag, so install_pin proceeds to
     // the encoded release-tag download URL and fails only at the stub curl.
+    // The checksum file is requested before the archive.
     expect(run.status).toBe(1);
-    expect(run.stderr).toContain("failed to download archive");
+    expect(run.stderr).toContain("failed to download checksum file");
     expect(run.requestedUrls[0]).toBe(
-      `https://github.com/tooppoo/rellog/releases/download/Latest/rellog_${HOST_OS}_${HOST_ARCH}.tar.gz`,
+      "https://github.com/tooppoo/rellog/releases/download/Latest/checksums.txt",
     );
   });
 
@@ -117,9 +118,9 @@ describe("generated installer runtime dispatch", () => {
 
       expect(run.status).toBe(1);
       expect(run.stdout).toContain("installerer: install source latest");
-      expect(run.stderr).toContain("failed to download archive");
+      expect(run.stderr).toContain("failed to download checksum file");
       expect(run.requestedUrls).toEqual([
-        `https://github.com/tooppoo/rellog/releases/latest/download/rellog_${HOST_OS}_${HOST_ARCH}.tar.gz`,
+        "https://github.com/tooppoo/rellog/releases/latest/download/checksums.txt",
       ]);
     },
   );
@@ -132,7 +133,7 @@ describe("generated installer runtime dispatch", () => {
 
       expect(run.status).toBe(1);
       expect(run.requestedUrls[0]).toBe(
-        `https://github.com/tooppoo/rellog/releases/download/release%2Fv1.2.3/rellog_${HOST_OS}_${HOST_ARCH}.tar.gz`,
+        "https://github.com/tooppoo/rellog/releases/download/release%2Fv1.2.3/checksums.txt",
       );
     },
   );
@@ -145,10 +146,10 @@ describe("generated installer runtime dispatch", () => {
 
       expect(run.status).toBe(1);
       expect(run.stdout).toContain("installerer: resolved latest version v9.9.9");
-      expect(run.stderr).toContain("failed to download archive");
+      expect(run.stderr).toContain("failed to download checksum file");
       expect(run.requestedUrls).toEqual([
         "https://github.com/tooppoo/rellog/releases/latest/download/VERSION",
-        `https://github.com/tooppoo/rellog/releases/download/v9.9.9/rellog_v9.9.9_${HOST_OS}_${HOST_ARCH}.tar.gz`,
+        "https://github.com/tooppoo/rellog/releases/download/v9.9.9/checksums.txt",
       ]);
     },
   );
@@ -162,7 +163,7 @@ describe("generated installer runtime dispatch", () => {
       expect(run.status).toBe(1);
       expect(run.stdout).not.toContain("resolved latest version");
       expect(run.requestedUrls).toEqual([
-        `https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_${HOST_OS}_${HOST_ARCH}.tar.gz`,
+        "https://github.com/tooppoo/rellog/releases/download/v1.2.3/checksums.txt",
       ]);
     },
   );

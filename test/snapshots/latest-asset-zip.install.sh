@@ -293,8 +293,8 @@ download_and_install() {
   extract_dir="$tmpdir/extract"
   mkdir -p "$extract_dir" || fail "failed to create extract directory"
 
-  curl -fsSL "$archive_url" -o "$archive_path" || fail "failed to download archive"
   curl -fsSL "$checksum_url" -o "$checksum_path" || fail "failed to download checksum file"
+  curl -fsSL "$archive_url" -o "$archive_path" || fail "failed to download archive"
 
   expected_checksum=$(awk -v name="$archive_asset_name" '$2 == name { print $1; found=1; exit } END { if (!found) exit 1 }' "$checksum_path") \
     || fail "checksum entry not found for $archive_asset_name"
@@ -341,7 +341,8 @@ download_and_install() {
 }
 
 install_latest() {
-  set -- $(detect_target)
+  target=$(detect_target) || exit 1
+  set -- $target
   os=$1
   arch=$2
   printf '%s\n' "installerer: install source latest"
@@ -359,7 +360,8 @@ install_latest() {
 install_pin() {
   pinned_version=$1
   is_valid_git_tag "$pinned_version" || fail "--version must be a valid Git tag and must not be latest"
-  set -- $(detect_target)
+  target=$(detect_target) || exit 1
+  set -- $target
   os=$1
   arch=$2
   archive_asset_name=$(render_archive_asset_name "$pinned_version" "$os" "$arch")

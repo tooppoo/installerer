@@ -71,9 +71,16 @@ function assertRuntimeStructure(script: string): void {
 
   // --version latest is rejected as exact lowercase "latest"; other casings
   // fall through to ordinary Git tag validation instead of the special case.
+  // Configured asset names (e.g. a LATEST_VERSION version file) legitimately
+  // contain these strings, so config assignment lines are excluded and the
+  // guard applies to the runtime logic lines only.
   expect(script).toContain('[ "$version" != "latest" ] || fail');
-  expect(script).not.toContain("Latest");
-  expect(script).not.toContain("LATEST");
+  const logicLines = script
+    .split("\n")
+    .filter((line) => !/^[A-Z_]+='/.test(line))
+    .join("\n");
+  expect(logicLines).not.toContain("Latest");
+  expect(logicLines).not.toContain("LATEST");
 
   // Missing runtime dependencies stop with a clear error.
   expect(script).toContain('command -v "$1" >/dev/null 2>&1 || fail "$1 is required"');
