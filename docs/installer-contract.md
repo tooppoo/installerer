@@ -123,7 +123,7 @@ Example asset layout:
 VERSION
 checksums.txt
 rellog_v0.1.2_linux_x86_64.tar.gz
-rellog_v0.1.2_darwin_aarch64.tar.gz
+rellog_v0.1.2_darwin_arm64.tar.gz
 ```
 
 ### `latest_asset`
@@ -146,7 +146,7 @@ Example asset layout:
 ```text
 checksums.txt
 rellog_linux_x86_64.tar.gz
-rellog_darwin_aarch64.tar.gz
+rellog_darwin_arm64.tar.gz
 ```
 
 ## Checksum Contract

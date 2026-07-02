@@ -27,7 +27,7 @@ const validConfig = {
   },
   targets: [
     { os: "linux", arch: "x86_64" },
-    { os: "darwin", arch: "aarch64" },
+    { os: "darwin", arch: "arm64" },
   ],
 };
 
@@ -42,7 +42,7 @@ describe("installer config validation", () => {
       });
       expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
         "rellog_v1.2.3_linux_x86_64.tar.gz",
-        "rellog_v1.2.3_darwin_aarch64.tar.gz",
+        "rellog_v1.2.3_darwin_arm64.tar.gz",
       ]);
       expect(result.warnings).toEqual([]);
       expect(result.dependencyGraphs.map((graph) => graph.mode)).toEqual([
@@ -91,7 +91,7 @@ describe("installer config validation", () => {
     if (result.ok) {
       expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
         "rellog_v1.2.3_Linux_x86_64.tar.gz",
-        "rellog_v1.2.3_Darwin_aarch64.tar.gz",
+        "rellog_v1.2.3_Darwin_arm64.tar.gz",
       ]);
     }
   });

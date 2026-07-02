@@ -8,7 +8,7 @@ export const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9
 export const GITHUB_REPO_PATTERN = /^[A-Za-z0-9._-]+$/;
 const SHELL_SENSITIVE_PATH_CHARS = /[ \t\r\n'"`$;&|<>()[\]{}*!?~#]/;
 export const TARGET_OS = new Set<TargetOS>(["linux", "darwin"]);
-export const TARGET_ARCH = new Set<TargetArch>(["x86_64", "aarch64"]);
+export const TARGET_ARCH = new Set<TargetArch>(["x86_64", "arm64"]);
 
 export function validateDefaults(
   value: unknown,
@@ -89,7 +89,7 @@ export function validateTargets(
       errors.push({
         path: `${targetPath}.arch`,
         reason: "Unsupported target architecture.",
-        expected: "x86_64 | aarch64",
+        expected: "x86_64 | arm64",
       });
     }
 

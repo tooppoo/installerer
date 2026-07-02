@@ -19,7 +19,7 @@
   },
   "targets": [
     { "os": "linux", "arch": "x86_64" },
-    { "os": "darwin", "arch": "aarch64" }
+    { "os": "darwin", "arch": "arm64" }
   ],
   "defaults": {
     "installDir": "/usr/local/bin"

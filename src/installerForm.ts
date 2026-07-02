@@ -39,9 +39,9 @@ export type InstallerFormState = {
 
 export const TARGET_OPTIONS: readonly TargetOption[] = [
   { os: "linux", arch: "x86_64" },
-  { os: "linux", arch: "aarch64" },
+  { os: "linux", arch: "arm64" },
   { os: "darwin", arch: "x86_64" },
-  { os: "darwin", arch: "aarch64" },
+  { os: "darwin", arch: "arm64" },
 ];
 
 export const VERSION_RESOLVER_OPTIONS: readonly VersionResolverType[] = [
@@ -98,9 +98,9 @@ export const initialFormState: InstallerFormState = {
   checksumFileName: "checksums.txt",
   targets: [
     { os: "linux", arch: "x86_64" },
-    { os: "linux", arch: "aarch64" },
+    { os: "linux", arch: "arm64" },
     { os: "darwin", arch: "x86_64" },
-    { os: "darwin", arch: "aarch64" },
+    { os: "darwin", arch: "arm64" },
   ],
   installDir: "$HOME/.local/bin",
 };

@@ -266,13 +266,13 @@ detect_target() {
 
   case "$arch" in
     x86_64|amd64) arch=x86_64 ;;
-    arm64|aarch64) arch=aarch64 ;;
+    arm64|aarch64) arch=arm64 ;;
     *) fail "unsupported architecture: $arch" ;;
   esac
 
   case "$os/$arch" in
     linux/x86_64) ;;
-    darwin/aarch64) ;;
+    darwin/arm64) ;;
     *) fail "unsupported target: $os/$arch" ;;
   esac
 

@@ -347,7 +347,7 @@ describe("unsupported target simulation via uname shim", () => {
     });
 
     expect(run.status).toBe(1);
-    expect(run.stderr).toContain("unsupported target: darwin/aarch64");
+    expect(run.stderr).toContain("unsupported target: darwin/arm64");
     expectRequests([]);
   });
 });

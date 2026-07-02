@@ -159,11 +159,11 @@ describe("target selection", () => {
 
   test("toggle re-adds in canonical order", () => {
     const emptyTargets: InstallerFormState = { ...initialFormState, targets: [] };
-    const withDarwin = toggleTarget(emptyTargets, { os: "darwin", arch: "aarch64" });
+    const withDarwin = toggleTarget(emptyTargets, { os: "darwin", arch: "arm64" });
     const withLinux = toggleTarget(withDarwin, { os: "linux", arch: "x86_64" });
     expect(withLinux.targets).toEqual([
       { os: "linux", arch: "x86_64" },
-      { os: "darwin", arch: "aarch64" },
+      { os: "darwin", arch: "arm64" },
     ]);
   });
 

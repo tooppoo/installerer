@@ -169,7 +169,7 @@ These examples show the shape of the generator core config as built from form in
   },
   "targets": [
     { "os": "linux", "arch": "x86_64" },
-    { "os": "darwin", "arch": "aarch64" }
+    { "os": "darwin", "arch": "arm64" }
   ],
   "defaults": {
     "installDir": "$HOME/.local/bin"
@@ -200,7 +200,7 @@ These examples show the shape of the generator core config as built from form in
   },
   "targets": [
     { "os": "linux", "arch": "x86_64" },
-    { "os": "darwin", "arch": "aarch64" }
+    { "os": "darwin", "arch": "arm64" }
   ],
   "defaults": {
     "installDir": "$HOME/.local/bin"

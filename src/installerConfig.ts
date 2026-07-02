@@ -29,7 +29,7 @@ export type VersionResolver =
     };
 
 export type TargetOS = "linux" | "darwin";
-export type TargetArch = "x86_64" | "aarch64";
+export type TargetArch = "x86_64" | "arm64";
 export type OsCase = "lowercase" | "capitalized";
 
 export type InstallerConfig = {
