@@ -120,7 +120,12 @@ export function App() {
                   alt="License: Apache 2.0"
                 />
               </a>
-              <a href="/licenses.txt" target="_blank" rel="noopener noreferrer" className="underline">
+              <a
+                href="/licenses.txt"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
                 Third Party Licenses
               </a>
             </div>
