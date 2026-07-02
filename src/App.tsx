@@ -97,11 +97,8 @@ export function App() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-6 md:px-8">
         <header className="flex flex-col gap-2 border-b border-[#b8c0b0] pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase text-[#235b4d]">
-              installerer <span className="normal-case text-[#6f786e]">v{packageJson.version}</span>
-            </p>
-            <div className="mt-1 flex items-center gap-3">
-              <h1 className="text-3xl font-bold md:text-4xl">Installer Generator</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-[#235b4d] md:text-4xl">installerer</h1>
               <a
                 href="https://github.com/tooppoo/installerer"
                 target="_blank"
@@ -111,7 +108,9 @@ export function App() {
               >
                 <img src={githubLogoUrl} alt="GitHub" className="h-7 w-7" />
               </a>
+              <span className="text-sm font-semibold text-[#6f786e]">v{packageJson.version}</span>
             </div>
+            <p className="mt-1 text-sm font-semibold uppercase text-[#4a4037]">Installer Generator</p>
             <p className="mt-2 max-w-2xl text-sm text-[#4a4037]">
               Fill in the form to generate a POSIX <code>install.sh</code>. Copy the output and save
               it as <code>install.sh</code>. POSIX shell behavior, download, checksum verification,
