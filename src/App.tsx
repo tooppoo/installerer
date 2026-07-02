@@ -97,8 +97,9 @@ export function App() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-6 md:px-8">
         <header className="flex flex-col gap-2 border-b border-[#b8c0b0] pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-bold text-[#235b4d] md:text-4xl">installerer</h1>
+              <span className="text-sm font-semibold text-[#6f786e]">v{packageJson.version}</span>
               <a
                 href="https://github.com/tooppoo/installerer"
                 target="_blank"
@@ -108,7 +109,6 @@ export function App() {
               >
                 <img src={githubLogoUrl} alt="GitHub" className="h-7 w-7" />
               </a>
-              <span className="text-sm font-semibold text-[#6f786e]">v{packageJson.version}</span>
               <a
                 href="https://www.apache.org/licenses/LICENSE-2.0"
                 target="_blank"
@@ -119,6 +119,9 @@ export function App() {
                   src="https://img.shields.io/badge/License-Apache--2.0-blue.svg"
                   alt="License: Apache 2.0"
                 />
+              </a>
+              <a href="/licenses.txt" target="_blank" rel="noopener noreferrer" className="underline">
+                Third Party Licenses
               </a>
             </div>
             <p className="mt-1 text-sm font-semibold uppercase text-[#4a4037]">
@@ -440,12 +443,6 @@ export function App() {
             />
           </section>
         ) : null}
-
-        <footer className="border-t border-[#b8c0b0] pt-4 text-sm text-[#6f786e]">
-          <a href="/licenses.txt" target="_blank" rel="noopener noreferrer" className="underline">
-            Third-party licenses
-          </a>
-        </footer>
       </div>
     </main>
   );
