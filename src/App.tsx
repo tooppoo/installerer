@@ -6,7 +6,10 @@ import packageJson from "../package.json";
 import { validateInstallerConfig } from "./installerConfig";
 import { buildInstallerDiagnostics } from "./installerDiagnostics";
 import { generateInstaller } from "./installerGenerator";
-import { INSTALLER_CONTRACT_MARKDOWN } from "./generated/installerContract";
+import {
+  INSTALLER_CONTRACT_MARKDOWN,
+  INSTALLER_CONTRACT_SEGMENTS,
+} from "./generated/installerContract";
 import {
   ARCHIVE_FORMAT_OPTIONS,
   ARCHIVE_FORMAT_RUNTIME_DEPENDENCIES,
@@ -414,7 +417,21 @@ export function App() {
                 </button>
               </summary>
               <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap border-t border-[#aeb8a8] bg-[#f7f6f2] p-4 font-mono text-xs leading-5 text-[#3b2f2a]">
-                {INSTALLER_CONTRACT_MARKDOWN}
+                {INSTALLER_CONTRACT_SEGMENTS.map((segment, index) =>
+                  segment.type === "link" ? (
+                    <a
+                      key={`installer-contract-link-${index}`}
+                      href={segment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#174c2e] underline hover:text-[#0f3620]"
+                    >
+                      {segment.label}
+                    </a>
+                  ) : (
+                    segment.value
+                  ),
+                )}
               </pre>
             </details>
           </div>
