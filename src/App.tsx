@@ -3,7 +3,7 @@ import "./index.css";
 import { useMemo, useState } from "react";
 
 import packageJson from "../package.json";
-import githubLogoUrl from "./GitHub_Invertocat_Black.svg";
+import githubLogoUrl from "./assets/GitHub_Invertocat_Black.svg";
 import { validateInstallerConfig } from "./installerConfig";
 import { buildInstallerDiagnostics } from "./installerDiagnostics";
 import { generateInstaller } from "./installerGenerator";
