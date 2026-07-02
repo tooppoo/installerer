@@ -37,10 +37,7 @@ await cp(path.join(root, "public"), outdir, {
   force: true,
 });
 for (const file of staticFiles) {
-  await copyFile(
-    path.join(root, file.source),
-    path.join(outdir, file.destination),
-  );
+  await copyFile(path.join(root, file.source), path.join(outdir, file.destination));
 
   console.log(` dist/${file.destination}`);
 }

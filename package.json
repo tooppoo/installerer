@@ -14,7 +14,9 @@
     "lint": "oxlint --deny-warnings .",
     "format:check": "oxfmt --check .",
     "format": "oxfmt .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "dependencies": {
     "bun-plugin-tailwind": "^0.1.2",
@@ -30,6 +32,7 @@
     "license-checker": "^25.0.1",
     "oxfmt": "^0.57.0",
     "oxlint": "^1.72.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.106.0"
   }
 }
