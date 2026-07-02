@@ -1,0 +1,29 @@
+{
+  "description": "The archive name template suffix must match archive.format.",
+  "config": {
+    "owner": "tooppoo",
+    "repo": "rellog",
+    "binary": {
+      "name": "rellog",
+      "pathInArchive": "bin/rellog"
+    },
+    "versionResolver": {
+      "type": "latest_asset"
+    },
+    "archive": {
+      "format": "zip",
+      "nameTemplate": "{repo}_{target}.tar.gz"
+    },
+    "checksum": {
+      "fileName": "checksums.txt",
+      "algorithm": "sha256"
+    },
+    "targets": [{ "os": "linux", "arch": "x86_64" }]
+  },
+  "expectedErrors": [
+    {
+      "path": "$.archive.nameTemplate",
+      "reasonIncludes": "Archive filename suffix does not match archive.format."
+    }
+  ]
+}

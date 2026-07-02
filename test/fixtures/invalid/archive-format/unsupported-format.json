@@ -1,0 +1,27 @@
+{
+  "description": "Archive formats outside tar.gz and zip are rejected.",
+  "config": {
+    "owner": "tooppoo",
+    "repo": "rellog",
+    "binary": {
+      "name": "rellog",
+      "pathInArchive": "bin/rellog"
+    },
+    "versionResolver": {
+      "type": "release_version_file",
+      "fileName": "VERSION"
+    },
+    "archive": {
+      "format": "7z",
+      "nameTemplate": "{repo}_{version}_{target}.7z"
+    },
+    "checksum": {
+      "fileName": "checksums.txt",
+      "algorithm": "sha256"
+    },
+    "targets": [{ "os": "linux", "arch": "x86_64" }]
+  },
+  "expectedErrors": [
+    { "path": "$.archive.format", "reasonIncludes": "Unsupported archive format." }
+  ]
+}

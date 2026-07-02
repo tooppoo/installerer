@@ -1,0 +1,26 @@
+{
+  "owner": "tooppoo",
+  "repo": "installerer-demo",
+  "binary": {
+    "name": "demo",
+    "pathInArchive": "bin/demo"
+  },
+  "versionResolver": {
+    "type": "latest_asset"
+  },
+  "archive": {
+    "format": "zip",
+    "nameTemplate": "{bin}_{os}_{arch}.zip"
+  },
+  "checksum": {
+    "fileName": "SHA256SUMS",
+    "algorithm": "sha256"
+  },
+  "targets": [
+    { "os": "linux", "arch": "x86_64" },
+    { "os": "darwin", "arch": "aarch64" }
+  ],
+  "defaults": {
+    "installDir": "~/bin"
+  }
+}

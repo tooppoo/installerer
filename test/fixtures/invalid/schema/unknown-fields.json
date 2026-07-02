@@ -1,0 +1,30 @@
+{
+  "description": "Unknown fields are rejected at the root and inside nested objects.",
+  "config": {
+    "owner": "tooppoo",
+    "repo": "rellog",
+    "binary": {
+      "name": "rellog",
+      "pathInArchive": "bin/rellog",
+      "mode": "0755"
+    },
+    "versionResolver": {
+      "type": "release_version_file",
+      "fileName": "VERSION"
+    },
+    "archive": {
+      "format": "tar.gz",
+      "nameTemplate": "{repo}_{version}_{target}.tar.gz"
+    },
+    "checksum": {
+      "fileName": "checksums.txt",
+      "algorithm": "sha256"
+    },
+    "targets": [{ "os": "linux", "arch": "x86_64" }],
+    "signing": true
+  },
+  "expectedErrors": [
+    { "path": "$.signing", "reasonIncludes": "Unknown field is not supported." },
+    { "path": "$.binary.mode", "reasonIncludes": "Unknown field is not supported." }
+  ]
+}
