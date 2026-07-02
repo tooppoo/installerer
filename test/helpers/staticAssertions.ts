@@ -39,9 +39,19 @@ function assertNetworkBoundary(script: string): void {
   expect(script).not.toContain("raw.githubusercontent.com");
   expect(script).not.toContain("gist.githubusercontent.com");
 
+  // The leading disclaimer is a human-readable comment block, not executable
+  // shell: it links to the project's homepage, which is not a release asset
+  // download URL. Exclude comment lines from the allowlist scan below so the
+  // boundary check stays scoped to network access the script can actually
+  // perform.
+  const codeLines = script
+    .split("\n")
+    .filter((line) => !/^\s*#/.test(line))
+    .join("\n");
+
   // Allowlist, not blanket URL rejection: every URL literal or URL
   // construction fragment must target GitHub Release asset downloads.
-  const urls = script.match(/https?:\/\/[^\s"']+/g) ?? [];
+  const urls = codeLines.match(/https?:\/\/[^\s"']+/g) ?? [];
   expect(urls.length).toBeGreaterThan(0);
   for (const url of urls) {
     expect(url).toStartWith("https://github.com/");
@@ -50,7 +60,7 @@ function assertNetworkBoundary(script: string): void {
 
   // Every scheme occurrence must have been captured by the URL scan above,
   // so no second URL construction path can hide behind string assembly.
-  expect(script.split("://").length - 1).toBe(urls.length);
+  expect(codeLines.split("://").length - 1).toBe(urls.length);
 }
 
 function assertRuntimeStructure(script: string): void {

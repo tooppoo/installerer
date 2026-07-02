@@ -90,8 +90,13 @@ describe("SPA / generator runtime network boundary", () => {
       for (const url of urls) {
         // Allowlist rather than blanket rejection: the generator legitimately
         // emits GitHub Release URLs into the generated installer text and the
-        // resolver example help text.
-        if (!url.startsWith("https://github.com/")) {
+        // resolver example help text, and the SPA links to the project's
+        // license text and its static shields.io badge image.
+        const allowed =
+          url.startsWith("https://github.com/") ||
+          url.startsWith("https://www.apache.org/") ||
+          url.startsWith("https://img.shields.io/");
+        if (!allowed) {
           throw new Error(`${name} contains a URL outside the allowlist: ${url}`);
         }
       }
