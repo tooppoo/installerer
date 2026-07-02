@@ -30,6 +30,7 @@ export type VersionResolver =
 
 export type TargetOS = "linux" | "darwin";
 export type TargetArch = "x86_64" | "aarch64";
+export type OsCase = "lowercase" | "capitalized";
 
 export type InstallerConfig = {
   owner: string;
@@ -42,6 +43,7 @@ export type InstallerConfig = {
   archive: {
     format: "tar.gz" | "zip";
     nameTemplate: string;
+    osCase: OsCase;
   };
   checksum: {
     fileName: string;
@@ -180,7 +182,7 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
 
   const archive = requireObject(root.archive, "$.archive", errors);
   if (archive) {
-    rejectUnknownFields(archive, "$.archive", ["format", "nameTemplate"], errors);
+    rejectUnknownFields(archive, "$.archive", ["format", "nameTemplate", "osCase"], errors);
   }
   const archiveFormat = archive
     ? requireString(archive.format, "$.archive.format", errors)
@@ -195,6 +197,26 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
   const archiveNameTemplate = archive
     ? requireString(archive.nameTemplate, "$.archive.nameTemplate", errors)
     : undefined;
+  const archiveOsCaseInput = archive
+    ? archive.osCase === undefined
+      ? "lowercase"
+      : requireString(archive.osCase, "$.archive.osCase", errors)
+    : undefined;
+  if (
+    archiveOsCaseInput !== undefined &&
+    archiveOsCaseInput !== "lowercase" &&
+    archiveOsCaseInput !== "capitalized"
+  ) {
+    errors.push({
+      path: "$.archive.osCase",
+      reason: "Unsupported archive OS name case.",
+      expected: "lowercase | capitalized",
+    });
+  }
+  const archiveOsCase =
+    archiveOsCaseInput === "lowercase" || archiveOsCaseInput === "capitalized"
+      ? archiveOsCaseInput
+      : undefined;
 
   const checksum = requireObject(root.checksum, "$.checksum", errors);
   if (checksum) {
@@ -229,6 +251,7 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     normalizedVersionResolver === undefined ||
     (archiveFormat !== "tar.gz" && archiveFormat !== "zip") ||
     archiveNameTemplate === undefined ||
+    archiveOsCase === undefined ||
     checksumFileName === undefined ||
     checksumAlgorithm !== "sha256" ||
     targets === undefined ||
@@ -248,6 +271,7 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     archive: {
       format: archiveFormat,
       nameTemplate: archiveNameTemplate,
+      osCase: archiveOsCase,
     },
     checksum: {
       fileName: checksumFileName,

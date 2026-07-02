@@ -295,4 +295,52 @@ fi
     expect(previews[0]?.name).toBe("rellog_release/v1.2.3_linux_x86_64.tar.gz");
     expect(previews[0]?.validation.errors[0]?.reason).toContain("path separators");
   });
+
+  test("archive.osCase capitalized renders capitalized OS names in previews", () => {
+    const result = validateInstallerConfig({
+      ...configInput,
+      archive: { ...configInput.archive, osCase: "capitalized" },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    const previews = previewArchiveNames(result.config, "v1.2.3");
+    expect(previews[0]?.name).toBe("rellog_v1.2.3_Linux_x86_64.tar.gz");
+  });
+
+  const detectTarget = (osCase: "lowercase" | "capitalized", unameS: string, unameM: string) => {
+    const result = validateInstallerConfig({
+      ...configInput,
+      archive: { ...configInput.archive, osCase },
+    });
+    if (!result.ok) {
+      throw new Error("config should be valid");
+    }
+    const harness = `
+uname() {
+  case "$1" in
+    -s) printf '%s' "$UNAME_S_FIXTURE" ;;
+    -m) printf '%s' "$UNAME_M_FIXTURE" ;;
+  esac
+}
+detect_target
+`;
+    const script = generateInstaller(result.config).replace('\nmain "$@"\n', `\n${harness}\n`);
+    return spawnSync("sh", ["-s"], {
+      input: script,
+      env: { ...process.env, UNAME_S_FIXTURE: unameS, UNAME_M_FIXTURE: unameM },
+      encoding: "utf8",
+    }).stdout;
+  };
+
+  test("detect_target reports lowercase OS names by default", () => {
+    expect(detectTarget("lowercase", "Linux", "x86_64")).toBe("linux x86_64\n");
+  });
+
+  test("detect_target reports capitalized OS names when archive.osCase is capitalized", () => {
+    expect(detectTarget("capitalized", "Linux", "x86_64")).toBe("Linux x86_64\n");
+  });
 });

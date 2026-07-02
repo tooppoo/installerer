@@ -1,4 +1,4 @@
-import type { TargetArch, TargetOS } from "./installerConfig";
+import type { OsCase, TargetArch, TargetOS } from "./installerConfig";
 import type { ValidationError } from "./validation";
 
 export type ArchiveFormat = "tar.gz" | "zip";
@@ -166,6 +166,10 @@ export function templateUsesPlaceholder(
   return segments.some((segment) => segment.type === "placeholder" && segment.name === name);
 }
 
+export function formatOsForDisplay(os: TargetOS, osCase: OsCase): string {
+  return osCase === "capitalized" ? `${os[0]?.toUpperCase()}${os.slice(1)}` : os;
+}
+
 export function expandArchiveNameTemplate(
   segments: ArchiveTemplateSegment[],
   values: {
@@ -175,8 +179,11 @@ export function expandArchiveNameTemplate(
     version: string;
     os: TargetOS;
     arch: TargetArch;
+    osCase: OsCase;
   },
 ) {
+  const os = formatOsForDisplay(values.os, values.osCase);
+
   return segments
     .map((segment) => {
       if (segment.type === "literal") {
@@ -187,8 +194,12 @@ export function expandArchiveNameTemplate(
         return values.bin;
       }
 
+      if (segment.name === "os") {
+        return os;
+      }
+
       if (segment.name === "target") {
-        return `${values.os}_${values.arch}`;
+        return `${os}_${values.arch}`;
       }
 
       return values[segment.name];

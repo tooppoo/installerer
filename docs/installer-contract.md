@@ -57,6 +57,13 @@ The archive format determines an archive-format-specific runtime dependency of t
 
 The `archive.nameTemplate` must end with the suffix matching the selected format (`.tar.gz` or `.zip`).
 
+`archive.osCase` controls how the `{os}` and `{target}` placeholders render the detected OS name:
+
+- `lowercase` (default): `linux`, `darwin`
+- `capitalized`: `Linux`, `Darwin`
+
+This only changes display casing of the supported `linux`/`darwin` targets; it does not add Windows as a target OS.
+
 ## Runtime Dependencies
 
 The generated artifact is a POSIX `sh` script, but it depends on documented external commands.

@@ -69,6 +69,53 @@ describe("installer config validation", () => {
     }
   });
 
+  test("defaults archive.osCase to lowercase when omitted", () => {
+    const result = validateInstallerConfig(validConfig);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.config.archive.osCase).toBe("lowercase");
+    }
+  });
+
+  test("renders capitalized OS names in archive previews when archive.osCase is capitalized", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      archive: {
+        ...validConfig.archive,
+        osCase: "capitalized",
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
+        "rellog_v1.2.3_Linux_x86_64.tar.gz",
+        "rellog_v1.2.3_Darwin_aarch64.tar.gz",
+      ]);
+    }
+  });
+
+  test("rejects an unsupported archive.osCase value", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      archive: {
+        ...validConfig.archive,
+        osCase: "upper",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({
+          path: "$.archive.osCase",
+          reason: "Unsupported archive OS name case.",
+        }),
+      );
+    }
+  });
+
   test("rejects invalid JSON", () => {
     const result = parseInstallerConfig("{");
 

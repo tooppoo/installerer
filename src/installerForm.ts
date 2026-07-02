@@ -3,7 +3,7 @@ import {
   parseArchiveNameTemplate,
   type ArchiveFormat,
 } from "./archiveTemplate";
-import type { TargetArch, TargetOS } from "./installerConfig";
+import type { OsCase, TargetArch, TargetOS } from "./installerConfig";
 
 /**
  * Browser form state for the installer generator UI.
@@ -31,6 +31,7 @@ export type InstallerFormState = {
   versionResolverFileName: string;
   archiveFormat: ArchiveFormat;
   archiveNameTemplate: string;
+  archiveOsCase: OsCase;
   checksumFileName: string;
   targets: TargetOption[];
   installDir: string;
@@ -57,6 +58,14 @@ export const VERSION_RESOLVER_DESCRIPTIONS: Record<VersionResolverType, string> 
 };
 
 export const ARCHIVE_FORMAT_OPTIONS: readonly ArchiveFormat[] = ["tar.gz", "zip"];
+
+export const OS_CASE_OPTIONS: readonly OsCase[] = ["lowercase", "capitalized"];
+
+/** Example {os} rendering for each case option, shown as a hint next to the select. */
+export const OS_CASE_EXAMPLES: Record<OsCase, string> = {
+  lowercase: "linux, darwin",
+  capitalized: "Linux, Darwin",
+};
 
 /** Expected filename suffix for each archive format, shown as a hint next to the select. */
 export const ARCHIVE_FORMAT_SUFFIXES: Record<ArchiveFormat, string> = {
@@ -85,6 +94,7 @@ export const initialFormState: InstallerFormState = {
   versionResolverFileName: "VERSION",
   archiveFormat: "tar.gz",
   archiveNameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",
+  archiveOsCase: "lowercase",
   checksumFileName: "checksums.txt",
   targets: [
     { os: "linux", arch: "x86_64" },
@@ -151,6 +161,7 @@ export function versionResolverExample(form: InstallerFormState): ResolverExampl
       version,
       os: target.os,
       arch: target.arch,
+      osCase: form.archiveOsCase,
     });
   };
 
@@ -200,6 +211,7 @@ export function buildInstallerConfig(form: InstallerFormState): Record<string, u
     archive: {
       format: form.archiveFormat,
       nameTemplate: form.archiveNameTemplate,
+      osCase: form.archiveOsCase,
     },
     checksum: {
       fileName: form.checksumFileName,

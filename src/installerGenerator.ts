@@ -5,7 +5,7 @@ import {
   validateArchiveFilename,
   type ArchiveTemplateSegment,
 } from "./archiveTemplate";
-import type { InstallerConfig, TargetArch, TargetOS } from "./installerConfig";
+import type { InstallerConfig, OsCase, TargetArch, TargetOS } from "./installerConfig";
 
 export function generateInstaller(config: InstallerConfig): string {
   const template = parseArchiveNameTemplate(config.archive.nameTemplate);
@@ -307,7 +307,7 @@ detect_target() {
 ${targetCases(config.targets)}
     *) fail "unsupported target: $os/$arch" ;;
   esac
-
+${osCaseConversion(config.archive.osCase)}
   printf '%s %s\\n' "$os" "$arch"
 }
 
@@ -423,6 +423,7 @@ export function previewArchiveNames(config: InstallerConfig, version: string) {
       version,
       os: target.os,
       arch: target.arch,
+      osCase: config.archive.osCase,
     });
     return {
       ...target,
@@ -458,6 +459,19 @@ function renderTemplatePrintfArguments(segments: ArchiveTemplateSegment[]) {
 
 function targetCases(targets: Array<{ os: TargetOS; arch: TargetArch }>) {
   return targets.map((target) => `    ${target.os}/${target.arch}) ;;`).join("\n");
+}
+
+function osCaseConversion(osCase: OsCase) {
+  if (osCase !== "capitalized") {
+    return "";
+  }
+
+  return `
+  case "$os" in
+    linux) os=Linux ;;
+    darwin) os=Darwin ;;
+  esac
+`;
 }
 
 function latestBody(config: InstallerConfig) {

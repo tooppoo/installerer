@@ -18,6 +18,8 @@ import {
   CHECKSUM_ALGORITHM,
   initialFormState,
   isTargetSelected,
+  OS_CASE_EXAMPLES,
+  OS_CASE_OPTIONS,
   TARGET_OPTIONS,
   targetKey,
   toggleTarget,
@@ -264,6 +266,28 @@ export function App() {
                   onChange={(event) => update("archiveNameTemplate", event.target.value)}
                   spellCheck={false}
                 />
+              </label>
+              <label className={labelClassName}>
+                archive.osCase
+                <select
+                  className={fieldClassName}
+                  value={form.archiveOsCase}
+                  onChange={(event) =>
+                    update(
+                      "archiveOsCase",
+                      event.target.value as InstallerFormState["archiveOsCase"],
+                    )
+                  }
+                >
+                  {OS_CASE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs font-normal leading-snug text-[#6d625a]">
+                  How {"{os}"} and {"{target}"} render, e.g. {OS_CASE_EXAMPLES[form.archiveOsCase]}.
+                </span>
               </label>
               <label className={labelClassName}>
                 checksum.fileName

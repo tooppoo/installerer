@@ -130,6 +130,7 @@ export function validateArchiveTemplateForConfig(
       bin: config.binary.name,
       os: target.os,
       arch: target.arch,
+      osCase: config.archive.osCase,
     };
     const latestName = expandArchiveNameTemplate(segments, { ...baseValues, version: "v1.2.3" });
     const pinnedName = expandArchiveNameTemplate(segments, {

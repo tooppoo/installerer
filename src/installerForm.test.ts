@@ -60,6 +60,22 @@ describe("buildInstallerConfig", () => {
     expect(validateInstallerConfig(config).ok).toBe(true);
   });
 
+  test("archive.osCase defaults to lowercase and is included in the built config", () => {
+    const config = buildInstallerConfig(initialFormState) as {
+      archive: { osCase: string };
+    };
+    expect(config.archive.osCase).toBe("lowercase");
+  });
+
+  test("archive.osCase capitalized is selectable and validates against the core", () => {
+    const config = buildInstallerConfig({ ...initialFormState, archiveOsCase: "capitalized" });
+    const result = validateInstallerConfig(config);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.config.archive.osCase).toBe("capitalized");
+    }
+  });
+
   test("checksum.algorithm is always sha256", () => {
     const config = buildInstallerConfig(initialFormState) as {
       checksum: { algorithm: string };
@@ -110,6 +126,20 @@ describe("versionResolverExample", () => {
     expect(steps).toHaveLength(1);
     expect(steps[0]?.url).toBe(
       "https://github.com/tooppoo/rellog/releases/latest/download/rellog_linux_x86_64.tar.gz",
+    );
+  });
+
+  test("respects archiveOsCase when rendering the example archive name", () => {
+    const steps = versionResolverExample({
+      ...initialFormState,
+      owner: "tooppoo",
+      repo: "rellog",
+      versionResolverType: "latest_asset",
+      archiveNameTemplate: "{repo}_{os}_{arch}.tar.gz",
+      archiveOsCase: "capitalized",
+    });
+    expect(steps[0]?.url).toBe(
+      "https://github.com/tooppoo/rellog/releases/latest/download/rellog_Linux_x86_64.tar.gz",
     );
   });
 
