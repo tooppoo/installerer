@@ -3,6 +3,7 @@ import "./index.css";
 import { useMemo, useState } from "react";
 
 import { validateInstallerConfig } from "./installerConfig";
+import { buildInstallerDiagnostics } from "./installerDiagnostics";
 import { generateInstaller } from "./installerGenerator";
 import { INSTALLER_CONTRACT_MARKDOWN } from "./generated/installerContract";
 import {
@@ -18,7 +19,6 @@ import {
   toggleTarget,
   VERSION_RESOLVER_DESCRIPTIONS,
   VERSION_RESOLVER_OPTIONS,
-  versionResolverExample,
   type InstallerFormState,
   type TargetOption,
 } from "./installerForm";
@@ -33,9 +33,12 @@ export function App() {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [contractCopyState, setContractCopyState] = useState<"idle" | "copied" | "error">("idle");
 
-  const resolverExample = useMemo(() => versionResolverExample(form), [form]);
   const configForCore = useMemo(() => buildInstallerConfig(form), [form]);
   const result = useMemo(() => validateInstallerConfig(configForCore), [configForCore]);
+  const diagnostics = useMemo(
+    () => (result.ok ? buildInstallerDiagnostics(result.config, result.archivePreviews) : null),
+    [result],
+  );
 
   // Generation runs only on a validated config; capture any generation error so we
   // never fall back to a previously generated installer as if it were current output.
@@ -194,18 +197,6 @@ export function App() {
               ) : null}
             </div>
 
-            <div className="border border-[#cdd6c6] bg-[#f0f4ec] p-3 text-xs">
-              <div className="font-semibold text-[#4a4037]">Example resolution</div>
-              <ol className="mt-1.5 flex flex-col gap-1.5">
-                {resolverExample.map((step, index) => (
-                  <li key={index} className="flex flex-col gap-0.5">
-                    <span className="text-[#6d625a]">{step.label}</span>
-                    <code className="break-all font-mono text-[#235b4d]">{step.url}</code>
-                  </li>
-                ))}
-              </ol>
-            </div>
-
             <div className="grid gap-4 sm:grid-cols-2">
               <label className={labelClassName}>
                 archive.format
@@ -319,6 +310,48 @@ export function App() {
               )}
             </section>
 
+            {diagnostics ? (
+              <section className="border border-[#cdd6c6] bg-white">
+                <div className="border-b border-[#cdd6c6] bg-[#f0f4ec] px-3 py-2">
+                  <h2 className="text-sm font-semibold text-[#4a4037]">Helper diagnostics</h2>
+                  <p className="mt-1 text-xs leading-4 text-[#6d625a]">
+                    Non-authoritative preview. Does not guarantee repository, asset, checksum,
+                    contract, or installer success.
+                  </p>
+                </div>
+
+                <div className="divide-y divide-[#dfe5dc]">
+                  <DiagnosticDetails
+                    title="Typo check commands"
+                    values={diagnostics.typoCommands}
+                    defaultOpen
+                  />
+                  <DiagnosticDetails
+                    title="Expected release assets"
+                    values={diagnostics.expectedReleaseAssets}
+                  />
+                  <DiagnosticDetails title="Latest URL preview" values={diagnostics.urls.latest} />
+                  <DiagnosticDetails title="Pinned URL preview" values={diagnostics.urls.pinned} />
+                  <DiagnosticDetails
+                    title="Resolver notes"
+                    values={[
+                      ...diagnostics.resolverNotes,
+                      "Omitting --version installs latest; --version <version> installs a pinned tag.",
+                      "--version latest is invalid, and JSON config has no defaults.version.",
+                    ]}
+                  />
+                  <DiagnosticDetails
+                    title="Install command examples"
+                    values={diagnostics.installCommands.valid}
+                  />
+                  <DiagnosticDetails
+                    title="Invalid command example"
+                    values={diagnostics.installCommands.invalid}
+                  />
+                </div>
+              </section>
+            ) : null}
+
             {/* Bundled at build time from docs/installer-contract.md — no runtime fetch. */}
             <details className="group border border-[#aeb8a8] bg-white">
               <summary className="flex cursor-pointer select-none items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-[#4a4037]">
@@ -386,3 +419,39 @@ export function App() {
 }
 
 export default App;
+
+function DiagnosticDetails({
+  title,
+  values,
+  defaultOpen = false,
+}: {
+  title: string;
+  values: string[];
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details className="group" open={defaultOpen}>
+      <summary className="flex cursor-pointer select-none items-center justify-between gap-3 px-3 py-2 text-xs font-semibold uppercase text-[#4a4037]">
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="inline-block shrink-0 text-[#6d625a] transition-transform duration-150 group-open:rotate-90"
+          >
+            ▶
+          </span>
+          <span className="truncate">{title}</span>
+        </span>
+        <span className="shrink-0 font-mono text-[11px] text-[#6d625a]">{values.length}</span>
+      </summary>
+      <ul className="max-h-44 overflow-auto px-3 pb-3">
+        {values.map((value) => (
+          <li key={value} className="mt-1.5">
+            <code className="block break-all bg-[#f7f6f2] px-2 py-1.5 font-mono text-xs leading-5 text-[#235b4d]">
+              {value}
+            </code>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
