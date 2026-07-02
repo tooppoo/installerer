@@ -42,7 +42,11 @@ export function startFixtureServer(): FixtureServer {
     hostname: "127.0.0.1",
     port: 0,
     fetch(request) {
-      const pathname = decodeURIComponent(new URL(request.url).pathname);
+      // Keep the raw, percent-encoded pathname: decoding it whole would turn
+      // an encoded tag's %2F into a literal /, splitting it into extra path
+      // segments and breaking both the request log and the lookup below.
+      // Individual segments are decoded in lookupAsset instead.
+      const pathname = new URL(request.url).pathname;
       requestLog.push(pathname);
 
       const asset = lookupAsset(releases, pathname);
@@ -88,7 +92,13 @@ function lookupAsset(
 ): Uint8Array | undefined {
   // Only the GitHub Release download path shape is served; anything else is a
   // 404 that also shows up in the request log for the boundary assertions.
-  const segments = pathname.split("/").slice(1);
+  // Each segment is percent-decoded individually so an encoded tag (e.g.
+  // release%2Fv1.2.3) is looked up as one segment, matching how the
+  // generated installer encodes each URL path segment separately.
+  const segments = pathname
+    .split("/")
+    .slice(1)
+    .map((segment) => decodeURIComponent(segment));
 
   if (segments.length === 6 && segments[2] === "releases") {
     const [owner, repo, , third, fourth, asset] = segments;

@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -55,25 +56,29 @@ export type ArchiveEntry = {
 export function buildArchive(format: "tar.gz" | "zip", entries: ArchiveEntry[]): Uint8Array {
   const workDir = mkdtempSync(join(tmpdir(), "installerer-e2e-archive-"));
 
-  for (const entry of entries) {
-    const filePath = join(workDir, entry.path);
-    mkdirSync(join(filePath, ".."), { recursive: true });
-    writeFileSync(filePath, entry.content);
-    chmodSync(filePath, 0o755);
+  try {
+    for (const entry of entries) {
+      const filePath = join(workDir, entry.path);
+      mkdirSync(join(filePath, ".."), { recursive: true });
+      writeFileSync(filePath, entry.content);
+      chmodSync(filePath, 0o755);
+    }
+
+    const archivePath = join(workDir, format === "tar.gz" ? "fixture.tar.gz" : "fixture.zip");
+    const paths = entries.map((entry) => entry.path);
+    const command =
+      format === "tar.gz"
+        ? spawnSync("tar", ["-czf", archivePath, "-C", workDir, ...paths], { encoding: "utf8" })
+        : spawnSync("zip", ["-q", archivePath, ...paths], { cwd: workDir, encoding: "utf8" });
+
+    if (command.status !== 0) {
+      throw new Error(`failed to build ${format} fixture archive: ${command.stderr}`);
+    }
+
+    return new Uint8Array(readFileSync(archivePath));
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
   }
-
-  const archivePath = join(workDir, format === "tar.gz" ? "fixture.tar.gz" : "fixture.zip");
-  const paths = entries.map((entry) => entry.path);
-  const command =
-    format === "tar.gz"
-      ? spawnSync("tar", ["-czf", archivePath, "-C", workDir, ...paths], { encoding: "utf8" })
-      : spawnSync("zip", ["-q", archivePath, ...paths], { cwd: workDir, encoding: "utf8" });
-
-  if (command.status !== 0) {
-    throw new Error(`failed to build ${format} fixture archive: ${command.stderr}`);
-  }
-
-  return new Uint8Array(readFileSync(archivePath));
 }
 
 export type InstallerRunOptions = {

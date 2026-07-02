@@ -233,6 +233,31 @@ describe("dispatch and argument handling", () => {
     expectRequests([]);
     expect(run.leftoverTmpEntries).toEqual([]);
   });
+
+  test("a pinned tag containing a slash round-trips through %2F URL encoding", async () => {
+    // The runtime percent-encodes the tag as a single URL path segment
+    // (%2F for /), so the fixture server must decode that segment back to
+    // "release/v1.2.3" — not split on the decoded slash — to find it.
+    const archive = buildArchive("zip", [{ path: "demo", content: PINNED_BINARY }]);
+    const assetName = "demo_linux_x86_64.zip";
+    server.setTaggedRelease(OWNER, REPO, "release/v1.2.3", {
+      [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
+      [assetName]: archive,
+    });
+
+    const env = createInstallerRunEnv();
+    const run = await env.run(testScript(LATEST_ASSET_CONFIG), {
+      args: ["--version", "release/v1.2.3"],
+    });
+
+    expect(run.stderr).toBe("");
+    expect(run.status).toBe(0);
+    expectInstalledBinary(env.defaultInstallDir, "demo", PINNED_BINARY);
+    expectRequests([
+      `/${OWNER}/${REPO}/releases/download/release%2Fv1.2.3/${CHECKSUM_FILE_NAME}`,
+      `/${OWNER}/${REPO}/releases/download/release%2Fv1.2.3/${assetName}`,
+    ]);
+  });
 });
 
 describe("failure handling", () => {
