@@ -1,4 +1,5 @@
 import tailwind from "bun-plugin-tailwind";
+import { cp } from "node:fs/promises";
 import { copyFile } from "node:fs/promises";
 import { rm } from "node:fs/promises";
 import path from "node:path";
@@ -21,12 +22,20 @@ const result = await Bun.build({
   plugins: [tailwind],
   minify: true,
   target: "browser",
-  sourcemap: "linked",
+  naming: {
+    entry: "[dir]/[name].[ext]",
+    chunk: "assets/[name]-[hash].[ext]",
+    asset: "assets/[name]-[hash].[ext]",
+  },
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },
 });
 
+await cp(path.join(root, "public"), outdir, {
+  recursive: true,
+  force: true,
+});
 for (const file of staticFiles) {
   await copyFile(
     path.join(root, file.source),
