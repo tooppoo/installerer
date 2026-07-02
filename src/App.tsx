@@ -109,6 +109,9 @@ export function App() {
                 <img src={githubLogoUrl} alt="GitHub" className="h-7 w-7" />
               </a>
               <span className="text-sm font-semibold text-[#6f786e]">v{packageJson.version}</span>
+              <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener noreferrer" aria-label="Apache 2.0 License">
+                <img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache 2.0" />
+              </a>
             </div>
             <p className="mt-1 text-sm font-semibold uppercase text-[#4a4037]">Installer Generator</p>
             <p className="mt-2 max-w-2xl text-sm text-[#4a4037]">
