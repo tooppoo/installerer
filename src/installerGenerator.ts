@@ -107,6 +107,7 @@ check_runtime_dependencies() {
   require_command od
   require_command tr
   require_command cut
+  require_command ls
   case "$ARCHIVE_FORMAT" in
     tar.gz) require_command tar ;;
     zip) require_command unzip ;;
@@ -230,10 +231,12 @@ read_version_file() {
   url=$1
   content=$(curl -fsSL "$url" && printf x) || fail "failed to resolve latest version from $url"
   content=\${content%x}
-  case "$content" in
-    *"$CR$LF") content=\${content%"$CR$LF"} ;;
-    *"$LF") content=\${content%"$LF"} ;;
-  esac
+  while true; do
+    case "$content" in
+      *[[:space:]]) content=\${content%?} ;;
+      *) break ;;
+    esac
+  done
   [ -n "$content" ] || fail "VERSION file is empty"
   case "$content" in
     *"$CR"*|*"$LF"*) fail "VERSION file must contain a single line" ;;
@@ -329,10 +332,16 @@ download_and_install() {
   archive_path="$tmpdir/archive"
   checksum_path="$tmpdir/checksums"
   extract_dir="$tmpdir/extract"
-  mkdir -p "$extract_dir" || fail "failed to create extract directory"
 
+  printf '%s\\n' "installerer: requesting $checksum_url"
   curl -fsSL "$checksum_url" -o "$checksum_path" || fail "failed to download checksum file"
+  printf '%s\\n' "installerer: downloaded files:"
+  ls -la "$tmpdir"
+
+  printf '%s\\n' "installerer: requesting $archive_url"
   curl -fsSL "$archive_url" -o "$archive_path" || fail "failed to download archive"
+  printf '%s\\n' "installerer: downloaded files:"
+  ls -la "$tmpdir"
 
   expected_checksum=$(awk -v name="$archive_asset_name" '$2 == name { print $1; found=1; exit } END { if (!found) exit 1 }' "$checksum_path") \\
     || fail "checksum entry not found for $archive_asset_name"
@@ -351,6 +360,7 @@ download_and_install() {
       ;;
   esac
 
+  mkdir -p "$extract_dir" || fail "failed to create extract directory"
   case "$ARCHIVE_FORMAT" in
     tar.gz)
       tar -xzf "$archive_path" -C "$extract_dir" -- "$BINARY_PATH_IN_ARCHIVE" \\
@@ -364,6 +374,8 @@ download_and_install() {
       fail "unsupported archive format: $ARCHIVE_FORMAT"
       ;;
   esac
+  printf '%s\\n' "installerer: extracted files:"
+  ls -laR "$extract_dir"
 
   extracted_binary="$extract_dir/$BINARY_PATH_IN_ARCHIVE"
   [ ! -L "$extracted_binary" ] || fail "archive binary entry must not be a symlink: $BINARY_PATH_IN_ARCHIVE"
@@ -480,6 +492,7 @@ function latestBody(config: InstallerConfig) {
   repo_path=$(url_encode_segment "$REPO")
   version_file_path=$(url_encode_segment "$VERSION_FILE_NAME")
   version_file_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$version_file_path"
+  printf '%s\\n' "installerer: requesting $version_file_url"
   resolved_version=$(read_version_file "$version_file_url") || exit 1
   is_valid_git_tag "$resolved_version" || fail "resolved version is not a valid Git tag: $resolved_version"
   printf '%s\\n' "installerer: resolved latest version $resolved_version"

@@ -190,12 +190,17 @@ fi
     });
   };
 
-  test("read_version_file strips a single trailing LF or CRLF without trimming whitespace", () => {
+  test("read_version_file strips all trailing whitespace, including multiple trailing blank lines", () => {
     expect(readVersionFile("v0.1.2\n").stdout).toBe("OK:[v0.1.2]");
     expect(readVersionFile("v0.1.2\r\n").stdout).toBe("OK:[v0.1.2]");
     expect(readVersionFile("v0.1.2").stdout).toBe("OK:[v0.1.2]");
-    // Leading/trailing whitespace is preserved, not auto-trimmed.
-    expect(readVersionFile(" v0.1.2 \n").stdout).toBe("OK:[ v0.1.2 ]");
+    // Multiple trailing blank lines / trailing spaces and tabs are all ignored.
+    expect(readVersionFile("v0.1.2\n\n").stdout).toBe("OK:[v0.1.2]");
+    expect(readVersionFile("v0.1.2\r\n\r\n").stdout).toBe("OK:[v0.1.2]");
+    expect(readVersionFile("v0.1.2   \n").stdout).toBe("OK:[v0.1.2]");
+    expect(readVersionFile("v0.1.2\t\n").stdout).toBe("OK:[v0.1.2]");
+    // Leading whitespace is preserved, not auto-trimmed.
+    expect(readVersionFile(" v0.1.2 \n").stdout).toBe("OK:[ v0.1.2]");
   });
 
   test("read_version_file rejects empty and multiple-line VERSION content", () => {
@@ -206,6 +211,10 @@ fi
     const onlyNewlineRun = readVersionFile("\n");
     expect(onlyNewlineRun.stdout).toBe("FAIL");
     expect(onlyNewlineRun.stderr).toContain("VERSION file is empty");
+
+    const onlyWhitespaceRun = readVersionFile("  \t \n");
+    expect(onlyWhitespaceRun.stdout).toBe("FAIL");
+    expect(onlyWhitespaceRun.stderr).toContain("VERSION file is empty");
 
     const multiLineRun = readVersionFile("v0.1.2\nextra\n");
     expect(multiLineRun.stdout).toBe("FAIL");
