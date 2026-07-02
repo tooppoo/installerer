@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   check:
     name: Check
@@ -22,3 +26,10 @@ jobs:
 
       - name: check
         run: just check
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          directory: coverage
+          use_oidc: true
+          slug: tooppoo/installerer

@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/tooppoo/installerer/actions/workflows/ci.yml/badge.svg)](https://github.com/tooppoo/installerer/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/tooppoo/installerer/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/tooppoo/installerer/actions/workflows/github-code-scanning/codeql)
+[![codecov](https://codecov.io/gh/tooppoo/installerer/graph/badge.svg?token=VWoPYcPDsR)](https://codecov.io/gh/tooppoo/installerer)
 
 `installerer` is a browser-based installer generator for GitHub Releases.
 
