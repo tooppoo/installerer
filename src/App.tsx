@@ -430,6 +430,12 @@ export function App() {
             />
           </section>
         ) : null}
+
+        <footer className="border-t border-[#b8c0b0] pt-4 text-sm text-[#6f786e]">
+          <a href="/licenses.txt" target="_blank" rel="noopener noreferrer" className="underline">
+            Third-party licenses
+          </a>
+        </footer>
       </div>
     </main>
   );

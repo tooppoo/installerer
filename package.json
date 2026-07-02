@@ -27,6 +27,7 @@
     "@types/bun": "latest",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "license-checker": "^25.0.1",
     "oxfmt": "^0.57.0",
     "oxlint": "^1.72.0",
     "typescript": "^6.0.3"
