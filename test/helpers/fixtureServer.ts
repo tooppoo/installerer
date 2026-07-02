@@ -19,7 +19,7 @@ export type FixtureRelease = Map<string, Uint8Array>;
 export type FixtureServer = {
   /** http://127.0.0.1:{port} — the test-only replacement for https://github.com */
   baseUrl: string;
-  /** Decoded pathname of every request, in arrival order. */
+  /** Raw (percent-encoded) pathname of every request, in arrival order. */
   requestLog: string[];
   /** Registers or replaces the release assets served for `latest/download`. */
   setLatestRelease(owner: string, repo: string, assets: Record<string, Uint8Array | string>): void;
