@@ -1,0 +1,29 @@
+{
+  "description": "latest_asset never resolves a release tag, so {version} in the archive template is rejected.",
+  "config": {
+    "owner": "tooppoo",
+    "repo": "rellog",
+    "binary": {
+      "name": "rellog",
+      "pathInArchive": "bin/rellog"
+    },
+    "versionResolver": {
+      "type": "latest_asset"
+    },
+    "archive": {
+      "format": "tar.gz",
+      "nameTemplate": "{repo}_{version}_{target}.tar.gz"
+    },
+    "checksum": {
+      "fileName": "checksums.txt",
+      "algorithm": "sha256"
+    },
+    "targets": [{ "os": "linux", "arch": "x86_64" }]
+  },
+  "expectedErrors": [
+    {
+      "path": "$.archive.nameTemplate",
+      "reasonIncludes": "latest_asset archives must use versionless archive filename templates."
+    }
+  ]
+}

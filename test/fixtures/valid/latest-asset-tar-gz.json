@@ -1,0 +1,28 @@
+{
+  "owner": "tooppoo",
+  "repo": "rellog",
+  "binary": {
+    "name": "rellog",
+    "pathInArchive": "rellog"
+  },
+  "versionResolver": {
+    "type": "latest_asset"
+  },
+  "archive": {
+    "format": "tar.gz",
+    "nameTemplate": "{repo}_{target}.tar.gz"
+  },
+  "checksum": {
+    "fileName": "checksums.txt",
+    "algorithm": "sha256"
+  },
+  "targets": [
+    { "os": "linux", "arch": "x86_64" },
+    { "os": "linux", "arch": "aarch64" },
+    { "os": "darwin", "arch": "x86_64" },
+    { "os": "darwin", "arch": "aarch64" }
+  ],
+  "defaults": {
+    "installDir": "$HOME/.local/bin"
+  }
+}

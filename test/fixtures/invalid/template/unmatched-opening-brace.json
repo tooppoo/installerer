@@ -1,0 +1,27 @@
+{
+  "description": "An archive name template with an unclosed placeholder brace is rejected.",
+  "config": {
+    "owner": "tooppoo",
+    "repo": "rellog",
+    "binary": {
+      "name": "rellog",
+      "pathInArchive": "bin/rellog"
+    },
+    "versionResolver": {
+      "type": "release_version_file",
+      "fileName": "VERSION"
+    },
+    "archive": {
+      "format": "tar.gz",
+      "nameTemplate": "{repo_linux_x86_64.tar.gz"
+    },
+    "checksum": {
+      "fileName": "checksums.txt",
+      "algorithm": "sha256"
+    },
+    "targets": [{ "os": "linux", "arch": "x86_64" }]
+  },
+  "expectedErrors": [
+    { "path": "$.archive.nameTemplate", "reasonIncludes": "unmatched opening brace" }
+  ]
+}

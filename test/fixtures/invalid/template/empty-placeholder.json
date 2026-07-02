@@ -1,0 +1,25 @@
+{
+  "description": "An archive name template with an empty placeholder is rejected.",
+  "config": {
+    "owner": "tooppoo",
+    "repo": "rellog",
+    "binary": {
+      "name": "rellog",
+      "pathInArchive": "bin/rellog"
+    },
+    "versionResolver": {
+      "type": "release_version_file",
+      "fileName": "VERSION"
+    },
+    "archive": {
+      "format": "tar.gz",
+      "nameTemplate": "{}_{version}_{target}.tar.gz"
+    },
+    "checksum": {
+      "fileName": "checksums.txt",
+      "algorithm": "sha256"
+    },
+    "targets": [{ "os": "linux", "arch": "x86_64" }]
+  },
+  "expectedErrors": [{ "path": "$.archive.nameTemplate", "reasonIncludes": "empty placeholder" }]
+}

@@ -10,6 +10,7 @@
     "docs:generate": "bun scripts/generate-installer-contract.ts",
     "docs:check": "bun scripts/generate-installer-contract.ts --check",
     "test": "bun test",
+    "test:update-snapshots": "UPDATE_INSTALLER_SNAPSHOTS=1 bun test",
     "lint": "oxlint --deny-warnings .",
     "format:check": "oxfmt --check .",
     "format": "oxfmt .",
