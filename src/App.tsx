@@ -114,10 +114,7 @@ export function App() {
                 rel="noopener noreferrer"
                 aria-label="Apache 2.0 License"
               >
-                <img
-                  src="/assets/License-Apache_2.0-blue.svg"
-                  alt="License: Apache 2.0"
-                />
+                <img src="/assets/License-Apache_2.0-blue.svg" alt="License: Apache 2.0" />
               </a>
               <a
                 href="/licenses.txt"
