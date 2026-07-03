@@ -307,26 +307,17 @@ render_archive_asset_name() {
   printf '\n'
 }
 
-download_and_install() {
-  archive_url=$1
-  checksum_url=$2
-  archive_asset_name=$3
-  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
-  trap 'rm -rf "$tmpdir"' EXIT HUP INT TERM
-  archive_path="$tmpdir/archive"
-  checksum_path="$tmpdir/checksums"
-  extract_dir="$tmpdir/extract"
-
-  printf '%s\n' "installerer: requesting $checksum_url"
-  curl -fsSL "$checksum_url" -o "$checksum_path" || fail "failed to download checksum file"
+curl_download() {
+  url=$1
+  output_path=$2
+  label=$3
+  printf '%s\n' "installerer: requesting $url"
+  curl -fsSL "$url" -o "$output_path" || fail "failed to download $label"
   printf '%s\n' "installerer: downloaded files:"
   ls -la "$tmpdir"
+}
 
-  printf '%s\n' "installerer: requesting $archive_url"
-  curl -fsSL "$archive_url" -o "$archive_path" || fail "failed to download archive"
-  printf '%s\n' "installerer: downloaded files:"
-  ls -la "$tmpdir"
-
+verify_sha256() {
   expected_checksum=$(awk -v name="$archive_asset_name" '$2 == name { print $1; found=1; exit } END { if (!found) exit 1 }' "$checksum_path") \
     || fail "checksum entry not found for $archive_asset_name"
   case "$CHECKSUM_COMMAND" in
@@ -343,7 +334,9 @@ download_and_install() {
       fail "checksum command was not initialized"
       ;;
   esac
+}
 
+extract_archive() {
   mkdir -p "$extract_dir" || fail "failed to create extract directory"
   case "$ARCHIVE_FORMAT" in
     tar.gz)
@@ -364,13 +357,32 @@ download_and_install() {
   extracted_binary="$extract_dir/$BINARY_PATH_IN_ARCHIVE"
   [ ! -L "$extracted_binary" ] || fail "archive binary entry must not be a symlink: $BINARY_PATH_IN_ARCHIVE"
   [ -f "$extracted_binary" ] || fail "archive binary entry is not a regular file: $BINARY_PATH_IN_ARCHIVE"
+}
 
+install_binary() {
   mkdir -p "$INSTALL_DIR" || fail "failed to create install directory: $INSTALL_DIR"
   install_tmp="$INSTALL_DIR/.$BINARY_NAME.tmp.$$"
   rm -f "$install_tmp" || fail "failed to remove stale temporary install file: $install_tmp"
   cp "$extracted_binary" "$install_tmp" || fail "failed to copy binary to temporary install path"
   chmod +x "$install_tmp" || fail "failed to mark binary executable"
   mv "$install_tmp" "$INSTALL_DIR/$BINARY_NAME" || fail "failed to place binary in install directory"
+}
+
+download_and_install() {
+  archive_url=$1
+  checksum_url=$2
+  archive_asset_name=$3
+  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
+  trap 'rm -rf "$tmpdir"' EXIT HUP INT TERM
+  archive_path="$tmpdir/archive"
+  checksum_path="$tmpdir/checksums"
+  extract_dir="$tmpdir/extract"
+
+  curl_download "$checksum_url" "$checksum_path" "checksum file"
+  curl_download "$archive_url" "$archive_path" "archive"
+  verify_sha256
+  extract_archive
+  install_binary
   printf '%s\n' "installed $BINARY_NAME to $INSTALL_DIR/$BINARY_NAME"
 }
 

@@ -109,6 +109,26 @@ describe("installer generation", () => {
     expect(shellLiteral("foo'bar")).toBe("'foo'\\''bar'");
   });
 
+  test("generateInstaller rejects a config whose archive name template is invalid", () => {
+    const result = validateInstallerConfig(configInput);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    // validateInstallerConfig normally rejects this earlier; the generator
+    // still guards against being handed an unvalidated config directly.
+    const broken = {
+      ...result.config,
+      archive: { ...result.config.archive, nameTemplate: "{unknown}.tar.gz" },
+    };
+
+    expect(() => generateInstaller(broken)).toThrow(
+      "Unknown archive filename placeholder: {unknown}.",
+    );
+  });
+
   test("release_version_file latest install resolves and logs the version, latest_asset does not", () => {
     const result = validateInstallerConfig(configInput);
     expect(result.ok).toBe(true);
