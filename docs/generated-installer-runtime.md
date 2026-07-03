@@ -107,7 +107,7 @@ For the `latest_asset` resolver, `install_latest` does not resolve a release tag
 
 The generated script is POSIX `sh`, but it intentionally depends on external commands for practical and safer runtime behavior.
 
-See [`docs/runtime-dependencies.md`](./runtime-dependencies.md) for the generated, authoritative list of required commands — it is derived from `src/runtimeDependencies/definitions.ts` (issue #75), the single source of truth also used by the Web UI and by the generated installer's own `--requirements` / `--check-requirements` (below).
+See [`docs/runtime-dependencies.md`](./runtime-dependencies.md) for the generated, authoritative list of required commands — it is derived from `packages/core/src/runtimeDependencies/definitions.ts` (issue #75), the single source of truth also used by the Web UI and by the generated installer's own `--requirements` / `--check-requirements` (below).
 
 `curl` has no fallback in the MVP. If any required command is missing, the generated script stops with a clear error.
 
@@ -120,7 +120,7 @@ Every generated installer accepts two additional, mutually exclusive-with-instal
 --check-requirements
 ```
 
-`--requirements` prints the runtime requirements resolved for this specific config — the same underlying typed dependency definitions as [`docs/runtime-dependencies.md`](./runtime-dependencies.md) (`src/runtimeDependencies/definitions.ts`), but resolved to this config's single archive-format command and annotated with per-dependency reasons, the POSIX `sh` premise, and the network/filesystem items — and exits `0`. It does not perform target detection, install-dir resolution, dependency checks, network access, or filesystem writes.
+`--requirements` prints the runtime requirements resolved for this specific config — the same underlying typed dependency definitions as [`docs/runtime-dependencies.md`](./runtime-dependencies.md) (`packages/core/src/runtimeDependencies/definitions.ts`), but resolved to this config's single archive-format command and annotated with per-dependency reasons, the POSIX `sh` premise, and the network/filesystem items — and exits `0`. It does not perform target detection, install-dir resolution, dependency checks, network access, or filesystem writes.
 
 `--check-requirements` probes every checkable dependency with `command -v` and reports `ok:`/`missing:` for each, without stopping at the first missing command — it aggregates and reports all of them, then exits `0` if every checkable dependency is present or non-zero otherwise. Non-checkable items (network access, filesystem write permission) are listed under a trailing `Not checked:` section instead of being probed. POSIX `sh` itself is listed as a `Runtime premise:`, not as a checkable command.
 

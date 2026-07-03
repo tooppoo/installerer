@@ -1,6 +1,6 @@
 /**
  * Generates `docs/runtime-dependencies.md` — the single, authoritative
- * Runtime Dependencies document — from `src/runtimeDependencies/definitions.ts`
+ * Runtime Dependencies document — from `packages/core/src/runtimeDependencies/definitions.ts`
  * (issue #75). Other docs (`docs/generated-installer-runtime.md`,
  * `docs/installer-contract.md`) link to this file instead of listing
  * commands themselves, so there is exactly one place this list can drift.
@@ -15,7 +15,7 @@ import {
   ARCHIVE_FORMAT_COMMAND_NAMES,
   BASE_COMMAND_DEPENDENCIES,
   CHECKSUM_DEPENDENCY,
-} from "../src/runtimeDependencies/definitions";
+} from "../packages/core/src/runtimeDependencies/definitions";
 
 const root = path.dirname(import.meta.dir);
 const outputPath = path.join(root, "docs", "runtime-dependencies.md");
@@ -42,7 +42,7 @@ const requiredCommandLines = [
 const document = `# Generated Installer Runtime Dependencies
 
 <!-- AUTO-GENERATED FILE — DO NOT EDIT. -->
-<!-- Source of truth: src/runtimeDependencies/definitions.ts -->
+<!-- Source of truth: packages/core/src/runtimeDependencies/definitions.ts -->
 <!-- Regenerate with: bun run docs:generate -->
 
 Required commands for every generated installer:

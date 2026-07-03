@@ -3,10 +3,10 @@
  * source of truth (`PUBLISH_DIR_FILES`), and that the CLI bin entry keeps
  * its executable bit in the packed tarball, not just on disk.
  *
- * Usage (from the `package-tarball` CI job, cwd = dist-cli/npm/):
- *   npm pack --dry-run --json | bun run ../../scripts/ci/verifyPackFileSet.ts
+ * Usage (from the `package-tarball` CI job, cwd = packages/cli/dist/npm/):
+ *   npm pack --dry-run --json | bun run ../../scripts/verifyPackFileSet.ts
  */
-import { NPM_CLI_BIN_NAME, PUBLISH_DIR_FILES } from "../npmPublishDir";
+import { NPM_CLI_BIN_NAME, PUBLISH_DIR_FILES } from "./npmPublishDir";
 
 type NpmPackDryRunEntry = {
   files: { path: string; mode: number }[];

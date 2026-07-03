@@ -3,7 +3,9 @@ import path from "node:path";
 import index from "./index.html";
 
 const port = Number(process.env.PORT ?? 3000);
-const licensesPath = path.join(import.meta.dir, "..", "THIRD_PARTY_LICENSES.txt");
+// Repository-level license inventory lives at the repo root, three levels up
+// from apps/web/src/.
+const licensesPath = path.join(import.meta.dir, "..", "..", "..", "THIRD_PARTY_LICENSES.txt");
 
 const server = serve({
   port,

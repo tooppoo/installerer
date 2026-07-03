@@ -1,3 +1,4 @@
 # Committed snapshot fixtures are byte-for-byte comparison targets written by
-# test code (see test/helpers/snapshot.ts). They must not be reformatted.
-test/snapshots/*.json
+# test code (see packages/core/test/helpers/snapshot.ts). They must not be
+# reformatted.
+packages/core/test/snapshots/*.json

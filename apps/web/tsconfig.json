@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/tsconfig.json",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "jsx": "react-jsx",
+    "types": ["bun", "react"]
+  },
+  "include": ["src", "scripts", "build.ts", "bun-env.d.ts"]
+}

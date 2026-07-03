@@ -3,6 +3,25 @@
 - Status: Accepted
 - Created: 2026-07-03T13:43:02Z
 
+> **Amendment (2026-07-03, [20260703T231205Z_monorepo-package-boundaries.md](./20260703T231205Z_monorepo-package-boundaries.md)):**
+> The monorepo migration (issue #100) replaces two parts of this decision:
+>
+> - The publish `package.json` is **no longer generated from scratch**
+>   (`buildPublishPackageJson` is gone). CLI package metadata is owned by the
+>   static, reviewable `packages/cli/package.json`; `build:npm` copies it into
+>   the publish directory, stripping only workspace-only fields (`$schema`,
+>   `scripts`, `devDependencies`).
+> - The publish directory moved from the repository-root `dist-cli/npm/` to
+>   `packages/cli/dist/npm/`, and `build:npm` / its helpers moved to
+>   `packages/cli/scripts/`. The `dist/`-wipe collision that motivated a
+>   separate top-level `dist-cli/` no longer exists because the SPA now builds
+>   into `apps/web/dist/`.
+>
+> The rest of this ADR — publish-directory-not-root, the Node.js entrypoint
+> layering (now `packages/cli/src/node/`), the CLI-scoped tsconfig (now
+> `packages/cli/tsconfig.json`), the runtime-boundary scans, the no-source-map
+> policy, `engines.node`, and the split CI verification jobs — stands.
+
 ## Context
 
 [docs/adr/20260703T091000Z_cli-distribution-policy.md](./20260703T091000Z_cli-distribution-policy.md) decided that `installerer` ships an npm package (`@philomagi/installerer`) as an auxiliary Node.js CLI distribution, separate from the canonical Bun-compiled standalone executable. [Issue #81](https://github.com/tooppoo/installerer/issues/81) scopes the npm package metadata, `bin` entry, Node.js entrypoint, command dispatch skeleton, `build:npm`, and the npm publish boundary itself. Per-command implementations (`init` / `generate` / `validate` / `doctor`, issues #88-#91) and the standalone executable (issue #82) are out of scope here.

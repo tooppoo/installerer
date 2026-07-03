@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/tsconfig.json",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Tests and packaging scripts run under Bun (`bun test` / `bun run`),
+    // so Bun ambient types are allowed here, unlike CLI runtime source.
+    "lib": ["ESNext"],
+    "types": ["bun"]
+  },
+  "include": ["src", "test", "scripts"]
+}

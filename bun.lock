@@ -4,24 +4,45 @@
   "workspaces": {
     "": {
       "name": "bun-react-template",
-      "dependencies": {
-        "bun-plugin-tailwind": "^0.1.2",
-        "react": "^19",
-        "react-dom": "^19",
-        "tailwindcss": "^4.1.11",
-      },
       "devDependencies": {
         "@changesets/cli": "2.31.0",
         "@types/bun": "latest",
         "@types/node": "22.20.0",
-        "@types/react": "19.2.17",
-        "@types/react-dom": "19.2.3",
         "license-checker": "25.0.1",
         "oxfmt": "0.57.0",
         "oxlint": "1.72.0",
         "typescript": "6.0.3",
+      },
+    },
+    "apps/web": {
+      "name": "@installerer/web",
+      "version": "0.1.0",
+      "dependencies": {
+        "@installerer/core": "workspace:*",
+        "react": "^19",
+        "react-dom": "^19",
+      },
+      "devDependencies": {
+        "@types/react": "19.2.17",
+        "@types/react-dom": "19.2.3",
+        "bun-plugin-tailwind": "^0.1.2",
+        "tailwindcss": "^4.1.11",
         "wrangler": "4.107.0",
       },
+    },
+    "packages/cli": {
+      "name": "@philomagi/installerer",
+      "version": "0.1.0",
+      "bin": {
+        "installerer": "./bin/installerer.js",
+      },
+      "devDependencies": {
+        "@installerer/core": "workspace:*",
+      },
+    },
+    "packages/core": {
+      "name": "@installerer/core",
+      "version": "0.1.0",
     },
   },
   "packages": {
@@ -183,6 +204,10 @@
 
     "@inquirer/external-editor": ["@inquirer/external-editor@1.0.3", "", { "dependencies": { "chardet": "^2.1.1", "iconv-lite": "^0.7.0" }, "peerDependencies": { "@types/node": ">=18" }, "optionalPeers": ["@types/node"] }, "sha512-RWbSrDiYmO4LbejWY7ttpxczuwQyZLBUyygsA9Nsv95hpzUWwnNTVQmAq3xuh7vNwCp07UTmE5i11XAEExx4RA=="],
 
+    "@installerer/core": ["@installerer/core@workspace:packages/core"],
+
+    "@installerer/web": ["@installerer/web@workspace:apps/web"],
+
     "@jridgewell/resolve-uri": ["@jridgewell/resolve-uri@3.1.2", "", {}, "sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw=="],
 
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
@@ -306,6 +331,8 @@
     "@oxlint/binding-win32-ia32-msvc": ["@oxlint/binding-win32-ia32-msvc@1.72.0", "", { "os": "win32", "cpu": "ia32" }, "sha512-yt6HEh7IsHvtjRWtmeZRX134eaXKHq5Gnqlf1xBJdJl1JtdoRUEJw3nAxpZoUDS860cX/foKbztO441anVBtVQ=="],
 
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.72.0", "", { "os": "win32", "cpu": "x64" }, "sha512-b2eKFD2hX7tIwmo/cyH6TDq8vzWRZ2qNHrzoGntUTmq0h3zQh/uX3eTSHCwI8OB/ADQfJCRelLItK8BsxuucDA=="],
+
+    "@philomagi/installerer": ["@philomagi/installerer@workspace:packages/cli"],
 
     "@poppinss/colors": ["@poppinss/colors@4.1.6", "", { "dependencies": { "kleur": "^4.1.5" } }, "sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg=="],
 

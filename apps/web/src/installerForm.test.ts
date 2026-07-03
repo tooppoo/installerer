@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { validateInstallerConfig } from "./installerConfig";
-import { generateInstaller } from "./installerGenerator";
+import { validateInstallerConfig } from "@installerer/core/installerConfig";
+import { generateInstaller } from "@installerer/core/installerGenerator";
 import {
   architectureLabelSelection,
   ARCHITECTURE_LABEL_PRESETS,

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/tsconfig.json",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // packages/core is runtime-neutral (issue #100): no DOM lib, no Node/Bun
+    // ambient types. Source must typecheck against plain ECMAScript only.
+    "lib": ["ESNext"],
+    "types": []
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

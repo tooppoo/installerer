@@ -2,14 +2,19 @@ import {
   ARCHITECTURE_LABEL_PRESETS,
   CANONICAL_ARCHITECTURES,
   DEFAULT_ARCHITECTURE_LABELS,
-} from "./architectureLabels";
+} from "@installerer/core/architectureLabels";
 import {
   expandArchiveNameTemplate,
   parseArchiveNameTemplate,
   type ArchiveFormat,
-} from "./archiveTemplate";
-import type { ArchitectureLabels, OsCase, TargetArch, TargetOS } from "./installerConfig";
-import { ARCHIVE_FORMAT_COMMAND_NAMES } from "./runtimeDependencies/definitions";
+} from "@installerer/core/archiveTemplate";
+import type {
+  ArchitectureLabels,
+  OsCase,
+  TargetArch,
+  TargetOS,
+} from "@installerer/core/installerConfig";
+import { ARCHIVE_FORMAT_COMMAND_NAMES } from "@installerer/core/runtimeDependencies/definitions";
 
 /**
  * Browser form state for the installer generator UI.

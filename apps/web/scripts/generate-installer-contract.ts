@@ -20,12 +20,15 @@
  */
 import path from "node:path";
 
-const root = path.dirname(import.meta.dir);
-const sourcePath = path.join(root, "docs", "installer-contract.md");
-const outputPath = path.join(root, "src", "generated", "installerContract.ts");
+// This script is Web build support owned by apps/web (issue #100); the
+// source Markdown stays in the repository-level docs/ directory.
+const packageRoot = path.dirname(import.meta.dir);
+const repoRoot = path.join(packageRoot, "..", "..");
+const sourcePath = path.join(repoRoot, "docs", "installer-contract.md");
+const outputPath = path.join(packageRoot, "src", "generated", "installerContract.ts");
 
 const repoBlobBase = "https://github.com/tooppoo/installerer/blob/main";
-const sourceDir = path.posix.dirname(path.relative(root, sourcePath).split(path.sep).join("/"));
+const sourceDir = path.posix.dirname(path.relative(repoRoot, sourcePath).split(path.sep).join("/"));
 
 function rewriteRelativeLinks(markdown: string): string {
   return markdown.replace(/\]\(([^)]+)\)/g, (fullMatch, link: string) => {
@@ -85,12 +88,12 @@ if (checkMode) {
     JSON.stringify(generatedSegments) === JSON.stringify(segments);
   if (!inSync) {
     console.error(
-      `${path.relative(root, outputPath)} is out of sync with ${path.relative(root, sourcePath)}.`,
+      `${path.relative(repoRoot, outputPath)} is out of sync with ${path.relative(repoRoot, sourcePath)}.`,
     );
     console.error("Run: bun run docs:generate");
     process.exit(1);
   }
-  console.log(`${path.relative(root, outputPath)} is in sync.`);
+  console.log(`${path.relative(repoRoot, outputPath)} is in sync.`);
 } else {
   const module = `// AUTO-GENERATED FILE — DO NOT EDIT.
 // Source of truth: docs/installer-contract.md
@@ -106,10 +109,10 @@ export const INSTALLER_CONTRACT_SEGMENTS: InstallerContractSegment[] = ${JSON.st
 `;
   await Bun.write(outputPath, module);
   // Keep the generated module formatter-clean so `oxfmt --check .` passes as-is.
-  const format = Bun.spawnSync(["bun", "x", "oxfmt", outputPath], { cwd: root });
+  const format = Bun.spawnSync(["bun", "x", "oxfmt", outputPath], { cwd: packageRoot });
   if (format.exitCode !== 0) {
     console.error(format.stderr.toString());
     process.exit(format.exitCode);
   }
-  console.log(`Generated ${path.relative(root, outputPath)}.`);
+  console.log(`Generated ${path.relative(repoRoot, outputPath)}.`);
 }

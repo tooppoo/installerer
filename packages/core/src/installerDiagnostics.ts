@@ -1,6 +1,12 @@
 import type { ArchiveNamePreview } from "./archiveTemplate";
 import type { InstallerConfig } from "./installerConfig";
 
+// packages/core typechecks with no DOM/Node/Bun ambient types (issue #100),
+// so the WHATWG Encoding API global — provided by every supported runtime
+// (browsers, Node.js >= 22, Bun) but not part of ECMAScript's own lib — is
+// declared module-locally with just the surface used here.
+declare const TextEncoder: new () => { encode(input: string): Uint8Array };
+
 export type InstallerDiagnostics = {
   typoCommands: string[];
   expectedReleaseAssets: string[];

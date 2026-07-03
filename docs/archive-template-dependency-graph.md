@@ -2,7 +2,7 @@
 
 `installerer` validates `archive.nameTemplate` and the config fields that feed it by building a small variable dependency graph per runtime mode and propagating the _contexts_ each variable's value is used in. A fixed set of context-specific rules then checks only the config values that actually reach a dangerous context. This design was introduced to answer [issue #4](https://github.com/tooppoo/installerer/issues/4): the same value (for example a release tag) is safe in one context (a Git ref name) and unsafe in another (an archive filename), so validation must be aware of _where a value flows_, not just what type it declares.
 
-Implementation lives in [`src/archiveTemplateValidation.ts`](../src/archiveTemplateValidation.ts).
+Implementation lives in [`packages/core/src/archiveTemplateValidation.ts`](../packages/core/src/archiveTemplateValidation.ts).
 
 ## Modes Are Graphed Independently
 

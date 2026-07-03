@@ -3,6 +3,17 @@
 - Status: Accepted
 - Created: 2026-07-03T13:35:36Z
 
+> **Amendment (2026-07-03, [20260703T231205Z_monorepo-package-boundaries.md](./20260703T231205Z_monorepo-package-boundaries.md)):**
+> With the monorepo migration (issue #100), the canonical version source is the
+> CLI package's own manifest, `packages/cli/package.json`, not the root
+> `package.json` (the root is now a private workspace root). `version.ts` lives
+> at `packages/cli/src/version.ts` and imports `../package.json`. Everything
+> else in this ADR — single source of truth, static JSON import, identical
+> resolution across distribution channels, exact-value output — stands
+> unchanged, and is in fact strengthened: the imported manifest is now the same
+> static file that gets published, so no root-to-publish version mirroring
+> remains.
+
 ## Context
 
 [Issue #87](https://github.com/tooppoo/installerer/issues/87) implements `installerer --version` and `installerer -v`, the first CLI behavior that has to answer "what version is this?" instead of only static help text.

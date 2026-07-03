@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/package.json",
+  "name": "@installerer/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "BUN_PUBLIC_COMMIT_HASH=$(../../scripts/get-revision.sh) bun --hot src/index.ts",
+    "start": "NODE_ENV=production BUN_PUBLIC_COMMIT_HASH=$(../../scripts/get-revision.sh) bun src/index.ts",
+    "build": "bun run build.ts",
+    "docs:generate": "bun scripts/generate-installer-contract.ts",
+    "docs:check": "bun scripts/generate-installer-contract.ts --check",
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
+  },
+  "dependencies": {
+    "@installerer/core": "workspace:*",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "bun-plugin-tailwind": "^0.1.2",
+    "tailwindcss": "^4.1.11",
+    "wrangler": "4.107.0"
+  }
+}
