@@ -54,14 +54,14 @@ describe("buildInstallerDiagnostics", () => {
     expect(diagnostics.expectedReleaseAssets).toEqual([
       "VERSION",
       "checksums.txt",
-      "rellog_v1.2.3_linux_amd64.tar.gz",
-      "rellog_v1.2.3_darwin_arm64.tar.gz",
+      "rellog_v1.2.3_linux_x86_64.tar.gz",
+      "rellog_v1.2.3_darwin_aarch64.tar.gz",
     ]);
     expect(diagnostics.urls.latest).toEqual([
       "https://github.com/tooppoo/rellog/releases/latest/download/VERSION",
       "https://github.com/tooppoo/rellog/releases/download/v1.2.3/checksums.txt",
-      "https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_linux_amd64.tar.gz",
-      "https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_darwin_arm64.tar.gz",
+      "https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_linux_x86_64.tar.gz",
+      "https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_darwin_aarch64.tar.gz",
     ]);
     expect(diagnostics.urls.pinned[0]).toBe(
       "https://github.com/tooppoo/rellog/releases/download/v0.1.2/checksums.txt",
@@ -86,14 +86,14 @@ describe("buildInstallerDiagnostics", () => {
     const diagnostics = buildInstallerDiagnostics(result.config, result.archivePreviews);
     expect(diagnostics.expectedReleaseAssets).toEqual([
       "checksums.txt",
-      "rellog_linux_amd64#asset.tar.gz",
-      "rellog_darwin_arm64#asset.tar.gz",
+      "rellog_linux_x86_64#asset.tar.gz",
+      "rellog_darwin_aarch64#asset.tar.gz",
     ]);
     expect(diagnostics.urls.latest).toContain(
-      "https://github.com/tooppoo/rellog/releases/latest/download/rellog_linux_amd64%23asset.tar.gz",
+      "https://github.com/tooppoo/rellog/releases/latest/download/rellog_linux_x86_64%23asset.tar.gz",
     );
     expect(diagnostics.typoCommands).toContain(
-      "curl -fsIL https://github.com/tooppoo/rellog/releases/latest/download/rellog_linux_amd64%23asset.tar.gz >/dev/null",
+      "curl -fsIL https://github.com/tooppoo/rellog/releases/latest/download/rellog_linux_x86_64%23asset.tar.gz >/dev/null",
     );
     expect(diagnostics.urls.latest).not.toContain(
       "https://github.com/tooppoo/rellog/releases/latest/download/VERSION",

@@ -128,7 +128,7 @@ describe("versionResolverExample", () => {
     });
     expect(steps).toHaveLength(1);
     expect(steps[0]?.url).toBe(
-      "https://github.com/tooppoo/rellog/releases/latest/download/rellog_linux_amd64.tar.gz",
+      "https://github.com/tooppoo/rellog/releases/latest/download/rellog_linux_x86_64.tar.gz",
     );
   });
 
@@ -142,7 +142,7 @@ describe("versionResolverExample", () => {
       archiveOsCase: "capitalized",
     });
     expect(steps[0]?.url).toBe(
-      "https://github.com/tooppoo/rellog/releases/latest/download/rellog_Linux_amd64.tar.gz",
+      "https://github.com/tooppoo/rellog/releases/latest/download/rellog_Linux_x86_64.tar.gz",
     );
   });
 
@@ -176,15 +176,15 @@ describe("target selection", () => {
 });
 
 describe("architecture label selection (issue #76)", () => {
-  test("initialFormState uses the default amd64/arm64 preset mapping", () => {
-    expect(initialFormState.architectureLabels).toEqual({ x86_64: "amd64", aarch64: "arm64" });
+  test("initialFormState uses the default OS-reported architecture name mapping", () => {
+    expect(initialFormState.architectureLabels).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
   });
 
   test("built config includes architectureLabels and validates through the core", () => {
     const config = buildInstallerConfig(initialFormState) as {
       architectureLabels: Record<string, string>;
     };
-    expect(config.architectureLabels).toEqual({ x86_64: "amd64", aarch64: "arm64" });
+    expect(config.architectureLabels).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
     expect(validateInstallerConfig(config).ok).toBe(true);
   });
 

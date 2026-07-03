@@ -18,10 +18,15 @@ export const ARCHITECTURE_LABEL_PRESETS: Record<TargetArch, readonly string[]> =
   aarch64: ["arm64", "aarch64"],
 };
 
-/** Default `canonical_arch -> asset_arch_label` mapping applied when omitted from config. */
+/**
+ * Default `canonical_arch -> asset_arch_label` mapping applied when omitted
+ * from config: the OS-reported architecture name, not a build-tool-specific
+ * convention (e.g. Go's GOARCH `amd64`/`arm64`). Projects that publish assets
+ * using that convention instead set `architectureLabels` explicitly.
+ */
 export const DEFAULT_ARCHITECTURE_LABELS: Record<TargetArch, string> = {
-  x86_64: "amd64",
-  aarch64: "arm64",
+  x86_64: "x86_64",
+  aarch64: "aarch64",
 };
 
 /**

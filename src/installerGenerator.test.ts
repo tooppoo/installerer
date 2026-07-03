@@ -321,7 +321,7 @@ fi
 
     const previews = previewArchiveNames(result.config, "release/v1.2.3");
 
-    expect(previews[0]?.name).toBe("rellog_release/v1.2.3_linux_amd64.tar.gz");
+    expect(previews[0]?.name).toBe("rellog_release/v1.2.3_linux_x86_64.tar.gz");
     expect(previews[0]?.validation.errors[0]?.reason).toContain("path separators");
   });
 
@@ -337,7 +337,7 @@ fi
     }
 
     const previews = previewArchiveNames(result.config, "v1.2.3");
-    expect(previews[0]?.name).toBe("rellog_v1.2.3_Linux_amd64.tar.gz");
+    expect(previews[0]?.name).toBe("rellog_v1.2.3_Linux_x86_64.tar.gz");
   });
 
   const detectTarget = (

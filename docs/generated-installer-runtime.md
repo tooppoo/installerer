@@ -54,8 +54,8 @@ resolve_asset_arch_label() {
   canonical_arch=$1
 
   case "$canonical_arch" in
-    x86_64) asset_arch_label='amd64' ;;
-    aarch64) asset_arch_label='arm64' ;;
+    x86_64) asset_arch_label='x86_64' ;;
+    aarch64) asset_arch_label='aarch64' ;;
     *) fail "unsupported architecture: $canonical_arch" ;;
   esac
 
@@ -63,7 +63,7 @@ resolve_asset_arch_label() {
 }
 ```
 
-The case values shown above are the default mapping (`x86_64 -> amd64`, `aarch64 -> arm64`); a custom `architectureLabels` config changes only the right-hand side of each case arm, never the left-hand `canonical_arch` values or the runtime canonicalization in stage 1. `{arch}` and `{target}` in `archive.nameTemplate` expand to `asset_arch_label`, not to `canonical_arch` — so the same binary target can be published under any configured asset name spelling (`amd64`, `x86_64`, or a custom label such as `x64`) without changing how the generated installer detects the host. Two canonical architectures may resolve to the same `asset_arch_label` (for example both mapped to `universal`); this is allowed and is treated as a distribution/naming choice, not a validation error.
+The case values shown above are the default mapping — each canonical architecture maps to itself, the OS-reported name, not a build-tool convention such as Go's GOARCH (`amd64`/`arm64`). A custom `architectureLabels` config changes only the right-hand side of each case arm, never the left-hand `canonical_arch` values or the runtime canonicalization in stage 1. `{arch}` and `{target}` in `archive.nameTemplate` expand to `asset_arch_label`, not to `canonical_arch` — so the same binary target can be published under any configured asset name spelling (`x86_64`, `amd64`, or a custom label such as `x64`) without changing how the generated installer detects the host. Two canonical architectures may resolve to the same `asset_arch_label` (for example both mapped to `universal`); this is allowed and is treated as a distribution/naming choice, not a validation error.
 
 `asset_arch_label` values are validated at generation time against `^[A-Za-z0-9._+-]+$`, with `.` and `..` rejected explicitly even though they match that pattern (see [Variable Dependency Graph And Context-Specific Validation](archive-template-dependency-graph.md)). After expansion, the full archive asset filename is re-validated the same way as any other archive filename.
 

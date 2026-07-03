@@ -16,7 +16,7 @@ This is recorded as an ADR because it changes a public config field (`TargetArch
 Architecture is split into two distinct concepts that never share a resolution path with runtime detection:
 
 - **`canonical_arch`** — the CPU architecture the generated installer detects at runtime, normalized to exactly `x86_64` or `aarch64`. This is fixed generator logic, never user-configurable.
-- **`asset_arch_label`** — the string embedded in the Release asset filename. Configured per canonical architecture via a new `architectureLabels: { x86_64: string; aarch64: string }` config field, defaulting to `{ x86_64: "amd64", aarch64: "arm64" }` when omitted.
+- **`asset_arch_label`** — the string embedded in the Release asset filename. Configured per canonical architecture via a new `architectureLabels: { x86_64: string; aarch64: string }` config field, defaulting to `{ x86_64: "x86_64", aarch64: "aarch64" }` (the OS-reported architecture name) when omitted.
 
 The variable dependency graph (see [Variable Dependency Graph And Context-Specific Validation](archive-template-dependency-graph.md)) models this as `asset_arch_label` derived from both `arch` (canonical) and the two `architectureLabels.<canonical_arch>` config values; `{arch}`/`{target}` in `archive.nameTemplate` derive `archive_asset_name` from `asset_arch_label`, never from `arch` directly. This is not just documentation — it is why the existing `archive-filename-context` and `shell-literal-context` rules already validate custom architecture labels without a new rule: the dependency graph is the mechanism, not the label's cosmetic role.
 
@@ -32,8 +32,8 @@ esac
 
 # Stage 2 — configured label resolution (resolve_asset_arch_label)
 case "$canonical_arch" in
-  x86_64) asset_arch_label='amd64' ;;
-  aarch64) asset_arch_label='arm64' ;;
+  x86_64) asset_arch_label='x86_64' ;;
+  aarch64) asset_arch_label='aarch64' ;;
   *) fail "unsupported architecture: $canonical_arch" ;;
 esac
 ```
@@ -58,6 +58,12 @@ Ship a long built-in list of every architecture spelling seen across ecosystems 
 
 Reject configs where `x86_64` and `aarch64` resolve to the same `asset_arch_label` (e.g. both `universal`), since it could be seen as ambiguous. This is a legitimate distribution choice for projects that publish a single "fat"/universal binary or archive for multiple architectures, and no runtime safety property depends on `asset_arch_label` values being distinct — `canonical_arch`, not `asset_arch_label`, is what governs installer behavior. Not selected.
 
+### Default To The Go `GOARCH` Convention (`amd64`/`arm64`)
+
+An earlier version of this decision defaulted `architectureLabels` to `{ x86_64: "amd64", aarch64: "arm64" }`, matching the naming convention Go's `GOARCH` popularized (via `goreleaser` and similar tools) and now used well beyond the Go ecosystem. The reasoning was that more real-world Release asset layouts already use this spelling, so a zero-config default would match more existing projects out of the box.
+
+This was reconsidered: which architecture-label convention to default to is fundamentally a question about what the CPU architecture is called, and the OS itself already has an answer — the name `uname -m` reports once canonicalized (`x86_64`, `aarch64`). A build-tool-specific convention like `GOARCH`, however common, is one opinion among several (Rust target triples, Debian's `dpkg --print-architecture`, and others each spell this differently too), and baking it in as the _default_ — rather than one of the offered presets — quietly favors that one ecosystem's convention over the OS-native one for every project that doesn't think to override it. Keeping the OS-reported name as the default and offering `amd64`/`arm64` as a preset (for projects that do follow that convention) keeps the default neutral while still making the common case one selection away. Not selected as the default; kept as a preset.
+
 ## Consequences
 
 ### Positive Consequences
@@ -69,11 +75,12 @@ Reject configs where `x86_64` and `aarch64` resolve to the same `asset_arch_labe
 
 ### Negative Consequences
 
-- The default asset name for `x86_64` targets changes from `x86_64` to `amd64` (the new default `architectureLabels` mapping), which is a breaking change to previously generated installer output for configs that relied on the old implicit default and don't pin `architectureLabels` explicitly.
-- `TargetArch`'s `"arm64"` value is renamed to `"aarch64"` to serve as the canonical value, requiring existing `targets` config (`{ os, arch }` entries) written with `"arm64"` to be updated to `"aarch64"`.
+- `TargetArch`'s `"arm64"` value is renamed to `"aarch64"` to serve as the canonical value, requiring existing `targets` config (`{ os, arch }` entries) written with `"arm64"` to be updated to `"aarch64"`. Because the default `architectureLabels` mapping is now the identity mapping on the canonical value, this rename also changes the default asset name for what were `arm64` targets to `aarch64` for configs that don't pin `architectureLabels` explicitly — the same underlying rename surfaces in both the config schema and, by default, the generated asset name.
+- Projects whose Release assets already use the `amd64`/`arm64` (`GOARCH`-style) convention — a common case, since it's the default for `goreleaser` and widely copied by other tools — must now set `architectureLabels` explicitly instead of getting a matching default for free.
 - The config schema and generated script both grow one more moving part (`architectureLabels`, `resolve_asset_arch_label()`), increasing the surface documented in `generated-installer-runtime.md` and the dependency graph doc.
 
 ### Neutral Consequences
 
-- Projects that want asset names identical to the canonical architecture can still get that behavior by explicitly setting `architectureLabels: { x86_64: "x86_64", aarch64: "aarch64" }`.
+- The default asset name for `x86_64` targets is unchanged (`x86_64`), since the identity default preserves what the generator already did before `architectureLabels` existed.
+- Projects that want the `GOARCH`-style convention can get it by explicitly setting `architectureLabels: { x86_64: "amd64", aarch64: "arm64" }` — also offered as the non-default preset in the browser form.
 - `os`/`target` placeholder casing (`archive.osCase`) is unaffected; this ADR only changes architecture, not OS, rendering.

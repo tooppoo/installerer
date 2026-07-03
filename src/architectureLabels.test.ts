@@ -21,8 +21,8 @@ describe("static architecture label definitions (issue #76)", () => {
     });
   });
 
-  test("DEFAULT_ARCHITECTURE_LABELS maps x86_64 -> amd64 and aarch64 -> arm64", () => {
-    expect(DEFAULT_ARCHITECTURE_LABELS).toEqual({ x86_64: "amd64", aarch64: "arm64" });
+  test("DEFAULT_ARCHITECTURE_LABELS maps each canonical architecture to itself (OS-reported name, not GOARCH)", () => {
+    expect(DEFAULT_ARCHITECTURE_LABELS).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
   });
 
   test("default labels are themselves valid presets", () => {

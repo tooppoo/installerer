@@ -285,8 +285,8 @@ resolve_asset_arch_label() {
   canonical_arch=$1
 
   case "$canonical_arch" in
-    x86_64) asset_arch_label='amd64' ;;
-    aarch64) asset_arch_label='arm64' ;;
+    x86_64) asset_arch_label='x86_64' ;;
+    aarch64) asset_arch_label='aarch64' ;;
     *) fail "unsupported architecture: $canonical_arch" ;;
   esac
 

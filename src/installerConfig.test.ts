@@ -29,8 +29,8 @@ const validConfig = {
     { os: "linux", arch: "x86_64" },
     { os: "darwin", arch: "aarch64" },
   ],
-  // Keep asset labels equal to the canonical arch so unrelated tests below
-  // don't depend on the default amd64/arm64 asset label mapping.
+  // Explicit so unrelated tests below don't depend on architectureLabels
+  // defaults tested separately in the "architecture label mapping" describe.
   architectureLabels: { x86_64: "x86_64", aarch64: "aarch64" },
 };
 
@@ -489,16 +489,16 @@ describe("installer config validation", () => {
 });
 
 describe("architecture label mapping (issue #76)", () => {
-  test("defaults architectureLabels to amd64/arm64 when omitted", () => {
+  test("defaults architectureLabels to the OS-reported architecture name when omitted", () => {
     const { architectureLabels: _architectureLabels, ...withoutLabels } = validConfig;
     const result = validateInstallerConfig(withoutLabels);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.config.architectureLabels).toEqual({ x86_64: "amd64", aarch64: "arm64" });
+      expect(result.config.architectureLabels).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
       expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
-        "rellog_v1.2.3_linux_amd64.tar.gz",
-        "rellog_v1.2.3_darwin_arm64.tar.gz",
+        "rellog_v1.2.3_linux_x86_64.tar.gz",
+        "rellog_v1.2.3_darwin_aarch64.tar.gz",
       ]);
     }
   });

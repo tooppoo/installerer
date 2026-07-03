@@ -125,8 +125,8 @@ function placeExistingBinary(installDir: string, name: string, content: string):
 describe("release_version_file runtime e2e (tar.gz)", () => {
   const archive = buildArchive("tar.gz", [{ path: "bin/demo", content: LATEST_BINARY }]);
   const pinnedArchive = buildArchive("tar.gz", [{ path: "bin/demo", content: PINNED_BINARY }]);
-  const latestAssetName = "demo_v2.0.0_linux_amd64.tar.gz";
-  const pinnedAssetName = "demo_v1.0.0_linux_amd64.tar.gz";
+  const latestAssetName = "demo_v2.0.0_linux_x86_64.tar.gz";
+  const pinnedAssetName = "demo_v1.0.0_linux_x86_64.tar.gz";
 
   test("latest install resolves the configured version file, then installs from the tag", async () => {
     server.setLatestRelease(OWNER, REPO, { [VERSION_FILE_NAME]: "v2.0.0\n" });
@@ -183,7 +183,7 @@ describe("release_version_file runtime e2e (tar.gz)", () => {
 describe("latest_asset runtime e2e (zip)", () => {
   const archive = buildArchive("zip", [{ path: "demo", content: LATEST_BINARY }]);
   const pinnedArchive = buildArchive("zip", [{ path: "demo", content: PINNED_BINARY }]);
-  const assetName = "demo_linux_amd64.zip";
+  const assetName = "demo_linux_x86_64.zip";
 
   test("latest install downloads versionless assets and never a version file", async () => {
     server.setLatestRelease(OWNER, REPO, {
@@ -268,7 +268,7 @@ describe("dispatch and argument handling", () => {
     // (%2F for /), so the fixture server must decode that segment back to
     // "release/v1.2.3" — not split on the decoded slash — to find it.
     const archive = buildArchive("zip", [{ path: "demo", content: PINNED_BINARY }]);
-    const assetName = "demo_linux_amd64.zip";
+    const assetName = "demo_linux_x86_64.zip";
     server.setTaggedRelease(OWNER, REPO, "release/v1.2.3", {
       [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
       [assetName]: archive,
@@ -291,7 +291,7 @@ describe("dispatch and argument handling", () => {
 
 describe("failure handling", () => {
   const validArchive = buildArchive("tar.gz", [{ path: "bin/demo", content: PINNED_BINARY }]);
-  const assetName = "demo_v1.0.0_linux_amd64.tar.gz";
+  const assetName = "demo_v1.0.0_linux_x86_64.tar.gz";
   const pinArgs = ["--version", "v1.0.0"];
 
   test("checksum mismatch stops before extraction and preserves the existing binary", async () => {
