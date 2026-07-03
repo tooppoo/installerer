@@ -48,13 +48,13 @@ export function renderInstallBinary(): string {
   install_tmp=$(mktemp -- "$INSTALL_DIR/.$BINARY_NAME.tmp.XXXXXX") \\
     || fail "failed to create temporary install file in $INSTALL_DIR"
 
-  cp "$extracted_binary" "$install_tmp" \\
+  cp -- "$extracted_binary" "$install_tmp" \\
     || fail "failed to copy binary to temporary install path"
 
-  chmod 755 "$install_tmp" \\
+  chmod 755 -- "$install_tmp" \\
     || fail "failed to set binary mode"
 
-  mv "$install_tmp" "$INSTALL_DIR/$BINARY_NAME" \\
+  mv -- "$install_tmp" "$INSTALL_DIR/$BINARY_NAME" \\
     || fail "failed to place binary in install directory"
 
   install_tmp=
