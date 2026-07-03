@@ -42,6 +42,10 @@ CR=$(printf '\r')
 main() {
   version=
   install_dir_raw=$DEFAULT_INSTALL_DIR
+  saw_version=0
+  saw_install_dir=0
+  saw_requirements=0
+  saw_check_requirements=0
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -52,12 +56,22 @@ main() {
       --version)
         [ "$#" -ge 2 ] || fail "--version requires a value"
         version=$2
+        saw_version=1
         shift 2
         ;;
       --install-dir)
         [ "$#" -ge 2 ] || fail "--install-dir requires a value"
         install_dir_raw=$2
+        saw_install_dir=1
         shift 2
+        ;;
+      --requirements)
+        saw_requirements=1
+        shift
+        ;;
+      --check-requirements)
+        saw_check_requirements=1
+        shift
         ;;
       *)
         usage >&2
@@ -65,6 +79,18 @@ main() {
         ;;
     esac
   done
+
+  if [ "$saw_requirements" -eq 1 ] || [ "$saw_check_requirements" -eq 1 ]; then
+    if [ "$saw_version" -eq 1 ] || [ "$saw_install_dir" -eq 1 ]; then
+      fail "--requirements/--check-requirements must not be combined with --version/--install-dir"
+    fi
+    [ "$saw_requirements" -eq 0 ] || print_requirements
+    if [ "$saw_check_requirements" -eq 1 ]; then
+      check_requirements
+      exit $?
+    fi
+    exit 0
+  fi
 
   [ "$version" != "latest" ] || fail "--version latest is ambiguous; omit --version for latest install"
   INSTALL_DIR=$(resolve_install_dir "$install_dir_raw")
@@ -86,7 +112,156 @@ fail() {
 
 usage() {
   printf '%s\n' "usage: $0 [--version <version>] [--install-dir <dir>]"
+  printf '%s\n' "       $0 --requirements [--check-requirements]"
+  printf '%s\n' "       $0 --check-requirements"
   printf '%s\n' "       $0 --help"
+}
+
+print_requirements() {
+  printf '%s\n' 'Runtime requirements for this installer:'
+  printf '%s\n' ''
+  printf '%s\n' 'Runtime premise:'
+  printf '%s\n' '- POSIX-compatible sh: this installer is executed under a POSIX-compatible sh runtime'
+  printf '%s\n' ''
+  printf '%s\n' 'Required commands:'
+  printf '%s\n' '- uname: Detects the host OS and architecture.'
+  printf '%s\n' '- mktemp: Creates a private temporary workspace for download and extraction.'
+  printf '%s\n' '- rm: Cleans up temporary files.'
+  printf '%s\n' '- mkdir: Creates the install directory and the archive extraction directory.'
+  printf '%s\n' '- cp: Copies the extracted binary into the install directory.'
+  printf '%s\n' '- mv: Installs the binary atomically.'
+  printf '%s\n' '- chmod: Makes the installed binary executable.'
+  printf '%s\n' '- curl: Downloads release files from GitHub release assets.'
+  printf '%s\n' '- awk: Encodes URL path segments and looks up checksum entries.'
+  printf '%s\n' '- grep: Validates archive filenames.'
+  printf '%s\n' '- od: Encodes URL path segments safely.'
+  printf '%s\n' '- tr: Encodes URL path segments and canonicalizes OS names.'
+  printf '%s\n' '- cut: Encodes URL path segments safely.'
+  printf '%s\n' '- ls: Lists downloaded and extracted files for diagnostics.'
+  printf '%s\n' '- tar: Extracts tar.gz archives.'
+  printf '%s\n' '- sha256sum or shasum: Verifies SHA-256 checksums.'
+  printf '%s\n' ''
+  printf '%s\n' 'Network:'
+  printf '%s\n' '- HTTPS access to GitHub release assets: downloads the archive and checksum file from GitHub Releases'
+  printf '%s\n' ''
+  printf '%s\n' 'Filesystem:'
+  printf '%s\n' '- Write permission to the install directory: the installer writes the binary into the install directory'
+}
+
+check_requirements() {
+  status=0
+  printf '%s\n' "Checking runtime requirements..."
+  printf '\n'
+  printf '%s\n' "Runtime premise:"
+  printf '%s\n' '- POSIX-compatible sh: this installer is executed under a POSIX-compatible sh runtime'
+  printf '\n'
+  if command -v 'uname' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'uname'
+  else
+    printf 'missing: %s\n' 'uname'
+    status=1
+  fi
+  if command -v 'mktemp' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'mktemp'
+  else
+    printf 'missing: %s\n' 'mktemp'
+    status=1
+  fi
+  if command -v 'rm' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'rm'
+  else
+    printf 'missing: %s\n' 'rm'
+    status=1
+  fi
+  if command -v 'mkdir' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'mkdir'
+  else
+    printf 'missing: %s\n' 'mkdir'
+    status=1
+  fi
+  if command -v 'cp' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'cp'
+  else
+    printf 'missing: %s\n' 'cp'
+    status=1
+  fi
+  if command -v 'mv' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'mv'
+  else
+    printf 'missing: %s\n' 'mv'
+    status=1
+  fi
+  if command -v 'chmod' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'chmod'
+  else
+    printf 'missing: %s\n' 'chmod'
+    status=1
+  fi
+  if command -v 'curl' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'curl'
+  else
+    printf 'missing: %s\n' 'curl'
+    status=1
+  fi
+  if command -v 'awk' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'awk'
+  else
+    printf 'missing: %s\n' 'awk'
+    status=1
+  fi
+  if command -v 'grep' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'grep'
+  else
+    printf 'missing: %s\n' 'grep'
+    status=1
+  fi
+  if command -v 'od' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'od'
+  else
+    printf 'missing: %s\n' 'od'
+    status=1
+  fi
+  if command -v 'tr' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'tr'
+  else
+    printf 'missing: %s\n' 'tr'
+    status=1
+  fi
+  if command -v 'cut' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'cut'
+  else
+    printf 'missing: %s\n' 'cut'
+    status=1
+  fi
+  if command -v 'ls' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'ls'
+  else
+    printf 'missing: %s\n' 'ls'
+    status=1
+  fi
+  if command -v 'tar' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'tar'
+  else
+    printf 'missing: %s\n' 'tar'
+    status=1
+  fi
+  if command -v 'sha256sum' >/dev/null 2>&1 || command -v 'shasum' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'sha256sum or shasum'
+  else
+    printf 'missing: %s\n' 'sha256sum or shasum'
+    status=1
+  fi
+  printf '\n'
+  printf '%s\n' "Not checked:"
+  printf '%s\n' '- HTTPS access to GitHub release assets: downloads the archive and checksum file from GitHub Releases'
+  printf '%s\n' '- Write permission to the install directory: the installer writes the binary into the install directory'
+  printf '\n'
+  if [ "$status" -eq 0 ]; then
+    printf '%s\n' "All checkable requirements are satisfied."
+  else
+    printf '%s\n' "Some checkable requirements are missing."
+  fi
+  return "$status"
 }
 
 require_command() {
@@ -94,29 +269,29 @@ require_command() {
 }
 
 check_runtime_dependencies() {
-  require_command uname
-  require_command mktemp
-  require_command rm
-  require_command mkdir
-  require_command cp
-  require_command mv
-  require_command chmod
-  require_command curl
-  require_command awk
-  require_command grep
-  require_command od
-  require_command tr
-  require_command cut
-  require_command ls
+  require_command 'uname'
+  require_command 'mktemp'
+  require_command 'rm'
+  require_command 'mkdir'
+  require_command 'cp'
+  require_command 'mv'
+  require_command 'chmod'
+  require_command 'curl'
+  require_command 'awk'
+  require_command 'grep'
+  require_command 'od'
+  require_command 'tr'
+  require_command 'cut'
+  require_command 'ls'
   case "$ARCHIVE_FORMAT" in
-    tar.gz) require_command tar ;;
-    zip) require_command unzip ;;
+    tar.gz) require_command 'tar' ;;
+    zip) require_command 'unzip' ;;
     *) fail "unsupported archive format: $ARCHIVE_FORMAT" ;;
   esac
-  if command -v sha256sum >/dev/null 2>&1; then
-    CHECKSUM_COMMAND=sha256sum
-  elif command -v shasum >/dev/null 2>&1; then
-    CHECKSUM_COMMAND=shasum
+  if command -v 'sha256sum' >/dev/null 2>&1; then
+    CHECKSUM_COMMAND='sha256sum'
+  elif command -v 'shasum' >/dev/null 2>&1; then
+    CHECKSUM_COMMAND='shasum'
   else
     fail "sha256sum or shasum is required"
   fi

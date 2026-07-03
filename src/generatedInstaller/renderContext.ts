@@ -4,6 +4,8 @@ import {
   type ArchiveTemplateSegment,
 } from "../archiveTemplate";
 import type { InstallerConfig } from "../installerConfig";
+import { resolveRuntimeDependencies } from "../runtimeDependencies/resolve";
+import type { ResolvedRuntimeDependencies } from "../runtimeDependencies/model";
 
 /**
  * Pre-computed inputs shared by the section renderers. Sections must not
@@ -16,12 +18,17 @@ import type { InstallerConfig } from "../installerConfig";
  * `src/generatedInstaller/` reads `package.json` or `process.env` itself.
  * No section renderer consumes this field yet (issue #79 scopes that out;
  * whitelisting it into `renderMetadataComment` is a separate future issue).
+ *
+ * `resolvedDependencies` is the single source of truth for the generated
+ * installer's `--requirements` / `--check-requirements` (issue #75); it
+ * mirrors what the Web UI and CLI-reusable renderers show for this config.
  */
 export type RenderContext = {
   config: InstallerConfig;
   templateSegments: ArchiveTemplateSegment[];
   archiveSuffix: string;
   generatorVersion: string | undefined;
+  resolvedDependencies: ResolvedRuntimeDependencies;
 };
 
 export function createRenderContext(
@@ -38,5 +45,6 @@ export function createRenderContext(
     templateSegments: template.segments,
     archiveSuffix: archiveFormatSuffix(config.archive.format),
     generatorVersion,
+    resolvedDependencies: resolveRuntimeDependencies(config),
   };
 }

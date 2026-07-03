@@ -1,0 +1,3 @@
+# Committed snapshot fixtures are byte-for-byte comparison targets written by
+# test code (see test/helpers/snapshot.ts). They must not be reformatted.
+test/snapshots/*.json

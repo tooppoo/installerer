@@ -13,6 +13,8 @@ The generated installer accepts:
 ```text
 --version <version>
 --install-dir <dir>
+--requirements
+--check-requirements
 --help
 ```
 
@@ -23,6 +25,8 @@ Passing `--version <version>` installs the pinned release tag. `--version latest
 If `--install-dir` is omitted, the generated script uses `defaults.installDir` from JSON config. When config omits that field, the generator normalizes it to `$HOME/.local/bin`.
 
 JSON config intentionally has no `defaults.version` field.
+
+`--version` and `--install-dir` are **install options**; `--requirements` and `--check-requirements` are **test options** — see [Runtime Requirements Introspection](#runtime-requirements-introspection) below for their behavior and the rule against mixing the two groups.
 
 ## Target Detection And Architecture Label Resolution
 
@@ -103,29 +107,24 @@ For the `latest_asset` resolver, `install_latest` does not resolve a release tag
 
 The generated script is POSIX `sh`, but it intentionally depends on external commands for practical and safer runtime behavior.
 
-Required commands for every generated installer:
-
-- `uname`
-- `mktemp`
-- `rm`
-- `mkdir`
-- `cp`
-- `mv`
-- `chmod`
-- `curl`
-- `awk`
-- `grep`
-- `od`
-- `tr`
-- `cut`
-- `sha256sum` or `shasum`
-
-Archive-format-specific commands:
-
-- `tar` when `archive.format` is `tar.gz`
-- `unzip` when `archive.format` is `zip`
+See [`docs/runtime-dependencies.md`](./runtime-dependencies.md) for the generated, authoritative list of required commands — it is derived from `src/runtimeDependencies/definitions.ts` (issue #75), the single source of truth also used by the Web UI and by the generated installer's own `--requirements` / `--check-requirements` (below).
 
 `curl` has no fallback in the MVP. If any required command is missing, the generated script stops with a clear error.
+
+## Runtime Requirements Introspection
+
+Every generated installer accepts two additional, mutually exclusive-with-install options:
+
+```text
+--requirements
+--check-requirements
+```
+
+`--requirements` prints the runtime requirements resolved for this specific config — the same underlying typed dependency definitions as [`docs/runtime-dependencies.md`](./runtime-dependencies.md) (`src/runtimeDependencies/definitions.ts`), but resolved to this config's single archive-format command and annotated with per-dependency reasons, the POSIX `sh` premise, and the network/filesystem items — and exits `0`. It does not perform target detection, install-dir resolution, dependency checks, network access, or filesystem writes.
+
+`--check-requirements` probes every checkable dependency with `command -v` and reports `ok:`/`missing:` for each, without stopping at the first missing command — it aggregates and reports all of them, then exits `0` if every checkable dependency is present or non-zero otherwise. Non-checkable items (network access, filesystem write permission) are listed under a trailing `Not checked:` section instead of being probed. POSIX `sh` itself is listed as a `Runtime premise:`, not as a checkable command.
+
+Both options are terminal: they run before any install-flow work and never call `install_latest` / `install_pin`. They classify as **test options**, distinct from the **install options** `--version` / `--install-dir`; combining a test option with an install option (e.g. `--version v1.0.0 --requirements`) is rejected. `--requirements --check-requirements` together is allowed and runs both, in that order, with the exit code following `--check-requirements`.
 
 ## URL Generation And Encoding
 

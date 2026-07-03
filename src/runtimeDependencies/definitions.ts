@@ -1,0 +1,148 @@
+import type { ArchiveFormat } from "../archiveTemplate";
+import type { RuntimeDependencyDefinition, RuntimePremiseEntry } from "./model";
+
+/**
+ * Commands required by every generated installer, regardless of config.
+ * This is the single place these command names are declared — sections of
+ * the generated installer and the Web UI hint must import from here instead
+ * of re-typing command names.
+ */
+export const BASE_COMMAND_DEPENDENCIES: RuntimeDependencyDefinition[] = [
+  {
+    id: "uname",
+    label: "uname",
+    reason: "Detects the host OS and architecture.",
+    check: { type: "command", command: "uname" },
+  },
+  {
+    id: "mktemp",
+    label: "mktemp",
+    reason: "Creates a private temporary workspace for download and extraction.",
+    check: { type: "command", command: "mktemp" },
+  },
+  {
+    id: "rm",
+    label: "rm",
+    reason: "Cleans up temporary files.",
+    check: { type: "command", command: "rm" },
+  },
+  {
+    id: "mkdir",
+    label: "mkdir",
+    reason: "Creates the install directory and the archive extraction directory.",
+    check: { type: "command", command: "mkdir" },
+  },
+  {
+    id: "cp",
+    label: "cp",
+    reason: "Copies the extracted binary into the install directory.",
+    check: { type: "command", command: "cp" },
+  },
+  {
+    id: "mv",
+    label: "mv",
+    reason: "Installs the binary atomically.",
+    check: { type: "command", command: "mv" },
+  },
+  {
+    id: "chmod",
+    label: "chmod",
+    reason: "Makes the installed binary executable.",
+    check: { type: "command", command: "chmod" },
+  },
+  {
+    id: "curl",
+    label: "curl",
+    reason: "Downloads release files from GitHub release assets.",
+    check: { type: "command", command: "curl" },
+  },
+  {
+    id: "awk",
+    label: "awk",
+    reason: "Encodes URL path segments and looks up checksum entries.",
+    check: { type: "command", command: "awk" },
+  },
+  {
+    id: "grep",
+    label: "grep",
+    reason: "Validates archive filenames.",
+    check: { type: "command", command: "grep" },
+  },
+  {
+    id: "od",
+    label: "od",
+    reason: "Encodes URL path segments safely.",
+    check: { type: "command", command: "od" },
+  },
+  {
+    id: "tr",
+    label: "tr",
+    reason: "Encodes URL path segments and canonicalizes OS names.",
+    check: { type: "command", command: "tr" },
+  },
+  {
+    id: "cut",
+    label: "cut",
+    reason: "Encodes URL path segments safely.",
+    check: { type: "command", command: "cut" },
+  },
+  {
+    id: "ls",
+    label: "ls",
+    reason: "Lists downloaded and extracted files for diagnostics.",
+    check: { type: "command", command: "ls" },
+  },
+];
+
+/** `archive.format` -> the single external command it requires at runtime. */
+export const ARCHIVE_FORMAT_COMMAND_NAMES: Record<ArchiveFormat, string> = {
+  "tar.gz": "tar",
+  zip: "unzip",
+};
+
+export const ARCHIVE_FORMAT_DEPENDENCIES: Record<ArchiveFormat, RuntimeDependencyDefinition> = {
+  "tar.gz": {
+    id: "tar",
+    label: "tar",
+    reason: "Extracts tar.gz archives.",
+    check: { type: "command", command: ARCHIVE_FORMAT_COMMAND_NAMES["tar.gz"] },
+  },
+  zip: {
+    id: "unzip",
+    label: "unzip",
+    reason: "Extracts zip archives.",
+    check: { type: "command", command: ARCHIVE_FORMAT_COMMAND_NAMES.zip },
+  },
+};
+
+export const CHECKSUM_DEPENDENCY: RuntimeDependencyDefinition = {
+  id: "sha256-checksum-command",
+  label: "sha256sum or shasum",
+  reason: "Verifies SHA-256 checksums.",
+  check: { type: "any-command", commands: ["sha256sum", "shasum"] },
+};
+
+export const SHELL_PREMISE: RuntimePremiseEntry = {
+  id: "posix-sh",
+  premise: "shell",
+  label: "POSIX-compatible sh",
+  description: "this installer is executed under a POSIX-compatible sh runtime",
+};
+
+export const NETWORK_PREMISES: RuntimePremiseEntry[] = [
+  {
+    id: "github-release-https",
+    premise: "network",
+    label: "HTTPS access to GitHub release assets",
+    description: "downloads the archive and checksum file from GitHub Releases",
+  },
+];
+
+export const FILESYSTEM_PREMISES: RuntimePremiseEntry[] = [
+  {
+    id: "install-dir-writable",
+    premise: "filesystem",
+    label: "Write permission to the install directory",
+    description: "the installer writes the binary into the install directory",
+  },
+];
