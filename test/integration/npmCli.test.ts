@@ -7,8 +7,6 @@ import { join } from "node:path";
 import {
   findBrowserUiReferences,
   findBunRuntimeReferences,
-  findMachineSpecificPathLeaks,
-  findSecretLeaks,
   NODE_SHEBANG,
   PUBLISH_DIR_FILES,
 } from "../../scripts/npmPublishDir";
@@ -26,7 +24,6 @@ import {
 const root = join(import.meta.dir, "..", "..");
 const outDir = join(root, "dist-npm");
 const binPath = join(outDir, "bin", "installerer.js");
-const mapPath = join(outDir, "bin", "installerer.js.map");
 
 function run(command: string, args: string[], options: { cwd?: string } = {}) {
   const result = spawnSync(command, args, { cwd: options.cwd ?? root, encoding: "utf8" });
@@ -85,22 +82,6 @@ describe("npm CLI publish directory (build:npm)", () => {
     const source = readFileSync(binPath, "utf8");
     expect(findBunRuntimeReferences(source)).toEqual([]);
     expect(findBrowserUiReferences(source)).toEqual([]);
-  });
-
-  test("source map sources are repo-relative, with no absolute or machine-specific paths, secrets, or tokens", () => {
-    const mapText = readFileSync(mapPath, "utf8");
-    const map = JSON.parse(mapText);
-    const sources = map.sources as string[];
-    expect(sources.length).toBeGreaterThan(0);
-    for (const source of sources) {
-      expect(source.startsWith("/")).toBe(false);
-      expect(source.split("/")).not.toContain("..");
-    }
-
-    // Whole-map scan: also covers `sourcesContent`, `names`, and any other
-    // field `sanitizeSourceMapSources` does not touch.
-    expect(findMachineSpecificPathLeaks(mapText, root)).toEqual([]);
-    expect(findSecretLeaks(mapText)).toEqual([]);
   });
 
   test("bin entry starts up and prints help under Node.js", () => {

@@ -13,15 +13,11 @@ import { chmod, copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
-  assertNoLeakedSourcePaths,
   buildPublishPackageJson,
   ensureShebang,
   findBrowserUiReferences,
   findBunRuntimeReferences,
-  findMachineSpecificPathLeaks,
-  findSecretLeaks,
   NPM_CLI_BIN_NAME,
-  sanitizeSourceMapSources,
   type RootPackageJson,
 } from "./npmPublishDir";
 
@@ -30,7 +26,6 @@ const outDir = path.join(root, "dist-npm");
 const binDir = path.join(outDir, "bin");
 const entrypoint = path.join(root, "src", "cli", "node", "main.ts");
 const bundlePath = path.join(binDir, NPM_CLI_BIN_NAME);
-const sourceMapPath = `${bundlePath}.map`;
 
 async function main() {
   await rm(outDir, { recursive: true, force: true });
@@ -41,7 +36,7 @@ async function main() {
     outdir: binDir,
     target: "node",
     format: "esm",
-    sourcemap: "linked",
+    sourcemap: "none",
     naming: NPM_CLI_BIN_NAME,
   });
   if (!result.success) {
@@ -51,7 +46,6 @@ async function main() {
 
   await enforceNodeRuntimeBoundary(bundlePath);
   await writeShebangAndExecutableBit(bundlePath);
-  await sanitizeSourceMap(sourceMapPath);
 
   const rootPkg: RootPackageJson = await Bun.file(path.join(root, "package.json")).json();
   await writeFile(
@@ -86,30 +80,6 @@ async function writeShebangAndExecutableBit(jsPath: string): Promise<void> {
   const source = await Bun.file(jsPath).text();
   await writeFile(jsPath, ensureShebang(source));
   await chmod(jsPath, 0o755);
-}
-
-async function sanitizeSourceMap(mapPath: string): Promise<void> {
-  const map = await Bun.file(mapPath).json();
-  const sources = sanitizeSourceMapSources(map.sources ?? [], binDir, root);
-  assertNoLeakedSourcePaths(sources);
-
-  const sanitized = JSON.stringify({ ...map, sources });
-  await writeFile(mapPath, sanitized);
-
-  // Whole-file safety net: `sources` is now clean, but `sourcesContent`
-  // (the embedded file text) and other map fields are not touched above.
-  const pathLeaks = findMachineSpecificPathLeaks(sanitized, root);
-  if (pathLeaks.length > 0) {
-    throw new Error(
-      `build:npm: npm CLI source map leaks a machine-specific path: ${pathLeaks.join(", ")}`,
-    );
-  }
-  const secretLeaks = findSecretLeaks(sanitized);
-  if (secretLeaks.length > 0) {
-    throw new Error(
-      `build:npm: npm CLI source map may contain a secret: ${secretLeaks.join(", ")}`,
-    );
-  }
 }
 
 await main();

@@ -17,7 +17,7 @@ This repository's toolchain, before this issue, only set up Bun (`.bun-version`,
 
 `build:npm` (`bun run scripts/build-npm.ts`, using `Bun.build` — running the build under Bun is explicitly permitted by the distribution ADR) generates a dedicated publish directory, `dist-npm/` (gitignored), instead of publishing the repository root. `dist-npm/package.json` is generated from scratch (`scripts/npmPublishDir.ts#buildPublishPackageJson`), not copied from the root manifest: it carries only `name`/`version` (mirrored from root), `description`, `license`, `type`, `bin`, `files: ["bin"]`, `engines.node` (`>=20.0.0`), and repository metadata. It has no `private` field, no SPA dependencies, and no dev scripts. The root `package.json` keeps `private: true` and is never published directly.
 
-`dist-npm/` contents: `package.json`, `README.md`, `LICENSE` (copied from root), and `bin/installerer.js` + `bin/installerer.js.map` (the built CLI). `files: ["bin"]` plus npm's automatic inclusion of `package.json`/`README`/`LICENSE` is the publish file-set boundary; nothing under `src/`, `public/`, `test/`, or `dist/` (the SPA build) is reachable from it.
+`dist-npm/` contents: `package.json`, `README.md`, `LICENSE` (copied from root), and `bin/installerer.js` (the built CLI; see Source map policy below for why no `.map` file ships alongside it). `files: ["bin"]` plus npm's automatic inclusion of `package.json`/`README`/`LICENSE` is the publish file-set boundary; nothing under `src/`, `public/`, `test/`, or `dist/` (the SPA build) is reachable from it.
 
 ### Node.js CLI entrypoint layering
 
@@ -36,11 +36,9 @@ The existing runtime-independent core (`src/cli/dispatch.ts`, from issue #86) is
 
 `Bun.build` targets `node` for `src/cli/node/main.ts`, so `node:*` built-in imports (e.g. `node:util` in `dispatch.ts`) stay external instead of being bundled, and the output is plain ESM JavaScript with no Bun-specific runtime dependency. `build:npm` then scans the bundle text for `Bun.` global usage and `bun:` module specifiers (`scripts/npmPublishDir.ts#findBunRuntimeReferences`) and for React/browser UI markers (`findBrowserUiReferences`), failing the build if either is found. `test/integration/npmCli.test.ts` re-asserts both against the generated artifact.
 
-### Source map policy
+### Source map policy: no source map is shipped
 
-`Bun.build`'s `sourcemap: "linked"` output embeds `sourcesContent` (the actual file text), but emits `sources` as bundler-output-relative paths that encode the full local/worktree directory structure (e.g. `../../../workspaces/installerer/.git/kura/worktrees/81/src/cli/dispatch.ts`). Since `sourcesContent` already carries the text needed for debugging, `build:npm` rewrites `sources` to clean, repo-relative paths (`src/cli/dispatch.ts`) instead (`sanitizeSourceMapSources`), and throws if a resulting path is still absolute or contains a `..` segment (`assertNoLeakedSourcePaths`) rather than allowing it into the published tarball. Any source outside the repo root falls back to `external/<basename>` instead of leaking its real path.
-
-`sanitizeSourceMapSources` only rewrites the `sources` array; it does not touch `sourcesContent`, `names`, or any other map field. `build:npm` additionally scans the map's full serialized text (`findMachineSpecificPathLeaks`, `findSecretLeaks`) for the repo's own absolute checkout path, common home-directory prefixes (`/home/`, `/Users/`, `/root/`, `/workspaces/`), and common secret/token/private-key shapes (PEM private key headers, AWS/GitHub/Slack/Google API key patterns), and throws if either finds anything. This is a whole-file safety net on top of the `sources`-array rewrite, guarding against a leak entering through `sourcesContent` (embedded file text) instead.
+`build:npm` builds with `sourcemap: "none"`; `dist-npm/` does not contain a `bin/installerer.js.map`. The distribution ADR's source map policy only ever said a source map "may" be included for CLI debugging convenience — it was never required — and the safety work that permission implies (rewriting bundler-relative `sources` entries to repo-relative paths, plus scanning the map's full text, including `sourcesContent`, for machine-specific paths and secret/token shapes) is ongoing maintenance surface for a "nice to have." Not shipping a source map removes that surface entirely: there is nothing to sanitize or scan, and no future CLI source file can leak anything through it. Node.js stack traces from the built CLI point at the bundled `bin/installerer.js` itself, which is intentionally close to unminified (no `minify` option is passed to `Bun.build`), so they stay readable without a map. See Alternatives Considered for the sanitize-and-ship approach this replaced.
 
 ### Real npm/node verification in CI
 
@@ -56,17 +54,13 @@ Removing `private: true` from the root `package.json` and publishing it as-is wa
 
 Post-processing a copy (deleting `private`, `dependencies`, non-CLI `scripts`, …) was considered instead of building the publish manifest from scratch. Generating it from scratch was selected because it is simpler to reason about and test (`buildPublishPackageJson` is a pure function with an explicit output shape) than an allowlist/denylist over an evolving root manifest.
 
-### Leaving bundler-relative source map paths as-is
+### Shipping a sanitized, scanned source map
 
-Shipping `Bun.build`'s raw `sources` output was rejected because it leaks the machine-specific/worktree-specific absolute directory structure (see Decision), which the distribution ADR's source map policy explicitly prohibits.
+Earlier versions of this decision shipped `bin/installerer.js.map` and made it safe: `Bun.build`'s raw `sources` output leaks the machine-specific/worktree-specific absolute directory structure (e.g. `../../../workspaces/installerer/.git/kura/worktrees/81/src/cli/dispatch.ts`), so `sources` entries were rewritten to clean, repo-relative paths, and the map's full serialized text (including `sourcesContent`, which the `sources` rewrite alone does not touch) was scanned for the repo's own absolute checkout path, common home-directory prefixes, and common secret/token/private-key shapes, failing the build if anything was found. This was reconsidered and dropped in favor of not shipping a source map at all (see Decision): sanitizing and scanning is ongoing surface to maintain for a feature the distribution ADR only ever made optional, and pattern-based secret/path scanning can never be a complete guarantee, whereas "no map" has no leak surface by construction.
 
 ### Using Bun's npm-compatible tooling instead of real npm/node in CI
 
 An earlier version of this decision used `bun pm pack` / `bun add <tarball>` / `bun <built-cli>` as proxies for `npm pack` / `npm install` / `node <built-cli>`, to avoid adding a second language runtime to this otherwise Bun-only CI pipeline. This was rejected on review: the acceptance criteria name `npm pack`, `npm install`, and `node <built-cli>` specifically, and `bin` shim generation, packed file-mode preservation, and startup behavior are exactly the kind of thing that can differ between Bun's npm-compatible tooling and real npm/Node.js. `actions/setup-node` was added instead so the smoke tests exercise the real toolchain.
-
-### Scanning only the `sources` array for leaked paths
-
-An earlier version of the source map policy only sanitized and asserted against the `sources` array, leaving `sourcesContent` unscanned. This was rejected on review: `sourcesContent` (the embedded file text) is exactly where a leaked absolute path or secret would most plausibly show up if a future CLI source file printed one, and the acceptance criteria explicitly ask for both absolute-path and secret/token leakage checks. `findMachineSpecificPathLeaks` / `findSecretLeaks` scan the map's full text instead.
 
 ## Consequences
 
@@ -74,7 +68,7 @@ An earlier version of the source map policy only sanitized and asserted against 
 
 - `dist-npm/` and its generated `package.json` give the npm publish boundary a single, testable definition instead of an implicit "whatever `npm publish` from root would pick up" boundary.
 - `runNodeCli`'s injectable IO keeps `process.exit` out of the unit test process while still giving the entrypoint itself full process-IO responsibility, matching the runtime-independent-core boundary from issue #86.
-- Source maps stay useful for stack traces (via `sourcesContent`) without leaking local machine or worktree paths, or embedded secrets.
+- Not shipping a source map means there is no local-path/secret leak surface in the published package to sanitize, scan, or keep maintaining as the CLI grows.
 - `CliCommandModule` gives issues #88-#91 a ready-made extension point instead of each inventing its own module shape.
 - `test/integration/npmCli.test.ts` exercises the real `npm pack` / `npm install` / `node` / npm bin-shim path, so a Bun/Node.js behavioral difference in packaging or startup would be caught in this repository's own CI, not only in a future release job.
 
@@ -82,7 +76,7 @@ An earlier version of the source map policy only sanitized and asserted against 
 
 - CI now depends on two language runtimes (Bun and Node.js) instead of one.
 - `dist-npm/package.json`'s field list must be kept in sync by hand as the CLI's needs evolve (e.g. adding a runtime dependency would require updating `buildPublishPackageJson`, not just root `package.json`).
-- The machine-specific-path and secret scans are pattern-based (a fixed prefix list and a handful of well-known token shapes), not a general-purpose secret scanner; a leak in a shape not covered by `SECRET_PATTERNS` would not be caught.
+- Node.js stack traces from the installed CLI point at the bundled `bin/installerer.js`, not the original `src/cli/**/*.ts` files; debugging a production npm CLI crash is less convenient than it would be with a source map.
 
 ### Neutral Consequences
 
