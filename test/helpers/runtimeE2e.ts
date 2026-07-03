@@ -27,9 +27,10 @@ const GITHUB_BASE_URL = "https://github.com";
  * Rewrites the GitHub Release base URL of a generated installer to the local
  * fixture server. Asserts the production script contains exactly the URL
  * constructions the generator is known to emit (6 with a version file
- * resolver, 5 without — including the one reference in the leading
- * disclaimer comment) and that no GitHub reference survives the rewrite, so
- * a test run can never silently fall through to the real network.
+ * resolver, 5 without — including the one reference in the effective-config
+ * metadata comment's generator.sourceUrl field) and that no GitHub reference
+ * survives the rewrite, so a test run can never silently fall through to the
+ * real network.
  */
 export function rewriteBaseUrlForTest(script: string, baseUrl: string): string {
   const occurrences = script.split(GITHUB_BASE_URL).length - 1;
