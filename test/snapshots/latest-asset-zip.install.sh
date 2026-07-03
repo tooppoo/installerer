@@ -403,9 +403,9 @@ download_and_install() {
   archive_url=$1
   checksum_url=$2
   archive_asset_name=$3
-  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
   trap cleanup EXIT
   trap cleanup_on_signal HUP INT TERM
+  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
   archive_path="$tmpdir/archive"
   checksum_path="$tmpdir/checksums"
   extract_dir="$tmpdir/extract"
