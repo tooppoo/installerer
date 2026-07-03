@@ -387,13 +387,36 @@ extract_archive() {
   [ -f "$extracted_binary" ] || fail "archive binary entry is not a regular file: $BINARY_PATH_IN_ARCHIVE"
 }
 
+cleanup() {
+  if [ -n "${install_tmp:-}" ]; then
+    rm -f "$install_tmp"
+  fi
+  if [ -n "${tmpdir:-}" ]; then
+    rm -rf "$tmpdir"
+  fi
+}
+
+cleanup_on_signal() {
+  cleanup
+  exit 1
+}
+
 install_binary() {
   mkdir -p "$INSTALL_DIR" || fail "failed to create install directory: $INSTALL_DIR"
-  install_tmp="$INSTALL_DIR/.$BINARY_NAME.tmp.$$"
-  rm -f "$install_tmp" || fail "failed to remove stale temporary install file: $install_tmp"
-  cp "$extracted_binary" "$install_tmp" || fail "failed to copy binary to temporary install path"
-  chmod +x "$install_tmp" || fail "failed to mark binary executable"
-  mv "$install_tmp" "$INSTALL_DIR/$BINARY_NAME" || fail "failed to place binary in install directory"
+
+  install_tmp=$(mktemp "$INSTALL_DIR/.$BINARY_NAME.tmp.XXXXXX") \
+    || fail "failed to create temporary install file in $INSTALL_DIR"
+
+  cp "$extracted_binary" "$install_tmp" \
+    || fail "failed to copy binary to temporary install path"
+
+  chmod 755 "$install_tmp" \
+    || fail "failed to set binary mode"
+
+  mv "$install_tmp" "$INSTALL_DIR/$BINARY_NAME" \
+    || fail "failed to place binary in install directory"
+
+  install_tmp=
 }
 
 download_and_install() {
@@ -401,7 +424,8 @@ download_and_install() {
   checksum_url=$2
   archive_asset_name=$3
   tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
-  trap 'rm -rf "$tmpdir"' EXIT HUP INT TERM
+  trap cleanup EXIT
+  trap cleanup_on_signal HUP INT TERM
   archive_path="$tmpdir/archive"
   checksum_path="$tmpdir/checksums"
   extract_dir="$tmpdir/extract"

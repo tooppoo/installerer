@@ -74,10 +74,14 @@ describe("installer generation", () => {
     );
     expect(script).toContain('[ ! -L "$extracted_binary" ]');
     expect(script).toContain('[ -f "$extracted_binary" ]');
-    expect(script).toContain('install_tmp="$INSTALL_DIR/.$BINARY_NAME.tmp.$$"');
+    expect(script).toContain('install_tmp=$(mktemp "$INSTALL_DIR/.$BINARY_NAME.tmp.XXXXXX")');
     expect(script).toContain('cp "$extracted_binary" "$install_tmp"');
-    expect(script).toContain('chmod +x "$install_tmp"');
+    expect(script).toContain('chmod 755 "$install_tmp"');
     expect(script).toContain('mv "$install_tmp" "$INSTALL_DIR/$BINARY_NAME"');
+    expect(script).toContain("install_tmp=\n}");
+    expect(script).toContain("trap cleanup EXIT");
+    expect(script).toContain("trap cleanup_on_signal HUP INT TERM");
+    expect(script).not.toContain("tmp.$$");
     expect(script).toContain("https://github.com/$owner_path/$repo_path/releases/download/");
     expect(script).not.toContain("api.github.com");
   });

@@ -8,7 +8,6 @@ import { renderDependencies } from "./sections/dependencies";
 import { renderFail } from "./sections/diagnostics";
 import { renderCurlDownload } from "./sections/download";
 import { renderExtractArchive } from "./sections/extraction";
-import { renderInstallBinary } from "./sections/filesystem";
 import { renderGitTag } from "./sections/gitTag";
 import { renderHeader } from "./sections/header";
 import { renderInstallDir } from "./sections/installDir";
@@ -17,6 +16,7 @@ import {
   renderInstallLatest,
   renderInstallPin,
 } from "./sections/installFlow";
+import { renderCleanup, renderInstallBinary } from "./sections/installTmpFile";
 import { renderMetadataComment } from "./sections/metadataComment";
 import { renderRuntimeValidation } from "./sections/runtimeValidation";
 import { renderTarget } from "./sections/target";
@@ -48,6 +48,7 @@ export function composeInstallerScript(context: RenderContext): string {
     renderCurlDownload(),
     renderVerifySha256(),
     renderExtractArchive(),
+    renderCleanup(),
     renderInstallBinary(),
     renderDownloadAndInstall(),
     renderInstallLatest(context),
