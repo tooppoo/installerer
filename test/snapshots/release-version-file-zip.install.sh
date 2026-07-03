@@ -24,7 +24,7 @@ fi
 #   checksum.fileName: checksums.txt
 #   checksum.algorithm: sha256
 #   defaults.installDir: /usr/local/bin
-#   targets: linux/x86_64, darwin/arm64
+#   targets: linux/x86_64, darwin/aarch64
 
 OWNER='tooppoo'
 REPO='git-kura'

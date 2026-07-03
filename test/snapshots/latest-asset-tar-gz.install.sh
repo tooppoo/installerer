@@ -23,7 +23,7 @@ fi
 #   checksum.fileName: checksums.txt
 #   checksum.algorithm: sha256
 #   defaults.installDir: $HOME/.local/bin
-#   targets: linux/x86_64, linux/arm64, darwin/x86_64, darwin/arm64
+#   targets: linux/x86_64, linux/aarch64, darwin/x86_64, darwin/aarch64
 
 OWNER='tooppoo'
 REPO='rellog'

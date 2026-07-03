@@ -27,10 +27,11 @@ const baseConfig: InstallerConfig = {
   },
   targets: [
     { os: "linux", arch: "x86_64" },
-    { os: "linux", arch: "arm64" },
+    { os: "linux", arch: "aarch64" },
     { os: "darwin", arch: "x86_64" },
-    { os: "darwin", arch: "arm64" },
+    { os: "darwin", arch: "aarch64" },
   ],
+  architectureLabels: { x86_64: "x86_64", aarch64: "aarch64" },
   defaults: {
     installDir: "$HOME/.local/bin",
   },
@@ -56,7 +57,7 @@ describe("renderMetadataComment", () => {
     expect(comment).toContain("#   checksum.algorithm: sha256");
     expect(comment).toContain("#   defaults.installDir: $HOME/.local/bin");
     expect(comment).toContain(
-      "#   targets: linux/x86_64, linux/arm64, darwin/x86_64, darwin/arm64",
+      "#   targets: linux/x86_64, linux/aarch64, darwin/x86_64, darwin/aarch64",
     );
   });
 
