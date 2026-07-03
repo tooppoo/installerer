@@ -7,8 +7,17 @@ import type { InstallerConfig } from "../installerConfig";
 import { createRenderContext } from "./renderContext";
 import { composeInstallerScript } from "./script";
 
-export function generateInstaller(config: InstallerConfig): string {
-  return composeInstallerScript(createRenderContext(config));
+/**
+ * `generatorVersion` is an optional, explicit external input (the
+ * installerer CLI's own version, see
+ * docs/adr/20260703T144753Z_generator-version-injection-boundary.md), not a
+ * value derived from `config`. Passing it does not change the output today
+ * because no section renderer reads `RenderContext.generatorVersion` yet;
+ * `generateInstaller(config)` remains deterministic for a given config
+ * regardless of which (or whether a) generatorVersion is passed.
+ */
+export function generateInstaller(config: InstallerConfig, generatorVersion?: string): string {
+  return composeInstallerScript(createRenderContext(config, generatorVersion));
 }
 
 export function previewArchiveNames(config: InstallerConfig, version: string) {
