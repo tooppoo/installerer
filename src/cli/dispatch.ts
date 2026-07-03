@@ -1,11 +1,12 @@
 import { parseArgs } from "node:util";
 
+import { CliExitCode } from "./exitCodes";
 import { topLevelHelpText } from "./topLevelHelp";
 
 export type CliDispatchResult = {
   stdout: string;
   stderr: string;
-  exitCode: number;
+  exitCode: CliExitCode;
 };
 
 /**
@@ -18,11 +19,12 @@ export type CliDispatchResult = {
  * is treated the same as `--help`. Actual subcommands (`init`, `generate`,
  * `validate`, `doctor`) are not implemented yet, so any positional argument
  * is reported as an unknown command; their own issues will extend this
- * dispatch with real handling.
+ * dispatch with real handling and their own exit codes (see
+ * docs/exit-code.md).
  */
 export function dispatchCli(argv: readonly string[]): CliDispatchResult {
   if (argv.length === 0) {
-    return { stdout: topLevelHelpText, stderr: "", exitCode: 0 };
+    return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
   }
 
   try {
@@ -33,12 +35,20 @@ export function dispatchCli(argv: readonly string[]): CliDispatchResult {
     });
 
     if (values.help) {
-      return { stdout: topLevelHelpText, stderr: "", exitCode: 0 };
+      return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
     }
 
     const [command] = positionals;
-    return { stdout: "", stderr: `installerer: unknown command '${command}'\n`, exitCode: 1 };
+    return {
+      stdout: "",
+      stderr: `installerer: unknown command '${command}'\n`,
+      exitCode: CliExitCode.unknownCommand,
+    };
   } catch (error) {
-    return { stdout: "", stderr: `installerer: ${(error as Error).message}\n`, exitCode: 1 };
+    return {
+      stdout: "",
+      stderr: `installerer: ${(error as Error).message}\n`,
+      exitCode: CliExitCode.unknownOption,
+    };
   }
 }
