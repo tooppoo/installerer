@@ -7,6 +7,8 @@ import { join } from "node:path";
 import {
   findBrowserUiReferences,
   findBunRuntimeReferences,
+  findMachineSpecificPathLeaks,
+  findSecretLeaks,
   NODE_SHEBANG,
   PUBLISH_DIR_FILES,
 } from "../../scripts/npmPublishDir";
@@ -15,13 +17,10 @@ import {
  * Covers the npm publish boundary from issue #81: `bun run build:npm` must
  * produce a self-contained, Node.js-runnable publish directory that
  * excludes the browser SPA build, tests, and dev-only files, and that a
- * packed tarball actually installs and runs.
- *
- * Node.js/npm are not part of this repo's toolchain (only Bun is set up in
- * CI, see .github/workflows/ci.yml), so `bun pm pack` / `bun add <tarball>`
- * / `bun <built-cli>` stand in for `npm pack` / `npm install` / `node
- * <built-cli>`: Bun implements the same node: builtins the built artifact
- * uses, so it is a faithful proxy for Node.js here.
+ * packed tarball actually installs and runs under real `npm` / `node` (CI
+ * installs Node.js via actions/setup-node in .github/workflows/ci.yml
+ * specifically so this suite can exercise the real toolchain, not a Bun
+ * proxy for it).
  */
 
 const root = join(import.meta.dir, "..", "..");
@@ -47,6 +46,10 @@ function listFilesRecursive(dir: string, base = dir): string[] {
   }
   return files;
 }
+
+type NpmPackDryRunEntry = {
+  files: { path: string; mode: number }[];
+};
 
 describe("npm CLI publish directory (build:npm)", () => {
   beforeAll(() => {
@@ -84,49 +87,61 @@ describe("npm CLI publish directory (build:npm)", () => {
     expect(findBrowserUiReferences(source)).toEqual([]);
   });
 
-  test("source map sources are repo-relative, with no absolute or machine-specific paths", () => {
-    const map = JSON.parse(readFileSync(mapPath, "utf8"));
+  test("source map sources are repo-relative, with no absolute or machine-specific paths, secrets, or tokens", () => {
+    const mapText = readFileSync(mapPath, "utf8");
+    const map = JSON.parse(mapText);
     const sources = map.sources as string[];
     expect(sources.length).toBeGreaterThan(0);
     for (const source of sources) {
       expect(source.startsWith("/")).toBe(false);
       expect(source.split("/")).not.toContain("..");
-      expect(source).not.toContain(root);
     }
+
+    // Whole-map scan: also covers `sourcesContent`, `names`, and any other
+    // field `sanitizeSourceMapSources` does not touch.
+    expect(findMachineSpecificPathLeaks(mapText, root)).toEqual([]);
+    expect(findSecretLeaks(mapText)).toEqual([]);
   });
 
-  test("bin entry starts up and prints help under a Node-compatible runtime", () => {
-    const result = run("bun", [binPath, "--help"]);
+  test("bin entry starts up and prints help under Node.js", () => {
+    const result = run("node", [binPath, "--help"]);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("installerer <command> [options]");
     expect(result.stderr).toBe("");
   });
 
-  test("`bun pm pack --dry-run` reports exactly the expected files", () => {
-    const result = run("bun", ["pm", "pack", "--dry-run"], { cwd: outDir });
+  test("`npm pack --dry-run` reports exactly the expected files with the executable bit preserved", () => {
+    const result = run("npm", ["pack", "--dry-run", "--json"], { cwd: outDir });
     expect(result.status).toBe(0);
-    const packed = [...result.stdout.matchAll(/^packed\s+\S+\s+(.+)$/gm)].map((match) => match[1]);
+
+    const [entry] = JSON.parse(result.stdout) as NpmPackDryRunEntry[];
+    const packed = (entry?.files ?? []).map((file) => file.path);
     expect(packed.sort()).toEqual([...PUBLISH_DIR_FILES].sort());
+
+    const bin = entry?.files.find((file) => file.path === "bin/installerer.js");
+    expect((bin?.mode ?? 0) & 0o111).not.toBe(0);
   });
 
-  test("a packed tarball installs into a fresh project and the installed bin runs", () => {
+  test("a packed tarball installs into a fresh project via real npm, and both `node <bin>` and the npm-generated bin shim run it", () => {
     const tarballDir = mkdtempSync(join(tmpdir(), "installerer-npm-pack-"));
     const installDir = mkdtempSync(join(tmpdir(), "installerer-npm-install-"));
     try {
-      const pack = run("bun", ["pm", "pack", "--destination", tarballDir, "--quiet"], {
+      const pack = run("npm", ["pack", "--pack-destination", tarballDir, "--silent"], {
         cwd: outDir,
       });
       expect(pack.status).toBe(0);
 
       const tarballName = readdirSync(tarballDir).find((name) => name.endsWith(".tgz"));
-      if (!tarballName) throw new Error("bun pm pack did not produce a .tgz file");
+      if (!tarballName) throw new Error("npm pack did not produce a .tgz file");
       const tarballPath = join(tarballDir, tarballName);
 
       writeFileSync(
         join(installDir, "package.json"),
         JSON.stringify({ name: "npm-cli-smoke-test", private: true }),
       );
-      const install = run("bun", ["add", tarballPath], { cwd: installDir });
+      const install = run("npm", ["install", "--no-audit", "--no-fund", tarballPath], {
+        cwd: installDir,
+      });
       expect(install.status).toBe(0);
 
       const installedBin = join(
@@ -137,9 +152,18 @@ describe("npm CLI publish directory (build:npm)", () => {
         "bin",
         "installerer.js",
       );
-      const smoke = run("bun", [installedBin, "--help"]);
-      expect(smoke.status).toBe(0);
-      expect(smoke.stdout).toContain("installerer <command> [options]");
+      const direct = run("node", [installedBin, "--help"]);
+      expect(direct.status).toBe(0);
+      expect(direct.stdout).toContain("installerer <command> [options]");
+
+      // The user-facing path documented in README.md: after
+      // `npm install [-g] @philomagi/installerer`, the `installerer`
+      // command itself (npm's generated bin shim) must work, not just
+      // `node <path-to-bundle>`.
+      const shimPath = join(installDir, "node_modules", ".bin", "installerer");
+      const shim = run(shimPath, ["--help"]);
+      expect(shim.status).toBe(0);
+      expect(shim.stdout).toContain("installerer <command> [options]");
     } finally {
       rmSync(tarballDir, { recursive: true, force: true });
       rmSync(installDir, { recursive: true, force: true });

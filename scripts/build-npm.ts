@@ -18,6 +18,8 @@ import {
   ensureShebang,
   findBrowserUiReferences,
   findBunRuntimeReferences,
+  findMachineSpecificPathLeaks,
+  findSecretLeaks,
   NPM_CLI_BIN_NAME,
   sanitizeSourceMapSources,
   type RootPackageJson,
@@ -90,7 +92,24 @@ async function sanitizeSourceMap(mapPath: string): Promise<void> {
   const map = await Bun.file(mapPath).json();
   const sources = sanitizeSourceMapSources(map.sources ?? [], binDir, root);
   assertNoLeakedSourcePaths(sources);
-  await writeFile(mapPath, JSON.stringify({ ...map, sources }));
+
+  const sanitized = JSON.stringify({ ...map, sources });
+  await writeFile(mapPath, sanitized);
+
+  // Whole-file safety net: `sources` is now clean, but `sourcesContent`
+  // (the embedded file text) and other map fields are not touched above.
+  const pathLeaks = findMachineSpecificPathLeaks(sanitized, root);
+  if (pathLeaks.length > 0) {
+    throw new Error(
+      `build:npm: npm CLI source map leaks a machine-specific path: ${pathLeaks.join(", ")}`,
+    );
+  }
+  const secretLeaks = findSecretLeaks(sanitized);
+  if (secretLeaks.length > 0) {
+    throw new Error(
+      `build:npm: npm CLI source map may contain a secret: ${secretLeaks.join(", ")}`,
+    );
+  }
 }
 
 await main();

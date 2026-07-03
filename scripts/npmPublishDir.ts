@@ -81,6 +81,52 @@ export function assertNoLeakedSourcePaths(sources: readonly string[]): void {
   }
 }
 
+/**
+ * Common machine-specific / CI-container home directory prefixes. Deliberately
+ * narrow (rather than "any string starting with `/`") so it does not flag
+ * unrelated absolute-looking text the CLI legitimately emits, such as the
+ * `#!/usr/bin/env node` shebang.
+ */
+const HOME_DIRECTORY_PREFIXES = ["/home/", "/Users/", "/root/", "/workspaces/"];
+
+/**
+ * Scans a source map's full text (including `sourcesContent`, which
+ * `sanitizeSourceMapSources` does not touch) for the repo's own absolute
+ * checkout path or a common home-directory prefix. `sources` entries are
+ * already sanitized by `sanitizeSourceMapSources`; this is a broader,
+ * whole-file safety net for anything else in the map.
+ */
+export function findMachineSpecificPathLeaks(mapText: string, repoRoot: string): string[] {
+  const findings: string[] = [];
+  if (mapText.includes(repoRoot)) {
+    findings.push(repoRoot);
+  }
+  for (const prefix of HOME_DIRECTORY_PREFIXES) {
+    if (mapText.includes(prefix)) {
+      findings.push(prefix);
+    }
+  }
+  return findings;
+}
+
+const SECRET_PATTERNS: readonly RegExp[] = [
+  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/,
+  /\bAKIA[0-9A-Z]{16}\b/, // AWS access key id
+  /\bgh[pousr]_[A-Za-z0-9]{20,}\b/, // GitHub token
+  /\bxox[baprs]-[0-9A-Za-z-]+\b/, // Slack token
+  /\bAIza[0-9A-Za-z_-]{35}\b/, // Google API key
+];
+
+/** Scans a source map's full text for common secret/token/private-key shapes. */
+export function findSecretLeaks(mapText: string): string[] {
+  const findings: string[] = [];
+  for (const pattern of SECRET_PATTERNS) {
+    const match = mapText.match(pattern);
+    if (match) findings.push(match[0]);
+  }
+  return findings;
+}
+
 export type RootPackageJson = {
   name: string;
   version: string;
