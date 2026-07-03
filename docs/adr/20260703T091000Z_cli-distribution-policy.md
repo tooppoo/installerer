@@ -58,12 +58,12 @@ Raw standalone executable assets may be attached to GitHub Releases later, but t
 
 The release job maps Bun compile targets to public archive labels:
 
-| Bun compile target | Public archive label |
-|---|---|
-| `bun-linux-x64-baseline` | `Linux_x86_64` |
-| `bun-linux-arm64` | `Linux_arm64` |
-| `bun-darwin-x64` | `Darwin_x86_64` |
-| `bun-darwin-arm64` | `Darwin_arm64` |
+| Bun compile target       | Public archive label |
+| ------------------------ | -------------------- |
+| `bun-linux-x64-baseline` | `Linux_x86_64`       |
+| `bun-linux-arm64`        | `Linux_arm64`        |
+| `bun-darwin-x64`         | `Darwin_x86_64`      |
+| `bun-darwin-arm64`       | `Darwin_arm64`       |
 
 ## Official Installer
 
