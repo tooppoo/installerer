@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/package.json"],
+            "message": "generator core (src/generatedInstaller/) must not import package.json directly. Accept build/package-derived values (e.g. the installerer version) as an explicit parameter instead, see docs/adr/20260703T144753Z_generator-version-injection-boundary.md."
+          },
+          {
+            "group": ["**/../cli/**"],
+            "message": "generator core (src/generatedInstaller/) must not import from src/cli/ (e.g. cliVersion). Accept the value as an explicit parameter instead, see docs/adr/20260703T144753Z_generator-version-injection-boundary.md."
+          }
+        ]
+      }
+    ],
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "process",
+        "message": "generator core (src/generatedInstaller/) must not read process.env or other process state. Accept values as explicit parameters instead, see docs/adr/20260703T144753Z_generator-version-injection-boundary.md."
+      }
+    ]
+  }
+}
