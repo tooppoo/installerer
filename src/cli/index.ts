@@ -4,3 +4,4 @@ export { topLevelHelpFrame, topLevelHelpText } from "./topLevelHelp";
 export * from "./exitCodes";
 export type { CliDispatchResult } from "./dispatch";
 export { dispatchCli } from "./dispatch";
+export { cliVersion } from "./version";
