@@ -1,4 +1,9 @@
-import type { InstallerConfig, TargetArch, TargetOS } from "./installerConfig";
+import {
+  CANONICAL_ARCHITECTURES,
+  DEFAULT_ARCHITECTURE_LABELS,
+  validateAssetArchLabel,
+} from "./architectureLabels";
+import type { ArchitectureLabels, InstallerConfig, TargetArch, TargetOS } from "./installerConfig";
 import { isAscii, rejectUnknownFields, requireObject, requireString } from "./validation";
 import type { ValidationError } from "./validation";
 
@@ -8,7 +13,7 @@ export const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9
 export const GITHUB_REPO_PATTERN = /^[A-Za-z0-9._-]+$/;
 const SHELL_SENSITIVE_PATH_CHARS = /[ \t\r\n'"`$;&|<>()[\]{}*!?~#]/;
 export const TARGET_OS = new Set<TargetOS>(["linux", "darwin"]);
-export const TARGET_ARCH = new Set<TargetArch>(["x86_64", "arm64"]);
+export const TARGET_ARCH = new Set<TargetArch>(["x86_64", "aarch64"]);
 
 export function validateDefaults(
   value: unknown,
@@ -89,7 +94,7 @@ export function validateTargets(
       errors.push({
         path: `${targetPath}.arch`,
         reason: "Unsupported target architecture.",
-        expected: "x86_64 | arm64",
+        expected: "x86_64 | aarch64",
       });
     }
 
@@ -109,6 +114,51 @@ export function validateTargets(
   });
 
   return targets.length > 0 ? targets : undefined;
+}
+
+export function validateArchitectureLabels(
+  value: unknown,
+  path: string,
+  errors: ValidationError[],
+): ArchitectureLabels | undefined {
+  if (value === undefined) {
+    return { ...DEFAULT_ARCHITECTURE_LABELS };
+  }
+
+  const labels = requireObject(value, path, errors);
+  if (!labels) {
+    return undefined;
+  }
+
+  rejectUnknownFields(labels, path, [...CANONICAL_ARCHITECTURES], errors);
+
+  const resolved: Partial<ArchitectureLabels> = {};
+  let ok = true;
+
+  for (const arch of CANONICAL_ARCHITECTURES) {
+    const fieldPath = `${path}.${arch}`;
+    const rawValue = labels[arch];
+    const label =
+      rawValue === undefined
+        ? DEFAULT_ARCHITECTURE_LABELS[arch]
+        : requireString(rawValue, fieldPath, errors);
+
+    if (label === undefined) {
+      ok = false;
+      continue;
+    }
+
+    const errorCountBeforeLabel = errors.length;
+    validateAssetArchLabel(label, fieldPath, errors);
+    if (errors.length > errorCountBeforeLabel) {
+      ok = false;
+      continue;
+    }
+
+    resolved[arch] = label;
+  }
+
+  return ok ? (resolved as ArchitectureLabels) : undefined;
 }
 
 export function validateSafeFilename(value: string, path: string, errors: ValidationError[]) {

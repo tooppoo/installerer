@@ -27,8 +27,11 @@ const validConfig = {
   },
   targets: [
     { os: "linux", arch: "x86_64" },
-    { os: "darwin", arch: "arm64" },
+    { os: "darwin", arch: "aarch64" },
   ],
+  // Explicit so unrelated tests below don't depend on architectureLabels
+  // defaults tested separately in the "architecture label mapping" describe.
+  architectureLabels: { x86_64: "x86_64", aarch64: "aarch64" },
 };
 
 describe("installer config validation", () => {
@@ -42,7 +45,7 @@ describe("installer config validation", () => {
       });
       expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
         "rellog_v1.2.3_linux_x86_64.tar.gz",
-        "rellog_v1.2.3_darwin_arm64.tar.gz",
+        "rellog_v1.2.3_darwin_aarch64.tar.gz",
       ]);
       expect(result.warnings).toEqual([]);
       expect(result.dependencyGraphs.map((graph) => graph.mode)).toEqual([
@@ -91,7 +94,7 @@ describe("installer config validation", () => {
     if (result.ok) {
       expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
         "rellog_v1.2.3_Linux_x86_64.tar.gz",
-        "rellog_v1.2.3_Darwin_arm64.tar.gz",
+        "rellog_v1.2.3_Darwin_aarch64.tar.gz",
       ]);
     }
   });
@@ -480,6 +483,83 @@ describe("installer config validation", () => {
     if (!trailingDot.ok) {
       expect(trailingDot.warnings.map((warning) => warning.reason)).toContain(
         "Archive filename ends with '.'. Some tools and filesystems handle trailing dots inconsistently.",
+      );
+    }
+  });
+});
+
+describe("architecture label mapping", () => {
+  test("defaults architectureLabels to the OS-reported architecture name when omitted", () => {
+    const { architectureLabels: _architectureLabels, ...withoutLabels } = validConfig;
+    const result = validateInstallerConfig(withoutLabels);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.config.architectureLabels).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
+      expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
+        "rellog_v1.2.3_linux_x86_64.tar.gz",
+        "rellog_v1.2.3_darwin_aarch64.tar.gz",
+      ]);
+    }
+  });
+
+  test("accepts custom asset labels not in the presets", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      architectureLabels: { x86_64: "x64", aarch64: "arm64-v8a" },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
+        "rellog_v1.2.3_linux_x64.tar.gz",
+        "rellog_v1.2.3_darwin_arm64-v8a.tar.gz",
+      ]);
+    }
+  });
+
+  test("allows the same asset label for both canonical architectures", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      architectureLabels: { x86_64: "universal", aarch64: "universal" },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
+        "rellog_v1.2.3_linux_universal.tar.gz",
+        "rellog_v1.2.3_darwin_universal.tar.gz",
+      ]);
+    }
+  });
+
+  test.each(["", ".", "..", "arm/64", "arm 64", "arm\\64"])(
+    "rejects unsafe architecture label %j",
+    (label) => {
+      const result = validateInstallerConfig({
+        ...validConfig,
+        architectureLabels: { x86_64: label, aarch64: "arm64" },
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.errors).toContainEqual(
+          expect.objectContaining({ path: "$.architectureLabels.x86_64" }),
+        );
+      }
+    },
+  );
+
+  test("rejects unknown fields inside architectureLabels", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      architectureLabels: { x86_64: "amd64", aarch64: "arm64", riscv64: "riscv64" },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({ path: "$.architectureLabels.riscv64" }),
       );
     }
   });

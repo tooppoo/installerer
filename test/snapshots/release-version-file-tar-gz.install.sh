@@ -24,7 +24,7 @@ fi
 #   checksum.fileName: checksums.txt
 #   checksum.algorithm: sha256
 #   defaults.installDir: $HOME/.local/bin
-#   targets: linux/x86_64, linux/arm64, darwin/x86_64, darwin/arm64
+#   targets: linux/x86_64, linux/aarch64, darwin/x86_64, darwin/aarch64
 
 OWNER='tooppoo'
 REPO='rellog'
@@ -298,28 +298,40 @@ detect_target() {
   esac
 
   case "$arch" in
-    x86_64|amd64) arch=x86_64 ;;
-    arm64|aarch64) arch=arm64 ;;
+    x86_64) arch=x86_64 ;;
+    aarch64|arm64) arch=aarch64 ;;
     *) fail "unsupported architecture: $arch" ;;
   esac
 
   case "$os/$arch" in
     linux/x86_64) ;;
-    linux/arm64) ;;
+    linux/aarch64) ;;
     darwin/x86_64) ;;
-    darwin/arm64) ;;
+    darwin/aarch64) ;;
     *) fail "unsupported target: $os/$arch" ;;
   esac
 
   printf '%s %s\n' "$os" "$arch"
 }
 
+resolve_asset_arch_label() {
+  canonical_arch=$1
+
+  case "$canonical_arch" in
+    x86_64) asset_arch_label='x64' ;;
+    aarch64) asset_arch_label='arm64-v8a' ;;
+    *) fail "unsupported architecture: $canonical_arch" ;;
+  esac
+
+  printf '%s\n' "$asset_arch_label"
+}
+
 render_archive_asset_name() {
   version=$1
   os=$2
-  arch=$3
-  target="${os}_${arch}"
-  printf '%s' "$REPO" '_' "$version" '_' "$os" '_' "$arch" '.tar.gz'
+  asset_arch_label=$3
+  target="${os}_${asset_arch_label}"
+  printf '%s' "$REPO" '_' "$version" '_' "$os" '_' "$asset_arch_label" '.tar.gz'
   printf '\n'
 }
 
@@ -407,6 +419,7 @@ install_latest() {
   set -- $target
   os=$1
   arch=$2
+  asset_arch_label=$(resolve_asset_arch_label "$arch") || exit 1
   owner_path=$(url_encode_segment "$OWNER")
   repo_path=$(url_encode_segment "$REPO")
   version_file_path=$(url_encode_segment "$VERSION_FILE_NAME")
@@ -415,7 +428,7 @@ install_latest() {
   resolved_version=$(read_version_file "$version_file_url") || exit 1
   is_valid_git_tag "$resolved_version" || fail "resolved version is not a valid Git tag: $resolved_version"
   printf '%s\n' "installerer: resolved latest version $resolved_version"
-  archive_asset_name=$(render_archive_asset_name "$resolved_version" "$os" "$arch")
+  archive_asset_name=$(render_archive_asset_name "$resolved_version" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
   version_path=$(url_encode_segment "$resolved_version")
   archive_path_segment=$(url_encode_segment "$archive_asset_name")
@@ -432,7 +445,8 @@ install_pin() {
   set -- $target
   os=$1
   arch=$2
-  archive_asset_name=$(render_archive_asset_name "$pinned_version" "$os" "$arch")
+  asset_arch_label=$(resolve_asset_arch_label "$arch") || exit 1
+  archive_asset_name=$(render_archive_asset_name "$pinned_version" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
   owner_path=$(url_encode_segment "$OWNER")
   repo_path=$(url_encode_segment "$REPO")

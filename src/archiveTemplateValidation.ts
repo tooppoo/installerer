@@ -129,7 +129,7 @@ export function validateArchiveTemplateForConfig(
       repo: config.repo,
       bin: config.binary.name,
       os: target.os,
-      arch: target.arch,
+      arch: config.architectureLabels[target.arch],
       osCase: config.archive.osCase,
     };
     const latestName = expandArchiveNameTemplate(segments, { ...baseValues, version: "v1.2.3" });
@@ -223,6 +223,7 @@ export function buildInstallLatestGraph(
   const edges: GraphEdge[] = [
     { derived: "target", source: "os" },
     { derived: "target", source: "arch" },
+    ...architectureLabelEdges(),
     { derived: "archive_url", source: "owner" },
     { derived: "archive_url", source: "repo" },
     { derived: "archive_url", source: "archive_asset_name" },
@@ -261,6 +262,7 @@ export function buildInstallPinGraph(
   const edges: GraphEdge[] = [
     { derived: "target", source: "os" },
     { derived: "target", source: "arch" },
+    ...architectureLabelEdges(),
     { derived: "archive_url", source: "owner" },
     { derived: "archive_url", source: "repo" },
     { derived: "archive_url", source: "pinned_version" },
@@ -283,6 +285,19 @@ export function buildInstallPinGraph(
   return { mode: "install_pin", edges, directContexts: installDirectContexts(config) };
 }
 
+/**
+ * `asset_arch_label` is the value actually embedded in `archive_asset_name`
+ * via `{arch}`/`{target}`; the canonical `arch` variable and the configured
+ * architecture label mapping only reach the filename through this node.
+ */
+function architectureLabelEdges(): GraphEdge[] {
+  return [
+    { derived: "asset_arch_label", source: "arch" },
+    { derived: "asset_arch_label", source: "architectureLabels.x86_64" },
+    { derived: "asset_arch_label", source: "architectureLabels.aarch64" },
+  ];
+}
+
 function addArchiveTemplateEdges(
   edges: GraphEdge[],
   segments: ArchiveTemplateSegment[],
@@ -290,10 +305,18 @@ function addArchiveTemplateEdges(
 ) {
   edges.push({ derived: "archive_asset_name", source: "archive.nameTemplate literal segments" });
 
-  for (const placeholder of ["owner", "repo", "bin", "os", "arch", "target"] as const) {
+  for (const placeholder of ["owner", "repo", "bin", "os"] as const) {
     if (templateUsesPlaceholder(segments, placeholder)) {
       edges.push({ derived: "archive_asset_name", source: placeholder });
     }
+  }
+
+  if (templateUsesPlaceholder(segments, "arch") || templateUsesPlaceholder(segments, "target")) {
+    edges.push({ derived: "archive_asset_name", source: "asset_arch_label" });
+  }
+
+  if (templateUsesPlaceholder(segments, "target")) {
+    edges.push({ derived: "archive_asset_name", source: "os" });
   }
 
   if (versionSymbol && templateUsesPlaceholder(segments, "version")) {
@@ -349,6 +372,14 @@ function graphSourceValuesForConfig(config: InstallerConfig): GraphSourceValuesB
     "archive.nameTemplate literal segments": {
       path: "$.archive.nameTemplate",
       value: config.archive.nameTemplate,
+    },
+    "architectureLabels.x86_64": {
+      path: "$.architectureLabels.x86_64",
+      value: config.architectureLabels.x86_64,
+    },
+    "architectureLabels.aarch64": {
+      path: "$.architectureLabels.aarch64",
+      value: config.architectureLabels.aarch64,
     },
     ...(config.versionResolver.type === "release_version_file"
       ? {

@@ -176,7 +176,7 @@ describe("installer generation", () => {
       'checksum_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$checksum_path_segment"',
     );
     // The archive name is rendered from a versionless template (empty version).
-    expect(script).toContain('render_archive_asset_name "" "$os" "$arch"');
+    expect(script).toContain('render_archive_asset_name "" "$os" "$asset_arch_label"');
     // Install source is logged as latest; the resolved release tag is not.
     expect(script).toContain("installerer: install source latest");
     expect(script).not.toContain("resolved latest version");
@@ -340,10 +340,16 @@ fi
     expect(previews[0]?.name).toBe("rellog_v1.2.3_Linux_x86_64.tar.gz");
   });
 
-  const detectTarget = (osCase: "lowercase" | "capitalized", unameS: string, unameM: string) => {
+  const detectTarget = (
+    osCase: "lowercase" | "capitalized",
+    unameS: string,
+    unameM: string,
+    targets: Array<{ os: string; arch: string }> = configInput.targets,
+  ) => {
     const result = validateInstallerConfig({
       ...configInput,
       archive: { ...configInput.archive, osCase },
+      targets,
     });
     if (!result.ok) {
       throw new Error("config should be valid");
@@ -372,4 +378,43 @@ detect_target
   test("detect_target reports capitalized OS names when archive.osCase is capitalized", () => {
     expect(detectTarget("capitalized", "Linux", "x86_64")).toBe("Linux x86_64\n");
   });
+
+  test("detect_target canonicalizes both arm64 and aarch64 uname -m values to aarch64", () => {
+    const targets = [{ os: "darwin", arch: "aarch64" }];
+    expect(detectTarget("lowercase", "Darwin", "arm64", targets)).toBe("darwin aarch64\n");
+    expect(detectTarget("lowercase", "Darwin", "aarch64", targets)).toBe("darwin aarch64\n");
+  });
+
+  const detectTargetFailure = (unameM: string) => {
+    const result = validateInstallerConfig(configInput);
+    if (!result.ok) {
+      throw new Error("config should be valid");
+    }
+    const harness = `
+uname() {
+  case "$1" in
+    -s) printf '%s' "Linux" ;;
+    -m) printf '%s' "$UNAME_M_FIXTURE" ;;
+  esac
+}
+detect_target
+`;
+    const script = generateInstaller(result.config).replace('\nmain "$@"\n', `\n${harness}\n`);
+    return spawnSync("sh", ["-s"], {
+      input: script,
+      env: { ...process.env, UNAME_M_FIXTURE: unameM },
+      encoding: "utf8",
+    });
+  };
+
+  // amd64 is a common asset-label spelling, not a real uname -m output, and
+  // must not be special-cased in runtime canonicalization.
+  test.each(["amd64", "mips", "riscv64"])(
+    "detect_target rejects unsupported architecture %j",
+    (unameM) => {
+      const result = detectTargetFailure(unameM);
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain(`unsupported architecture: ${unameM}`);
+    },
+  );
 });

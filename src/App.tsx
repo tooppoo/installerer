@@ -11,11 +11,15 @@ import {
   INSTALLER_CONTRACT_SEGMENTS,
 } from "./generated/installerContract";
 import {
+  architectureLabelSelection,
+  ARCHITECTURE_LABEL_PRESETS,
   ARCHIVE_FORMAT_OPTIONS,
   ARCHIVE_FORMAT_RUNTIME_DEPENDENCIES,
   ARCHIVE_FORMAT_SUFFIXES,
   buildInstallerConfig,
+  CANONICAL_ARCHITECTURES,
   CHECKSUM_ALGORITHM,
+  CUSTOM_ARCHITECTURE_LABEL,
   initialFormState,
   isTargetSelected,
   OS_CASE_EXAMPLES,
@@ -326,6 +330,61 @@ export function App() {
                   </label>
                 ))}
               </div>
+            </fieldset>
+
+            <fieldset className="flex flex-col gap-3 border border-[#aeb8a8] p-3">
+              <legend className="px-1 text-sm font-semibold text-[#4a4037]">
+                architectureLabels
+              </legend>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {CANONICAL_ARCHITECTURES.map((arch) => {
+                  const selection = architectureLabelSelection(arch, form.architectureLabels[arch]);
+                  return (
+                    <div key={arch} className="flex flex-col gap-1">
+                      <label className={labelClassName}>
+                        {arch}
+                        <select
+                          className={fieldClassName}
+                          value={selection}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            update("architectureLabels", {
+                              ...form.architectureLabels,
+                              [arch]: next === CUSTOM_ARCHITECTURE_LABEL ? "" : next,
+                            });
+                          }}
+                        >
+                          {ARCHITECTURE_LABEL_PRESETS[arch].map((preset) => (
+                            <option key={preset} value={preset}>
+                              {preset}
+                            </option>
+                          ))}
+                          <option value={CUSTOM_ARCHITECTURE_LABEL}>custom</option>
+                        </select>
+                      </label>
+                      {selection === CUSTOM_ARCHITECTURE_LABEL ? (
+                        <input
+                          className={fieldClassName}
+                          value={form.architectureLabels[arch]}
+                          placeholder="custom asset label"
+                          onChange={(event) =>
+                            update("architectureLabels", {
+                              ...form.architectureLabels,
+                              [arch]: event.target.value,
+                            })
+                          }
+                          spellCheck={false}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              <span className="text-xs font-normal leading-snug text-[#6d625a]">
+                How {"{arch}"} and {"{target}"} render the detected architecture in Release asset
+                names. This is independent of the runtime architecture detected by the generated
+                installer.
+              </span>
             </fieldset>
 
             <label className={labelClassName}>

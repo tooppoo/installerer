@@ -1,4 +1,5 @@
 import type { RenderContext } from "./renderContext";
+import { renderArchitectureLabel } from "./sections/architectureLabel";
 import { renderArchiveName } from "./sections/archiveName";
 import { renderVerifySha256 } from "./sections/checksum";
 import { renderMain, renderMainInvocation, renderUsage } from "./sections/cli";
@@ -42,6 +43,7 @@ export function composeInstallerScript(context: RenderContext): string {
     renderRuntimeValidation(),
     renderInstallDir(),
     renderTarget(context),
+    renderArchitectureLabel(context),
     renderArchiveName(context),
     renderCurlDownload(),
     renderVerifySha256(),

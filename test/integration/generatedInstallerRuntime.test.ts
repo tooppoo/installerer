@@ -16,7 +16,7 @@ import { loadValidFixtures } from "../helpers/fixtures";
  */
 
 const HOST_OS = platform() === "linux" ? "linux" : platform() === "darwin" ? "darwin" : null;
-const HOST_ARCH = arch() === "x64" ? "x86_64" : arch() === "arm64" ? "arm64" : null;
+const HOST_ARCH = arch() === "x64" ? "x86_64" : arch() === "arm64" ? "aarch64" : null;
 const hostTargetSupported = HOST_OS !== null && HOST_ARCH !== null;
 
 const CURL_STUB = `#!/bin/sh

@@ -178,7 +178,8 @@ export function expandArchiveNameTemplate(
     bin: string;
     version: string;
     os: TargetOS;
-    arch: TargetArch;
+    /** Resolved `asset_arch_label`, not the canonical `TargetArch`. */
+    arch: string;
     osCase: OsCase;
   },
 ) {

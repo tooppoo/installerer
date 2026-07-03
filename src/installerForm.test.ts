@@ -3,7 +3,10 @@ import { describe, expect, test } from "bun:test";
 import { validateInstallerConfig } from "./installerConfig";
 import { generateInstaller } from "./installerGenerator";
 import {
+  architectureLabelSelection,
+  ARCHITECTURE_LABEL_PRESETS,
   buildInstallerConfig,
+  CUSTOM_ARCHITECTURE_LABEL,
   initialFormState,
   isTargetSelected,
   TARGET_OPTIONS,
@@ -159,15 +162,61 @@ describe("target selection", () => {
 
   test("toggle re-adds in canonical order", () => {
     const emptyTargets: InstallerFormState = { ...initialFormState, targets: [] };
-    const withDarwin = toggleTarget(emptyTargets, { os: "darwin", arch: "arm64" });
+    const withDarwin = toggleTarget(emptyTargets, { os: "darwin", arch: "aarch64" });
     const withLinux = toggleTarget(withDarwin, { os: "linux", arch: "x86_64" });
     expect(withLinux.targets).toEqual([
       { os: "linux", arch: "x86_64" },
-      { os: "darwin", arch: "arm64" },
+      { os: "darwin", arch: "aarch64" },
     ]);
   });
 
   test("TARGET_OPTIONS covers the supported OS/arch matrix", () => {
     expect(TARGET_OPTIONS).toHaveLength(4);
+  });
+});
+
+describe("architecture label selection", () => {
+  test("initialFormState uses the default OS-reported architecture name mapping", () => {
+    expect(initialFormState.architectureLabels).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
+  });
+
+  test("built config includes architectureLabels and validates through the core", () => {
+    const config = buildInstallerConfig(initialFormState) as {
+      architectureLabels: Record<string, string>;
+    };
+    expect(config.architectureLabels).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
+    expect(validateInstallerConfig(config).ok).toBe(true);
+  });
+
+  test("recognizes preset values for each canonical architecture", () => {
+    expect(architectureLabelSelection("x86_64", "amd64")).toBe("amd64");
+    expect(architectureLabelSelection("x86_64", "x86_64")).toBe("x86_64");
+    expect(architectureLabelSelection("aarch64", "arm64")).toBe("arm64");
+    expect(architectureLabelSelection("aarch64", "aarch64")).toBe("aarch64");
+  });
+
+  test("treats any non-preset value as custom", () => {
+    expect(architectureLabelSelection("x86_64", "x64")).toBe(CUSTOM_ARCHITECTURE_LABEL);
+    expect(architectureLabelSelection("aarch64", "arm64-v8a")).toBe(CUSTOM_ARCHITECTURE_LABEL);
+  });
+
+  test("ARCHITECTURE_LABEL_PRESETS lists the representative spellings from the issue", () => {
+    expect(ARCHITECTURE_LABEL_PRESETS.x86_64).toEqual(["amd64", "x86_64"]);
+    expect(ARCHITECTURE_LABEL_PRESETS.aarch64).toEqual(["arm64", "aarch64"]);
+  });
+
+  test("custom architecture labels flow into the generated archive name", () => {
+    const form: InstallerFormState = {
+      ...initialFormState,
+      versionResolverType: "latest_asset",
+      archiveNameTemplate: "{repo}_{os}_{arch}.tar.gz",
+      targets: [{ os: "linux", arch: "x86_64" }],
+      architectureLabels: { x86_64: "x64", aarch64: "arm64-v8a" },
+    };
+    const result = validateInstallerConfig(buildInstallerConfig(form));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.archivePreviews[0]?.latestName).toBe("rellog_linux_x64.tar.gz");
+    }
   });
 });

@@ -24,7 +24,7 @@ const baseConfig = {
   },
   targets: [
     { os: "linux", arch: "x86_64" },
-    { os: "darwin", arch: "arm64" },
+    { os: "darwin", arch: "aarch64" },
   ],
   defaults: {
     installDir: "$HOME/.local/bin",
@@ -55,13 +55,13 @@ describe("buildInstallerDiagnostics", () => {
       "VERSION",
       "checksums.txt",
       "rellog_v1.2.3_linux_x86_64.tar.gz",
-      "rellog_v1.2.3_darwin_arm64.tar.gz",
+      "rellog_v1.2.3_darwin_aarch64.tar.gz",
     ]);
     expect(diagnostics.urls.latest).toEqual([
       "https://github.com/tooppoo/rellog/releases/latest/download/VERSION",
       "https://github.com/tooppoo/rellog/releases/download/v1.2.3/checksums.txt",
       "https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_linux_x86_64.tar.gz",
-      "https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_darwin_arm64.tar.gz",
+      "https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_darwin_aarch64.tar.gz",
     ]);
     expect(diagnostics.urls.pinned[0]).toBe(
       "https://github.com/tooppoo/rellog/releases/download/v0.1.2/checksums.txt",
@@ -87,7 +87,7 @@ describe("buildInstallerDiagnostics", () => {
     expect(diagnostics.expectedReleaseAssets).toEqual([
       "checksums.txt",
       "rellog_linux_x86_64#asset.tar.gz",
-      "rellog_darwin_arm64#asset.tar.gz",
+      "rellog_darwin_aarch64#asset.tar.gz",
     ]);
     expect(diagnostics.urls.latest).toContain(
       "https://github.com/tooppoo/rellog/releases/latest/download/rellog_linux_x86_64%23asset.tar.gz",
