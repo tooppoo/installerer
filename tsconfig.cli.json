@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/tsconfig.json",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": ["node"]
+  },
+  "include": ["src/cli/**/*.ts"],
+  "exclude": ["dist", "node_modules", "src/cli/**/*.test.ts"]
+}

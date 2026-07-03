@@ -15,4 +15,6 @@ _check:
   bun run docs:check
   bun test --coverage
   bun run build
+  bun run build:npm
   bun run typecheck
+  bun run typecheck:cli

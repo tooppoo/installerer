@@ -19,6 +19,19 @@ Fill in a form and the app generates a single POSIX `sh` `install.sh` for your p
 
 Your releases must follow a small contract for asset naming and checksum files. See the documents below for details.
 
+## CLI
+
+`installerer` also ships as a generator-only CLI (`init`, `validate`, `generate`, `doctor`, `--version`, `--help`) for scripting and CI use, in addition to the browser UI. Command implementations are landing incrementally; today only `installerer --help` / `-h` is implemented.
+
+npm is an auxiliary distribution channel for the JavaScript ecosystem, not the canonical binary distribution — it is a Node.js CLI package and does not download a GitHub Releases binary. The canonical distribution is a Bun-compiled standalone executable released as an OS/architecture archive; see [CLI Distribution Policy](docs/adr/20260703T091000Z_cli-distribution-policy.md) for the full decision.
+
+Install from npm:
+
+```bash
+npm install -g @philomagi/installerer
+installerer --help
+```
+
 ## Documentation
 
 - [Installer Contract](docs/installer-contract.md) — the release asset contract, resolver overview, and runtime dependencies. Also viewable from the browser UI.
@@ -27,6 +40,8 @@ Your releases must follow a small contract for asset naming and checksum files. 
 - [MVP Browser JS Installer Generator Policy](docs/adr/20260630T032548Z_mvp-browser-js-generator-policy.md)
 - [Generated Installer Runtime ADR](docs/adr/20260630T174038Z_generated-installer-runtime-single-posix-sh.md)
 - [latest_asset Resolver ADR](docs/adr/20260701T143939Z_latest-asset-resolver-versionless-direct-download.md)
+- [CLI Distribution Policy](docs/adr/20260703T091000Z_cli-distribution-policy.md)
+- [npm Node.js CLI Package ADR](docs/adr/20260703T134302Z_npm-node-cli-package.md)
 
 ## Development
 
