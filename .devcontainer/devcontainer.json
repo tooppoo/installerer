@@ -11,8 +11,14 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": ["EditorConfig.EditorConfig", "oven.bun-vscode", "skellock.just"],
+      "extensions": [
+        "EditorConfig.EditorConfig",
+        "oven.bun-vscode",
+        "skellock.just",
+        "oxc.oxc-vscode"
+      ],
       "settings": {
+        "editor.defaultFormatter": "oxc.oxc-vscode",
         "editor.formatOnSave": true,
         "files.eol": "\n"
       }
