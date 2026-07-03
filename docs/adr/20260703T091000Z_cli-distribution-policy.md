@@ -41,18 +41,29 @@ Prerequisite order:
 
 ## Release Archive Naming
 
-`installerer` release archive names use Bun compile target labels rather than generic OS/architecture labels.
+`installerer` release archive names do not use Bun compile target labels.
+
+Bun compile targets are build-job-internal labels. Public release archive names use the OS / architecture labels expected by the generated installer.
 
 v0 official installer target archive names are:
 
-- `installerer_{version}_bun-linux-x64-baseline.tar.gz`
-- `installerer_{version}_bun-linux-arm64.tar.gz`
-- `installerer_{version}_bun-darwin-x64.tar.gz`
-- `installerer_{version}_bun-darwin-arm64.tar.gz`
+- `installerer_{version}_Linux_x86_64.tar.gz`
+- `installerer_{version}_Linux_arm64.tar.gz`
+- `installerer_{version}_Darwin_x86_64.tar.gz`
+- `installerer_{version}_Darwin_arm64.tar.gz`
 
 Each archive contains the CLI executable at the path `installerer`.
 
 Raw standalone executable assets may be attached to GitHub Releases later, but they are not required by this decision.
+
+The release job maps Bun compile targets to public archive labels:
+
+| Bun compile target | Public archive label |
+|---|---|
+| `bun-linux-x64-baseline` | `Linux_x86_64` |
+| `bun-linux-arm64` | `Linux_arm64` |
+| `bun-darwin-x64` | `Darwin_x86_64` |
+| `bun-darwin-arm64` | `Darwin_arm64` |
 
 ## Official Installer
 
@@ -92,6 +103,10 @@ The npm package could download the canonical GitHub Releases binary during insta
 
 The official installer could fetch raw executables directly. This is not selected because the generated installer runtime already works with release archives, checksum lookup, extraction, and binary placement.
 
+### Bun Target Labels As Public Archive Names
+
+Public release archive names could use Bun compile target labels directly. This is not selected because it would expose build-tool-specific labels as part of the public artifact naming contract.
+
 ### CLI As A Package Manager
 
 The CLI could implement direct package installation, upgrade, or uninstall behavior. This is not selected. `installerer` remains an installer generator.
@@ -103,13 +118,14 @@ The CLI could implement direct package installation, upgrade, or uninstall behav
 - The primary CLI distribution does not require Node.js or Bun at runtime.
 - The npm package remains simple and explicit as a JavaScript ecosystem integration.
 - The official installer dogfoods generated installers without requiring installer generation at install time.
-- Release archive naming follows build target labels directly.
+- Public release archive names stay aligned with generated installer OS / architecture labels.
 - CLI responsibility remains limited to generator behavior.
 
 ### Negative Consequences
 
 - The project must maintain both standalone executable distribution and Node.js npm distribution.
 - Binary and npm CLI behavior must be tested for consistency.
+- The release job must map Bun compile targets to public archive labels.
 - Official installer work must wait for target variable support and release archive generation.
 
 ### Neutral Consequences
