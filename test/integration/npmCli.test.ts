@@ -13,7 +13,7 @@ import {
 /**
  * Fast, in-process checks on the npm publish boundary from issue #81:
  * `bun run build:npm` must produce a self-contained, Node.js-runnable
- * `dist/npm/` directory that excludes the browser SPA build, tests, and
+ * `dist-cli/npm/` directory that excludes the browser SPA build, tests, and
  * dev-only files.
  *
  * Real `npm pack` / `npm install` / `node` verification, across Node.js
@@ -26,7 +26,7 @@ import {
  */
 
 const root = join(import.meta.dir, "..", "..");
-const outDir = join(root, "dist", "npm");
+const outDir = join(root, "dist-cli", "npm");
 const binPath = join(outDir, "bin", "installerer.js");
 
 function run(command: string, args: string[], options: { cwd?: string } = {}) {

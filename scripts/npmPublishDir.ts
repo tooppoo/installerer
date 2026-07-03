@@ -8,7 +8,7 @@ export const NPM_CLI_BIN_NAME = "installerer.js";
 export const NPM_CLI_ENGINES = { node: ">=22.0.0" } as const;
 
 /**
- * Files expected in the generated npm publish directory (`dist-npm/`).
+ * Files expected in the generated npm publish directory (`dist-cli/npm/`).
  * No source map is shipped: see docs/adr/20260703T134302Z_npm-node-cli-package.md.
  */
 export const PUBLISH_DIR_FILES = [

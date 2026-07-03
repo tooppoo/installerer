@@ -15,11 +15,11 @@ This repository's toolchain, before this issue, only set up Bun (`.bun-version`,
 
 ### Publish directory, not the root package
 
-`build:npm` (`bun run scripts/build-npm.ts`, using `Bun.build` — running the build under Bun is explicitly permitted by the distribution ADR) generates a dedicated publish directory, `dist/npm/`, instead of publishing the repository root. It lives under the same top-level `dist/` as the browser SPA build (`build.ts`) rather than a separate `dist-npm/`, so there is one gitignored build-output root instead of two (review feedback on PR #97). `build.ts` wipes the entire `dist/` directory at the start of every SPA build, so `bun run build` must run before `bun run build:npm`, not after — `Justfile`'s `_check` already does, and `scripts/build-npm.ts` documents the ordering requirement inline.
+`build:npm` (`bun run scripts/build-npm.ts`, using `Bun.build` — running the build under Bun is explicitly permitted by the distribution ADR) generates a dedicated publish directory, `dist-cli/npm/`, instead of publishing the repository root. `dist-cli/` is a separate top-level, gitignored output root from the browser SPA build's `dist/` (`build.ts`), not nested under it. An earlier version of this decision nested it as `dist/npm/`, sharing the SPA build's output root; that was reconsidered, because `build.ts` wipes the entire `dist/` directory at the start of every SPA build, which would silently delete `dist/npm/` unless `bun run build` always ran before `bun run build:npm` — an implicit ordering dependency between two otherwise-independent build scripts. A separate `dist-cli/` root has no such dependency.
 
-`dist/npm/package.json` is generated from scratch (`scripts/npmPublishDir.ts#buildPublishPackageJson`), not copied from the root manifest: it carries only `name`/`version` (mirrored from root), `description`, `license`, `type`, `bin`, `files` (the full publish file list, see below), `engines.node` (`>=22.0.0`), and repository metadata. It has no `private` field, no SPA dependencies, and no dev scripts. The root `package.json` keeps `private: true` and is never published directly.
+`dist-cli/npm/package.json` is generated from scratch (`scripts/npmPublishDir.ts#buildPublishPackageJson`), not copied from the root manifest: it carries only `name`/`version` (mirrored from root), `description`, `license`, `type`, `bin`, `files` (the full publish file list, see below), `engines.node` (`>=22.0.0`), and repository metadata. It has no `private` field, no SPA dependencies, and no dev scripts. The root `package.json` keeps `private: true` and is never published directly.
 
-`dist/npm/` contents: `package.json`, `README.md`, `LICENSE` (copied from root), and `bin/installerer.js` (the built CLI; see Source map policy below for why no `.map` file ships alongside it). npm always includes `package.json`/`README`/`LICENSE` regardless of the manifest's `files` field, but `buildPublishPackageJson` lists the full publish set (`package.json`, `README.md`, `LICENSE`, `bin/installerer.js`) in `files` explicitly anyway, so the manifest itself is a complete, accurate record of what ships instead of relying on implicit npm defaults (review feedback on PR #97). Nothing under `src/`, `public/`, `test/`, or the rest of `dist/` (the SPA build) is reachable from it.
+`dist-cli/npm/` contents: `package.json`, `README.md`, `LICENSE` (copied from root), and `bin/installerer.js` (the built CLI; see Source map policy below for why no `.map` file ships alongside it). npm always includes `package.json`/`README`/`LICENSE` regardless of the manifest's `files` field, but `buildPublishPackageJson` lists the full publish set (`package.json`, `README.md`, `LICENSE`, `bin/installerer.js`) in `files` explicitly anyway, so the manifest itself is a complete, accurate record of what ships instead of relying on implicit npm defaults (review feedback on PR #97). Nothing under `src/`, `public/`, `test/`, or the rest of `dist/` (the SPA build) is reachable from it.
 
 ### Node.js CLI entrypoint layering
 
@@ -40,7 +40,7 @@ The existing runtime-independent core (`src/cli/dispatch.ts`, from issue #86) is
 
 ### Source map policy: no source map is shipped
 
-`build:npm` builds with `sourcemap: "none"`; `dist/npm/` does not contain a `bin/installerer.js.map`. The distribution ADR's source map policy only ever said a source map "may" be included for CLI debugging convenience — it was never required — and the safety work that permission implies (rewriting bundler-relative `sources` entries to repo-relative paths, plus scanning the map's full text, including `sourcesContent`, for machine-specific paths and secret/token shapes) is ongoing maintenance surface for a "nice to have." Not shipping a source map removes that surface entirely: there is nothing to sanitize or scan, and no future CLI source file can leak anything through it. Node.js stack traces from the built CLI point at the bundled `bin/installerer.js` itself, which is intentionally close to unminified (no `minify` option is passed to `Bun.build`), so they stay readable without a map. See Alternatives Considered for the sanitize-and-ship approach this replaced.
+`build:npm` builds with `sourcemap: "none"`; `dist-cli/npm/` does not contain a `bin/installerer.js.map`. The distribution ADR's source map policy only ever said a source map "may" be included for CLI debugging convenience — it was never required — and the safety work that permission implies (rewriting bundler-relative `sources` entries to repo-relative paths, plus scanning the map's full text, including `sourcesContent`, for machine-specific paths and secret/token shapes) is ongoing maintenance surface for a "nice to have." Not shipping a source map removes that surface entirely: there is nothing to sanitize or scan, and no future CLI source file can leak anything through it. Node.js stack traces from the built CLI point at the bundled `bin/installerer.js` itself, which is intentionally close to unminified (no `minify` option is passed to `Bun.build`), so they stay readable without a map. See Alternatives Considered for the sanitize-and-ship approach this replaced.
 
 ### `engines.node` and `@types/node`
 
@@ -64,9 +64,13 @@ Every `package-manager-smoke` matrix entry installs Corepack explicitly (`npm in
 
 Removing `private: true` from the root `package.json` and publishing it as-is was rejected: it would ship the browser SPA's React/Tailwind dependencies, `wrangler`, dev scripts, and test files as part of the npm CLI package, contradicting the npm publish boundary this issue defines.
 
-### Copying the root `package.json` into `dist/npm/` and stripping fields
+### Copying the root `package.json` into `dist-cli/npm/` and stripping fields
 
 Post-processing a copy (deleting `private`, `dependencies`, non-CLI `scripts`, …) was considered instead of building the publish manifest from scratch. Generating it from scratch was selected because it is simpler to reason about and test (`buildPublishPackageJson` is a pure function with an explicit output shape) than an allowlist/denylist over an evolving root manifest.
+
+### Nesting the npm publish directory under the SPA build's `dist/`
+
+An earlier version of this decision generated `dist/npm/`, reasoning that one gitignored top-level build-output directory was simpler than two (review feedback on PR #97). This was reconsidered: `build.ts` (the SPA build) wipes the entire `dist/` directory at the start of every run, so a publish directory nested under it would only survive if `bun run build` always ran before `bun run build:npm`. That is true of `Justfile`'s `_check` today, but it is an implicit, easy-to-violate ordering dependency between two build scripts that have no other reason to depend on each other (e.g. running `bun run build` alone during SPA-only development would silently delete a previously-generated `dist/npm/`). `dist-cli/npm/` avoids the dependency entirely by not sharing a root with `dist/`.
 
 ### Shipping a sanitized, scanned source map
 
@@ -88,7 +92,7 @@ Putting `node-runtime-smoke` and `package-manager-smoke` into a single job with 
 
 ### Positive Consequences
 
-- `dist/npm/` and its generated `package.json` give the npm publish boundary a single, testable definition instead of an implicit "whatever `npm publish` from root would pick up" boundary.
+- `dist-cli/npm/` and its generated `package.json` give the npm publish boundary a single, testable definition instead of an implicit "whatever `npm publish` from root would pick up" boundary.
 - `runNodeCli`'s injectable IO keeps `process.exit` out of the unit test process while still giving the entrypoint itself full process-IO responsibility, matching the runtime-independent-core boundary from issue #86.
 - Not shipping a source map means there is no local-path/secret leak surface in the published package to sanitize, scan, or keep maintaining as the CLI grows.
 - `CliCommandModule` gives issues #88-#91 a ready-made extension point instead of each inventing its own module shape.
@@ -99,7 +103,7 @@ Putting `node-runtime-smoke` and `package-manager-smoke` into a single job with 
 ### Negative Consequences
 
 - CI now depends on two language runtimes (Bun and Node.js) instead of one, across four jobs instead of one.
-- `dist/npm/package.json`'s field list must be kept in sync by hand as the CLI's needs evolve (e.g. adding a runtime dependency would require updating `buildPublishPackageJson`, not just root `package.json`).
+- `dist-cli/npm/package.json`'s field list must be kept in sync by hand as the CLI's needs evolve (e.g. adding a runtime dependency would require updating `buildPublishPackageJson`, not just root `package.json`).
 - Node.js stack traces from the installed CLI point at the bundled `bin/installerer.js`, not the original `src/cli/**/*.ts` files; debugging a production npm CLI crash is less convenient than it would be with a source map.
 - Five package-manager smoke scripts (`scripts/ci/package-manager/*.sh`) are new surface to maintain, and only `npm-smoke.sh` and `bun-smoke.sh` can be exercised without also installing Yarn/pnpm via Corepack.
 
