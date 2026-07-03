@@ -1,9 +1,14 @@
 import {
+  ARCHITECTURE_LABEL_PRESETS,
+  CANONICAL_ARCHITECTURES,
+  DEFAULT_ARCHITECTURE_LABELS,
+} from "./architectureLabels";
+import {
   expandArchiveNameTemplate,
   parseArchiveNameTemplate,
   type ArchiveFormat,
 } from "./archiveTemplate";
-import type { OsCase, TargetArch, TargetOS } from "./installerConfig";
+import type { ArchitectureLabels, OsCase, TargetArch, TargetOS } from "./installerConfig";
 
 /**
  * Browser form state for the installer generator UI.
@@ -34,15 +39,33 @@ export type InstallerFormState = {
   archiveOsCase: OsCase;
   checksumFileName: string;
   targets: TargetOption[];
+  architectureLabels: ArchitectureLabels;
   installDir: string;
 };
 
 export const TARGET_OPTIONS: readonly TargetOption[] = [
   { os: "linux", arch: "x86_64" },
-  { os: "linux", arch: "arm64" },
+  { os: "linux", arch: "aarch64" },
   { os: "darwin", arch: "x86_64" },
-  { os: "darwin", arch: "arm64" },
+  { os: "darwin", arch: "aarch64" },
 ];
+
+/** UI selection for the architecture label select: a known preset, or "custom" free text. */
+export const CUSTOM_ARCHITECTURE_LABEL = "custom" as const;
+
+export { ARCHITECTURE_LABEL_PRESETS, CANONICAL_ARCHITECTURES };
+
+/**
+ * Which select option represents the current label value: the preset it matches,
+ * or "custom" when it doesn't match any preset for that architecture (issue #76 —
+ * preset/custom UI state is derived from the value, not tracked separately).
+ */
+export function architectureLabelSelection(
+  arch: TargetArch,
+  value: string,
+): string | typeof CUSTOM_ARCHITECTURE_LABEL {
+  return ARCHITECTURE_LABEL_PRESETS[arch].includes(value) ? value : CUSTOM_ARCHITECTURE_LABEL;
+}
 
 export const VERSION_RESOLVER_OPTIONS: readonly VersionResolverType[] = [
   "release_version_file",
@@ -98,10 +121,11 @@ export const initialFormState: InstallerFormState = {
   checksumFileName: "checksums.txt",
   targets: [
     { os: "linux", arch: "x86_64" },
-    { os: "linux", arch: "arm64" },
+    { os: "linux", arch: "aarch64" },
     { os: "darwin", arch: "x86_64" },
-    { os: "darwin", arch: "arm64" },
+    { os: "darwin", arch: "aarch64" },
   ],
+  architectureLabels: { ...DEFAULT_ARCHITECTURE_LABELS },
   installDir: "$HOME/.local/bin",
 };
 
@@ -160,7 +184,7 @@ export function versionResolverExample(form: InstallerFormState): ResolverExampl
       bin: form.binaryName || "BIN",
       version,
       os: target.os,
-      arch: target.arch,
+      arch: form.architectureLabels[target.arch],
       osCase: form.archiveOsCase,
     });
   };
@@ -218,6 +242,7 @@ export function buildInstallerConfig(form: InstallerFormState): Record<string, u
       algorithm: CHECKSUM_ALGORITHM,
     },
     targets: form.targets,
+    architectureLabels: form.architectureLabels,
     defaults: {
       installDir: form.installDir,
     },

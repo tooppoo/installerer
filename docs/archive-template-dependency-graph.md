@@ -82,6 +82,18 @@ For example, in `install_pin`, `pinned_version` only gains `"archive filename co
 
 Edges then connect config-derived source variables (`owner`, `repo`, `bin`, `os`, `arch`, `target`, template literal segments, and — for `install_latest` with `release_version_file` — `versionResolver.fileName` → `resolved_version`) up into `archive_asset_name`, `archive_url`, `checksum_url`, `checksum_lookup_key`, and `archive_path`. `addArchiveTemplateEdges` adds one `archive_asset_name ← <placeholder>` edge per placeholder actually present in `archive.nameTemplate`, so unused placeholders never contribute contexts.
 
+### `asset_arch_label` (Issue #76)
+
+`{arch}` and `{target}` do not derive `archive_asset_name` from the canonical `arch` variable directly. Instead, `architectureLabelEdges()` (called by both `buildInstallLatestGraph` and `buildInstallPinGraph`) inserts an intermediate node:
+
+```text
+{ derived: "asset_arch_label", source: "arch" }
+{ derived: "asset_arch_label", source: "architectureLabels.x86_64" }
+{ derived: "asset_arch_label", source: "architectureLabels.aarch64" }
+```
+
+`addArchiveTemplateEdges` then adds `{ derived: "archive_asset_name", source: "asset_arch_label" }` whenever the template uses `{arch}` or `{target}`, rather than an edge from `arch` directly. This means the two `architectureLabels.<canonical_arch>` config values — not just the canonical `arch` variable — inherit `archive_asset_name`'s contexts (`archive filename context`, `checksum lookup context`, `shell literal context`) whenever the template embeds architecture information. `graphSourceValuesForConfig` maps `architectureLabels.x86_64`/`architectureLabels.aarch64` back to `$.architectureLabels.x86_64`/`$.architectureLabels.aarch64`, so the existing `archive-filename-context` and `shell-literal-context` rules validate custom architecture labels the same way they validate `owner`, `repo`, or `checksum.fileName` — no dedicated rule was needed. This is defense in depth: `architectureLabels` values are already rejected at parse time by a dedicated `^[A-Za-z0-9._+-]+$` check (with `.`/`..` rejected explicitly) regardless of whether `{arch}`/`{target}` appear in the template at all.
+
 ## Context-Specific Validation Policy
 
 Once contexts are propagated, a small set of rules inspects `reachableContextsByVariable` and flags real config field values (not abstract graph node names) that reach a context they cannot safely occupy. Rules run per mode graph and results are deduplicated.

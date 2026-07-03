@@ -24,7 +24,7 @@ export function previewArchiveNames(config: InstallerConfig, version: string) {
       bin: config.binary.name,
       version,
       os: target.os,
-      arch: target.arch,
+      arch: config.architectureLabels[target.arch],
       osCase: config.archive.osCase,
     });
     return {

@@ -55,6 +55,12 @@ const LATEST_ASSET_CONFIG = {
   defaults: { installDir: "$HOME/.local/bin" },
 };
 
+/** Custom (non-preset) architecture labels (issue #76), distinct per canonical arch. */
+const CUSTOM_ARCH_LABEL_CONFIG = {
+  ...LATEST_ASSET_CONFIG,
+  architectureLabels: { x86_64: "x64", aarch64: "arm64-v8a" },
+};
+
 const LATEST_BINARY = "#!/bin/sh\necho demo latest fixture\n";
 const PINNED_BINARY = "#!/bin/sh\necho demo pinned fixture\n";
 
@@ -119,8 +125,8 @@ function placeExistingBinary(installDir: string, name: string, content: string):
 describe("release_version_file runtime e2e (tar.gz)", () => {
   const archive = buildArchive("tar.gz", [{ path: "bin/demo", content: LATEST_BINARY }]);
   const pinnedArchive = buildArchive("tar.gz", [{ path: "bin/demo", content: PINNED_BINARY }]);
-  const latestAssetName = "demo_v2.0.0_linux_x86_64.tar.gz";
-  const pinnedAssetName = "demo_v1.0.0_linux_x86_64.tar.gz";
+  const latestAssetName = "demo_v2.0.0_linux_amd64.tar.gz";
+  const pinnedAssetName = "demo_v1.0.0_linux_amd64.tar.gz";
 
   test("latest install resolves the configured version file, then installs from the tag", async () => {
     server.setLatestRelease(OWNER, REPO, { [VERSION_FILE_NAME]: "v2.0.0\n" });
@@ -177,7 +183,7 @@ describe("release_version_file runtime e2e (tar.gz)", () => {
 describe("latest_asset runtime e2e (zip)", () => {
   const archive = buildArchive("zip", [{ path: "demo", content: LATEST_BINARY }]);
   const pinnedArchive = buildArchive("zip", [{ path: "demo", content: PINNED_BINARY }]);
-  const assetName = "demo_linux_x86_64.zip";
+  const assetName = "demo_linux_amd64.zip";
 
   test("latest install downloads versionless assets and never a version file", async () => {
     server.setLatestRelease(OWNER, REPO, {
@@ -221,6 +227,29 @@ describe("latest_asset runtime e2e (zip)", () => {
   });
 });
 
+describe("custom architecture label mapping e2e (issue #76)", () => {
+  test("a custom (non-preset) asset_arch_label is used to build the download URL", async () => {
+    const archive = buildArchive("zip", [{ path: "demo", content: LATEST_BINARY }]);
+    const assetName = "demo_linux_x64.zip";
+    server.setLatestRelease(OWNER, REPO, {
+      [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
+      [assetName]: archive,
+    });
+
+    const env = createInstallerRunEnv();
+    const run = await env.run(testScript(CUSTOM_ARCH_LABEL_CONFIG));
+
+    expect(run.stderr).toBe("");
+    expect(run.status).toBe(0);
+    expectInstalledBinary(env.defaultInstallDir, "demo", LATEST_BINARY);
+    expectRequests([
+      `/${OWNER}/${REPO}/releases/latest/download/${CHECKSUM_FILE_NAME}`,
+      `/${OWNER}/${REPO}/releases/latest/download/${assetName}`,
+    ]);
+    expect(run.leftoverTmpEntries).toEqual([]);
+  });
+});
+
 describe("dispatch and argument handling", () => {
   test("--version latest is rejected before any network access", async () => {
     const env = createInstallerRunEnv();
@@ -239,7 +268,7 @@ describe("dispatch and argument handling", () => {
     // (%2F for /), so the fixture server must decode that segment back to
     // "release/v1.2.3" — not split on the decoded slash — to find it.
     const archive = buildArchive("zip", [{ path: "demo", content: PINNED_BINARY }]);
-    const assetName = "demo_linux_x86_64.zip";
+    const assetName = "demo_linux_amd64.zip";
     server.setTaggedRelease(OWNER, REPO, "release/v1.2.3", {
       [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
       [assetName]: archive,
@@ -262,7 +291,7 @@ describe("dispatch and argument handling", () => {
 
 describe("failure handling", () => {
   const validArchive = buildArchive("tar.gz", [{ path: "bin/demo", content: PINNED_BINARY }]);
-  const assetName = "demo_v1.0.0_linux_x86_64.tar.gz";
+  const assetName = "demo_v1.0.0_linux_amd64.tar.gz";
   const pinArgs = ["--version", "v1.0.0"];
 
   test("checksum mismatch stops before extraction and preserves the existing binary", async () => {
@@ -339,6 +368,18 @@ describe("unsupported target simulation via uname shim", () => {
     expectRequests([]);
   });
 
+  test("amd64 is not accepted as a raw uname -m value (issue #76)", async () => {
+    // The initial runtime canonicalization mapping only recognizes the real
+    // `uname -m` outputs x86_64/aarch64/arm64. `amd64` is an asset-label
+    // spelling, not a runtime architecture, and must not be special-cased.
+    const env = createInstallerRunEnv();
+    const run = await env.run(testScript(LATEST_ASSET_CONFIG), { unameArch: "amd64" });
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("unsupported architecture: amd64");
+    expectRequests([]);
+  });
+
   test("recognized but unconfigured target fails before any network access", async () => {
     const env = createInstallerRunEnv();
     const run = await env.run(testScript(RELEASE_VERSION_FILE_CONFIG), {
@@ -346,8 +387,10 @@ describe("unsupported target simulation via uname shim", () => {
       unameArch: "arm64",
     });
 
+    // "darwin/aarch64" (not "darwin/arm64") in the error proves the runtime
+    // canonicalized "arm64" to "aarch64" before checking target support.
     expect(run.status).toBe(1);
-    expect(run.stderr).toContain("unsupported target: darwin/arm64");
+    expect(run.stderr).toContain("unsupported target: darwin/aarch64");
     expectRequests([]);
   });
 });

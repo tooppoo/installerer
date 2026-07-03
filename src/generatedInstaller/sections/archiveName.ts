@@ -6,8 +6,8 @@ export function renderArchiveName({ templateSegments }: RenderContext): string {
   return `render_archive_asset_name() {
   version=$1
   os=$2
-  arch=$3
-  target="\${os}_\${arch}"
+  asset_arch_label=$3
+  target="\${os}_\${asset_arch_label}"
   printf '%s' ${renderTemplatePrintfArguments(templateSegments)}
   printf '\\n'
 }
@@ -29,7 +29,9 @@ function renderTemplatePrintfArguments(segments: ArchiveTemplateSegment[]) {
             ? "REPO"
             : segment.name === "bin"
               ? "BINARY_NAME"
-              : segment.name;
+              : segment.name === "arch"
+                ? "asset_arch_label"
+                : segment.name;
       return `"$${variable}"`;
     })
     .join(" ");

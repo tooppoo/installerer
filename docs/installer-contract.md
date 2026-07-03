@@ -64,6 +64,14 @@ The `archive.nameTemplate` must end with the suffix matching the selected format
 
 This only changes display casing of the supported `linux`/`darwin` targets; it does not add Windows as a target OS.
 
+`architectureLabels` controls how the `{arch}` and `{target}` placeholders render the detected architecture. It maps each canonical architecture the generated installer detects at runtime (`x86_64`, `aarch64`) to the label embedded in Release asset names:
+
+- default (when omitted): `x86_64 -> amd64`, `aarch64 -> arm64`
+- also selectable in the browser form as presets: `x86_64 -> x86_64`, `aarch64 -> aarch64`
+- or any custom label, for example `x86_64 -> x64`, `aarch64 -> arm64-v8a`
+
+This is independent of runtime architecture detection: the generated installer always canonicalizes `uname -m` output to `x86_64`/`aarch64` first, then looks up the configured label. Changing `architectureLabels` changes only the asset name spelling, never which host architectures the installer recognizes. See [`generated-installer-runtime.md`](./generated-installer-runtime.md#target-detection-and-architecture-label-resolution) for the two-stage resolution this implies.
+
 ## Runtime Dependencies
 
 The generated artifact is a POSIX `sh` script, but it depends on documented external commands.
@@ -122,7 +130,7 @@ Example asset layout:
 ```text
 VERSION
 checksums.txt
-rellog_v0.1.2_linux_x86_64.tar.gz
+rellog_v0.1.2_linux_amd64.tar.gz
 rellog_v0.1.2_darwin_arm64.tar.gz
 ```
 
@@ -145,7 +153,7 @@ Example asset layout:
 
 ```text
 checksums.txt
-rellog_linux_x86_64.tar.gz
+rellog_linux_amd64.tar.gz
 rellog_darwin_arm64.tar.gz
 ```
 

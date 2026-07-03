@@ -11,6 +11,7 @@ import {
 import {
   GITHUB_OWNER_PATTERN,
   GITHUB_REPO_PATTERN,
+  validateArchitectureLabels,
   validateArchiveRelativePath,
   validateDefaults,
   validateSafeFilename,
@@ -29,8 +30,16 @@ export type VersionResolver =
     };
 
 export type TargetOS = "linux" | "darwin";
-export type TargetArch = "x86_64" | "arm64";
+export type TargetArch = "x86_64" | "aarch64";
 export type OsCase = "lowercase" | "capitalized";
+
+/**
+ * Resolved `canonical_arch -> asset_arch_label` mapping. `asset_arch_label` is
+ * the value embedded in Release asset names via the `{arch}`/`{target}`
+ * archive.nameTemplate placeholders; it is independent of `TargetArch`, the
+ * runtime-detected canonical architecture (see docs/generated-installer-runtime.md).
+ */
+export type ArchitectureLabels = Record<TargetArch, string>;
 
 export type InstallerConfig = {
   owner: string;
@@ -53,6 +62,7 @@ export type InstallerConfig = {
     os: TargetOS;
     arch: TargetArch;
   }>;
+  architectureLabels: ArchitectureLabels;
   defaults: {
     installDir: string;
   };
@@ -108,7 +118,17 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
   rejectUnknownFields(
     root,
     "$",
-    ["owner", "repo", "binary", "versionResolver", "archive", "checksum", "targets", "defaults"],
+    [
+      "owner",
+      "repo",
+      "binary",
+      "versionResolver",
+      "archive",
+      "checksum",
+      "targets",
+      "architectureLabels",
+      "defaults",
+    ],
     errors,
   );
 
@@ -240,6 +260,11 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
   }
 
   const targets = validateTargets(root.targets, "$.targets", errors);
+  const architectureLabels = validateArchitectureLabels(
+    root.architectureLabels,
+    "$.architectureLabels",
+    errors,
+  );
   const defaults = validateDefaults(root.defaults, errors);
 
   if (
@@ -255,6 +280,7 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     checksumFileName === undefined ||
     checksumAlgorithm !== "sha256" ||
     targets === undefined ||
+    architectureLabels === undefined ||
     defaults === undefined
   ) {
     return { ok: false, errors, warnings: [] };
@@ -278,6 +304,7 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
       algorithm: "sha256",
     },
     targets,
+    architectureLabels,
     defaults,
   };
   const templateResult = parseArchiveNameTemplate(archiveNameTemplate);

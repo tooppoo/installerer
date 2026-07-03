@@ -31,6 +31,7 @@ export function renderInstallLatest({ config }: RenderContext): string {
   set -- $target
   os=$1
   arch=$2
+  asset_arch_label=$(resolve_asset_arch_label "$arch") || exit 1
 ${latestBody(config)}
 }
 
@@ -45,7 +46,8 @@ export function renderInstallPin(): string {
   set -- $target
   os=$1
   arch=$2
-  archive_asset_name=$(render_archive_asset_name "$pinned_version" "$os" "$arch")
+  asset_arch_label=$(resolve_asset_arch_label "$arch") || exit 1
+  archive_asset_name=$(render_archive_asset_name "$pinned_version" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
 ${renderOwnerRepoPathEncoding()}${renderVersionedReleaseUrls("pinned_version")}  download_and_install "$archive_url" "$checksum_url" "$archive_asset_name"
 }
@@ -59,13 +61,13 @@ function latestBody(config: InstallerConfig) {
   resolved_version=$(read_version_file "$version_file_url") || exit 1
   is_valid_git_tag "$resolved_version" || fail "resolved version is not a valid Git tag: $resolved_version"
   printf '%s\\n' "installerer: resolved latest version $resolved_version"
-  archive_asset_name=$(render_archive_asset_name "$resolved_version" "$os" "$arch")
+  archive_asset_name=$(render_archive_asset_name "$resolved_version" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
 ${renderVersionedReleaseUrls("resolved_version")}  download_and_install "$archive_url" "$checksum_url" "$archive_asset_name"`;
   }
 
   return `  printf '%s\\n' "installerer: install source latest"
-  archive_asset_name=$(render_archive_asset_name "" "$os" "$arch")
+  archive_asset_name=$(render_archive_asset_name "" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
 ${renderOwnerRepoPathEncoding()}${renderLatestReleaseUrls()}  download_and_install "$archive_url" "$checksum_url" "$archive_asset_name"`;
 }
