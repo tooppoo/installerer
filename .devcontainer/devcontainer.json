@@ -1,6 +1,6 @@
 {
   "name": "installerer-dev",
-  "image": "mcr.microsoft.com/devcontainers/base:2.1.9-trixie",
+  "image": "mcr.microsoft.com/devcontainers/base:2.1.11-trixie",
   "workspaceFolder": "/workspaces/installerer",
   "remoteUser": "vscode",
   "runArgs": ["--init"],
