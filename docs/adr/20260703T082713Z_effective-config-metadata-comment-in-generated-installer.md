@@ -20,7 +20,8 @@ This is an ADR because it fixes a rule future config-field additions must keep f
 ## Decision
 
 - A dedicated section renderer, `renderMetadataComment` in `src/generatedInstaller/sections/metadataComment.ts`, builds the comment from an explicit field whitelist — never `JSON.stringify(config)` or any other full-object dump.
-- The whitelist is exactly the fields listed in the issue: `generator.name`, `generator.sourceUrl` (both static, matching the existing disclaimer header), `owner`, `repo`, `binary.name`, `binary.pathInArchive`, `versionResolver.type`, `versionResolver.fileName` (only when the resolver is `release_version_file`), `archive.format`, `archive.nameTemplate`, `archive.osCase`, `checksum.fileName`, `checksum.algorithm`, `defaults.installDir`, and `targets` (rendered as `os/arch` pairs in the normalized config order).
+- The whitelist is exactly the fields listed in the issue: `generator.name`, `generator.sourceUrl` (both static), `owner`, `repo`, `binary.name`, `binary.pathInArchive`, `versionResolver.type`, `versionResolver.fileName` (only when the resolver is `release_version_file`), `archive.format`, `archive.nameTemplate`, `archive.osCase`, `checksum.fileName`, `checksum.algorithm`, `defaults.installDir`, and `targets` (rendered as `os/arch` pairs in the normalized config order).
+- `renderHeader()` (`src/generatedInstaller/sections/header.ts`) no longer states the generator name and source URL itself. Those two facts now have a single source of truth — the metadata comment's `generator.name`/`generator.sourceUrl` fields — instead of being duplicated across two independently maintained comment blocks that could drift apart after a future edit to either one.
 - `composeInstallerScript` inserts `renderMetadataComment(context)` between `renderHeader()` and `renderConstants(context)`. The comment documents the generated script; runtime behavior continues to come only from the constants and functions that follow it.
 - Every whitelisted value is rendered as a single comment line. Control characters (including `\n` and `\r`) are escaped to a visible `\xHH`/`\n`/`\r`/`\t` representation before being written, so no config value can terminate a `#` line and turn the remainder of that line into executable shell.
 - No timestamp, commit hash, generation-time clock value, or other non-deterministic field is included. The same normalized config always produces the same metadata comment.
@@ -51,7 +52,7 @@ Would improve traceability for support requests. Rejected for this issue: it bre
 ### Negative Consequences
 
 - Adding a new `InstallerConfig` field now carries an extra step (deciding whether and how it appears in the whitelist) that is easy to forget.
-- Two existing test helpers needed small updates to keep excluding comment lines from logic-only scans (`assertRuntimeStructure`'s casing guard) and to account for the extra `https://github.com` occurrence contributed by `generator.sourceUrl` (`rewriteBaseUrlForTest`'s URL-construction count).
+- Two existing test helpers needed small updates to keep excluding comment lines from logic-only scans (`assertRuntimeStructure`'s casing guard) and to account for the `https://github.com` occurrence contributed by `generator.sourceUrl` (`rewriteBaseUrlForTest`'s URL-construction count).
 
 ### Neutral Consequences
 
