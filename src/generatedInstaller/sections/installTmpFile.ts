@@ -43,9 +43,9 @@ export function renderCleanupTrap(): string {
  */
 export function renderInstallBinary(): string {
   return `install_binary() {
-  mkdir -p "$INSTALL_DIR" || fail "failed to create install directory: $INSTALL_DIR"
+  mkdir -p -- "$INSTALL_DIR" || fail "failed to create install directory: $INSTALL_DIR"
 
-  install_tmp=$(mktemp "$INSTALL_DIR/.$BINARY_NAME.tmp.XXXXXX") \\
+  install_tmp=$(mktemp -- "$INSTALL_DIR/.$BINARY_NAME.tmp.XXXXXX") \\
     || fail "failed to create temporary install file in $INSTALL_DIR"
 
   cp "$extracted_binary" "$install_tmp" \\
