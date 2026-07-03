@@ -17,6 +17,7 @@ import {
   renderInstallLatest,
   renderInstallPin,
 } from "./sections/installFlow";
+import { renderMetadataComment } from "./sections/metadataComment";
 import { renderRuntimeValidation } from "./sections/runtimeValidation";
 import { renderTarget } from "./sections/target";
 import { renderUrlEncoding } from "./sections/urlEncoding";
@@ -30,6 +31,7 @@ import { renderVersionResolver } from "./sections/versionResolver";
 export function composeInstallerScript(context: RenderContext): string {
   return [
     renderHeader(),
+    renderMetadataComment(context),
     renderConstants(context),
     renderMain(),
     renderFail(),
