@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">installerer logo</title>
+  <desc id="desc">A rounded square app icon showing a simple install arrow entering a tray.</desc>
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="#0F172A"/>
+  <path d="M256 120v168" fill="none" stroke="#38BDF8" stroke-width="44" stroke-linecap="round"/>
+  <path d="M198 236l58 58 58-58" fill="none" stroke="#38BDF8" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M156 340v28c0 24 20 44 44 44h112c24 0 44-20 44-44v-28" fill="none" stroke="#E0F2FE" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M180 340h152" fill="none" stroke="#E0F2FE" stroke-width="30" stroke-linecap="round"/>
+</svg>
