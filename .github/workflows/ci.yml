@@ -23,6 +23,10 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version-file: ".bun-version"
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24"
 
       - name: check
         run: just check
@@ -33,3 +37,133 @@ jobs:
           directory: coverage
           use_oidc: true
           slug: tooppoo/installerer
+
+  package-tarball:
+    name: npm package tarball
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: ".bun-version"
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build npm package
+        run: bun run build:npm
+
+      - name: Verify npm pack file set
+        working-directory: dist-cli/npm
+        run: npm pack --dry-run --json | bun run ../../scripts/ci/verifyPackFileSet.ts
+
+      - name: Create npm pack tarball
+        working-directory: dist-cli/npm
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-package"
+          npm pack --pack-destination "$RUNNER_TEMP/npm-package"
+
+      - name: Upload npm package tarball
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-package-tarball
+          path: ${{ runner.temp }}/npm-package/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  node-runtime-smoke:
+    name: Node runtime smoke (${{ matrix.channel }} ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    needs: package-tarball
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - node-version: "22"
+            channel: LTS
+          - node-version: "24"
+            channel: LTS
+          - node-version: "26"
+            channel: Current
+
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Download npm package tarball
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-package-tarball
+          path: ${{ runner.temp }}/npm-package
+
+      - name: Install and run installerer
+        run: |
+          tarball="$(find "$RUNNER_TEMP/npm-package" -name '*.tgz' -print -quit)"
+          test -n "$tarball"
+
+          workdir="$(mktemp -d)"
+          cd "$workdir"
+          printf '%s\n' '{ "name": "installerer-node-smoke", "private": true }' > package.json
+          npm install --no-audit --no-fund "$tarball"
+          ./node_modules/.bin/installerer --help
+
+  package-manager-smoke:
+    name: Package manager smoke (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    needs: package-tarball
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: npm
+            script: scripts/ci/package-manager/npm-smoke.sh
+          - name: yarn-pnp
+            script: scripts/ci/package-manager/yarn-pnp-smoke.sh
+          - name: yarn-node-modules
+            script: scripts/ci/package-manager/yarn-node-modules-smoke.sh
+          - name: pnpm
+            script: scripts/ci/package-manager/pnpm-smoke.sh
+          - name: bun
+            script: scripts/ci/package-manager/bun-smoke.sh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24"
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: ".bun-version"
+
+      # Node no longer bundles a usable Corepack by default on every
+      # version this matrix may grow to cover, so install it explicitly
+      # instead of relying on `corepack enable` alone.
+      - name: Ensure current Corepack
+        run: npm install -g corepack@latest
+
+      - name: Download npm package tarball
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-package-tarball
+          path: ${{ runner.temp }}/npm-package
+
+      - name: Run package manager smoke script
+        run: |
+          tarball="$(find "$RUNNER_TEMP/npm-package" -name '*.tgz' -print -quit)"
+          test -n "$tarball"
+
+          test -f "${{ matrix.script }}"
+          test -x "${{ matrix.script }}"
+
+          "${{ matrix.script }}" "$tarball"
