@@ -5,7 +5,7 @@
  */
 
 export const NPM_CLI_BIN_NAME = "installerer.js";
-export const NPM_CLI_ENGINES = { node: ">=20.0.0" } as const;
+export const NPM_CLI_ENGINES = { node: ">=22.0.0" } as const;
 
 /**
  * Files expected in the generated npm publish directory (`dist-npm/`).
@@ -79,7 +79,11 @@ export function buildPublishPackageJson(rootPkg: RootPackageJson): Record<string
     bin: {
       installerer: `./bin/${NPM_CLI_BIN_NAME}`,
     },
-    files: ["bin"],
+    // npm always includes package.json/README/LICENSE regardless of
+    // `files`, but listing the full publish file set explicitly here keeps
+    // the manifest itself an accurate, self-contained record of what ships
+    // (review feedback on PR #97).
+    files: [...PUBLISH_DIR_FILES],
     engines: NPM_CLI_ENGINES,
     repository: {
       type: "git",

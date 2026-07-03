@@ -1,7 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -12,17 +11,22 @@ import {
 } from "../../scripts/npmPublishDir";
 
 /**
- * Covers the npm publish boundary from issue #81: `bun run build:npm` must
- * produce a self-contained, Node.js-runnable publish directory that
- * excludes the browser SPA build, tests, and dev-only files, and that a
- * packed tarball actually installs and runs under real `npm` / `node` (CI
- * installs Node.js via actions/setup-node in .github/workflows/ci.yml
- * specifically so this suite can exercise the real toolchain, not a Bun
- * proxy for it).
+ * Fast, in-process checks on the npm publish boundary from issue #81:
+ * `bun run build:npm` must produce a self-contained, Node.js-runnable
+ * `dist/npm/` directory that excludes the browser SPA build, tests, and
+ * dev-only files.
+ *
+ * Real `npm pack` / `npm install` / `node` verification, across Node.js
+ * versions and package managers, runs as dedicated GitHub Actions jobs
+ * instead of here (`package-tarball`, `node-runtime-smoke`,
+ * `package-manager-smoke` in .github/workflows/ci.yml) — see
+ * docs/adr/20260703T134302Z_npm-node-cli-package.md. Keeping this suite
+ * in-process (only a single `node --help` smoke check) means it runs on
+ * every `bun test`, not just in CI.
  */
 
 const root = join(import.meta.dir, "..", "..");
-const outDir = join(root, "dist-npm");
+const outDir = join(root, "dist", "npm");
 const binPath = join(outDir, "bin", "installerer.js");
 
 function run(command: string, args: string[], options: { cwd?: string } = {}) {
@@ -44,10 +48,6 @@ function listFilesRecursive(dir: string, base = dir): string[] {
   return files;
 }
 
-type NpmPackDryRunEntry = {
-  files: { path: string; mode: number }[];
-};
-
 describe("npm CLI publish directory (build:npm)", () => {
   beforeAll(() => {
     const build = run("bun", ["run", "build:npm"]);
@@ -66,7 +66,7 @@ describe("npm CLI publish directory (build:npm)", () => {
     expect(pkg.name).toBe("@philomagi/installerer");
     expect(pkg.private).toBeUndefined();
     expect(pkg.bin).toEqual({ installerer: "./bin/installerer.js" });
-    expect(pkg.files).toEqual(["bin"]);
+    expect(pkg.files).toEqual([...PUBLISH_DIR_FILES]);
     expect(pkg.engines?.node).toBeTruthy();
   });
 
@@ -90,64 +90,4 @@ describe("npm CLI publish directory (build:npm)", () => {
     expect(result.stdout).toContain("installerer <command> [options]");
     expect(result.stderr).toBe("");
   });
-
-  test("`npm pack --dry-run` reports exactly the expected files with the executable bit preserved", () => {
-    const result = run("npm", ["pack", "--dry-run", "--json"], { cwd: outDir });
-    expect(result.status).toBe(0);
-
-    const [entry] = JSON.parse(result.stdout) as NpmPackDryRunEntry[];
-    const packed = (entry?.files ?? []).map((file) => file.path);
-    expect(packed.sort()).toEqual([...PUBLISH_DIR_FILES].sort());
-
-    const bin = entry?.files.find((file) => file.path === "bin/installerer.js");
-    expect((bin?.mode ?? 0) & 0o111).not.toBe(0);
-  });
-
-  test("a packed tarball installs into a fresh project via real npm, and both `node <bin>` and the npm-generated bin shim run it", () => {
-    const tarballDir = mkdtempSync(join(tmpdir(), "installerer-npm-pack-"));
-    const installDir = mkdtempSync(join(tmpdir(), "installerer-npm-install-"));
-    try {
-      const pack = run("npm", ["pack", "--pack-destination", tarballDir, "--silent"], {
-        cwd: outDir,
-      });
-      expect(pack.status).toBe(0);
-
-      const tarballName = readdirSync(tarballDir).find((name) => name.endsWith(".tgz"));
-      if (!tarballName) throw new Error("npm pack did not produce a .tgz file");
-      const tarballPath = join(tarballDir, tarballName);
-
-      writeFileSync(
-        join(installDir, "package.json"),
-        JSON.stringify({ name: "npm-cli-smoke-test", private: true }),
-      );
-      const install = run("npm", ["install", "--no-audit", "--no-fund", tarballPath], {
-        cwd: installDir,
-      });
-      expect(install.status).toBe(0);
-
-      const installedBin = join(
-        installDir,
-        "node_modules",
-        "@philomagi",
-        "installerer",
-        "bin",
-        "installerer.js",
-      );
-      const direct = run("node", [installedBin, "--help"]);
-      expect(direct.status).toBe(0);
-      expect(direct.stdout).toContain("installerer <command> [options]");
-
-      // The user-facing path documented in README.md: after
-      // `npm install [-g] @philomagi/installerer`, the `installerer`
-      // command itself (npm's generated bin shim) must work, not just
-      // `node <path-to-bundle>`.
-      const shimPath = join(installDir, "node_modules", ".bin", "installerer");
-      const shim = run(shimPath, ["--help"]);
-      expect(shim.status).toBe(0);
-      expect(shim.stdout).toContain("installerer <command> [options]");
-    } finally {
-      rmSync(tarballDir, { recursive: true, force: true });
-      rmSync(installDir, { recursive: true, force: true });
-    }
-  }, 30_000);
 });

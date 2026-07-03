@@ -7,6 +7,7 @@ import {
   findBunRuntimeReferences,
   NODE_SHEBANG,
   NPM_CLI_ENGINES,
+  PUBLISH_DIR_FILES,
 } from "./npmPublishDir";
 
 describe("ensureShebang", () => {
@@ -79,7 +80,7 @@ describe("buildPublishPackageJson", () => {
     expect(pkg.dependencies).toBeUndefined();
     expect(pkg.scripts).toBeUndefined();
     expect(pkg.bin).toEqual({ installerer: "./bin/installerer.js" });
-    expect(pkg.files).toEqual(["bin"]);
+    expect(pkg.files).toEqual([...PUBLISH_DIR_FILES]);
     expect(pkg.engines).toEqual(NPM_CLI_ENGINES);
   });
 });

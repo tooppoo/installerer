@@ -15,9 +15,11 @@ This repository's toolchain, before this issue, only set up Bun (`.bun-version`,
 
 ### Publish directory, not the root package
 
-`build:npm` (`bun run scripts/build-npm.ts`, using `Bun.build` — running the build under Bun is explicitly permitted by the distribution ADR) generates a dedicated publish directory, `dist-npm/` (gitignored), instead of publishing the repository root. `dist-npm/package.json` is generated from scratch (`scripts/npmPublishDir.ts#buildPublishPackageJson`), not copied from the root manifest: it carries only `name`/`version` (mirrored from root), `description`, `license`, `type`, `bin`, `files: ["bin"]`, `engines.node` (`>=20.0.0`), and repository metadata. It has no `private` field, no SPA dependencies, and no dev scripts. The root `package.json` keeps `private: true` and is never published directly.
+`build:npm` (`bun run scripts/build-npm.ts`, using `Bun.build` — running the build under Bun is explicitly permitted by the distribution ADR) generates a dedicated publish directory, `dist/npm/`, instead of publishing the repository root. It lives under the same top-level `dist/` as the browser SPA build (`build.ts`) rather than a separate `dist-npm/`, so there is one gitignored build-output root instead of two (review feedback on PR #97). `build.ts` wipes the entire `dist/` directory at the start of every SPA build, so `bun run build` must run before `bun run build:npm`, not after — `Justfile`'s `_check` already does, and `scripts/build-npm.ts` documents the ordering requirement inline.
 
-`dist-npm/` contents: `package.json`, `README.md`, `LICENSE` (copied from root), and `bin/installerer.js` (the built CLI; see Source map policy below for why no `.map` file ships alongside it). `files: ["bin"]` plus npm's automatic inclusion of `package.json`/`README`/`LICENSE` is the publish file-set boundary; nothing under `src/`, `public/`, `test/`, or `dist/` (the SPA build) is reachable from it.
+`dist/npm/package.json` is generated from scratch (`scripts/npmPublishDir.ts#buildPublishPackageJson`), not copied from the root manifest: it carries only `name`/`version` (mirrored from root), `description`, `license`, `type`, `bin`, `files` (the full publish file list, see below), `engines.node` (`>=22.0.0`), and repository metadata. It has no `private` field, no SPA dependencies, and no dev scripts. The root `package.json` keeps `private: true` and is never published directly.
+
+`dist/npm/` contents: `package.json`, `README.md`, `LICENSE` (copied from root), and `bin/installerer.js` (the built CLI; see Source map policy below for why no `.map` file ships alongside it). npm always includes `package.json`/`README`/`LICENSE` regardless of the manifest's `files` field, but `buildPublishPackageJson` lists the full publish set (`package.json`, `README.md`, `LICENSE`, `bin/installerer.js`) in `files` explicitly anyway, so the manifest itself is a complete, accurate record of what ships instead of relying on implicit npm defaults (review feedback on PR #97). Nothing under `src/`, `public/`, `test/`, or the rest of `dist/` (the SPA build) is reachable from it.
 
 ### Node.js CLI entrypoint layering
 
@@ -38,11 +40,23 @@ The existing runtime-independent core (`src/cli/dispatch.ts`, from issue #86) is
 
 ### Source map policy: no source map is shipped
 
-`build:npm` builds with `sourcemap: "none"`; `dist-npm/` does not contain a `bin/installerer.js.map`. The distribution ADR's source map policy only ever said a source map "may" be included for CLI debugging convenience — it was never required — and the safety work that permission implies (rewriting bundler-relative `sources` entries to repo-relative paths, plus scanning the map's full text, including `sourcesContent`, for machine-specific paths and secret/token shapes) is ongoing maintenance surface for a "nice to have." Not shipping a source map removes that surface entirely: there is nothing to sanitize or scan, and no future CLI source file can leak anything through it. Node.js stack traces from the built CLI point at the bundled `bin/installerer.js` itself, which is intentionally close to unminified (no `minify` option is passed to `Bun.build`), so they stay readable without a map. See Alternatives Considered for the sanitize-and-ship approach this replaced.
+`build:npm` builds with `sourcemap: "none"`; `dist/npm/` does not contain a `bin/installerer.js.map`. The distribution ADR's source map policy only ever said a source map "may" be included for CLI debugging convenience — it was never required — and the safety work that permission implies (rewriting bundler-relative `sources` entries to repo-relative paths, plus scanning the map's full text, including `sourcesContent`, for machine-specific paths and secret/token shapes) is ongoing maintenance surface for a "nice to have." Not shipping a source map removes that surface entirely: there is nothing to sanitize or scan, and no future CLI source file can leak anything through it. Node.js stack traces from the built CLI point at the bundled `bin/installerer.js` itself, which is intentionally close to unminified (no `minify` option is passed to `Bun.build`), so they stay readable without a map. See Alternatives Considered for the sanitize-and-ship approach this replaced.
 
-### Real npm/node verification in CI
+### `engines.node` and `@types/node`
 
-`.github/workflows/ci.yml` adds `actions/setup-node` (Node.js 20, matching `engines.node`) alongside the existing Bun setup. `test/integration/npmCli.test.ts` packs and installs the generated `dist-npm/` directory with real `npm pack` / `npm install` into a temporary project, then runs the installed CLI two ways: directly via `node <installed-bin>`, and through npm's generated `node_modules/.bin/installerer` shim (the actual command the README's `npm install -g @philomagi/installerer` / `installerer --help` path resolves to). This directly exercises the acceptance criteria's named tools instead of a Bun-based proxy for them, at the cost of a second language runtime in an otherwise Bun-only CI pipeline (see Alternatives Considered).
+`engines.node` is `>=22.0.0`. `@types/node` is pinned to `22.20.0` (a version in the same major line, rather than left floating on whatever the workspace's other `@types/node` consumers pull in), so `typecheck:cli` cannot pass by relying on a Node API that does not exist on the oldest Node.js version the package declares support for.
+
+### Real npm/node verification in CI, split by concern
+
+`.github/workflows/ci.yml` verifies the npm package with three additional jobs, on top of `check` (which still runs `just check`, including `build:npm` and the fast in-process checks in `test/integration/npmCli.test.ts`). Each job verifies one concern, so a failure's cause is obvious from which job failed instead of one large matrix mixing "is the artifact well-formed," "does it run on this Node.js version," and "does it install with this package manager":
+
+- **`package-tarball`**: builds the npm package (`bun run build:npm`), verifies its `npm pack --dry-run --json` file set against `PUBLISH_DIR_FILES` and that `bin/installerer.js` keeps its executable bit in the packed tarball (`scripts/ci/verifyPackFileSet.ts`), then runs `npm pack` for real and uploads the `.tgz` as a build artifact. This is the only job that builds; every other job downloads the same uploaded tarball, so all of them verify the exact bytes that would be published, not a re-built copy.
+- **`node-runtime-smoke`**: downloads the tarball and, on a matrix of Node.js 22 and 24 (LTS) and 26 (Current), `npm install`s it into a fresh project and runs `./node_modules/.bin/installerer --help`. This is Node.js runtime compatibility only — one package manager (npm), three Node.js versions.
+- **`package-manager-smoke`**: downloads the tarball and, on a fixed Node.js version (24), runs one of five package-manager-specific smoke scripts under `scripts/ci/package-manager/` (`npm`, `yarn-pnp`, `yarn-node-modules`, `pnpm`, `bun`) against it. This is package manager install/run compatibility only — one Node.js version, five package managers. Node.js version and package manager are deliberately not crossed in a single matrix: doing so would make a failure's cause ambiguous (is Node 26 broken, or is Yarn PnP broken?) and multiply CI cost for coverage this split does not need — Node.js runtime compatibility is already covered by `node-runtime-smoke`.
+
+`.github/workflows/ci.yml`'s `matrix.include` maps each `package-manager-smoke` entry's `name` directly to its `script` path; the workflow step that runs it (`"${{ matrix.script }}" "$tarball"`) contains no package-manager-specific branching. Each script under `scripts/ci/package-manager/` is a standalone, directly-runnable POSIX `sh` script (`script.sh <tarball-path>`) sharing helpers from `lib.sh`, so a package manager's install/run quirk is isolated to its own script and the same script can be run locally (`./scripts/ci/package-manager/pnpm-smoke.sh ./path/to/package.tgz`) without needing the workflow.
+
+Every `package-manager-smoke` matrix entry installs Corepack explicitly (`npm install -g corepack@latest`) before the smoke script runs, rather than relying on whatever Corepack ships with the job's Node.js install. Node.js versions are dropping bundled Corepack (or bundling one gated behind an opt-in flag) on different schedules; installing it explicitly keeps the Yarn/pnpm scripts from depending on that changing per-Node-version default.
 
 ## Alternatives Considered
 
@@ -50,7 +64,7 @@ The existing runtime-independent core (`src/cli/dispatch.ts`, from issue #86) is
 
 Removing `private: true` from the root `package.json` and publishing it as-is was rejected: it would ship the browser SPA's React/Tailwind dependencies, `wrangler`, dev scripts, and test files as part of the npm CLI package, contradicting the npm publish boundary this issue defines.
 
-### Copying the root `package.json` into `dist-npm/` and stripping fields
+### Copying the root `package.json` into `dist/npm/` and stripping fields
 
 Post-processing a copy (deleting `private`, `dependencies`, non-CLI `scripts`, …) was considered instead of building the publish manifest from scratch. Generating it from scratch was selected because it is simpler to reason about and test (`buildPublishPackageJson` is a pure function with an explicit output shape) than an allowlist/denylist over an evolving root manifest.
 
@@ -62,23 +76,34 @@ Earlier versions of this decision shipped `bin/installerer.js.map` and made it s
 
 An earlier version of this decision used `bun pm pack` / `bun add <tarball>` / `bun <built-cli>` as proxies for `npm pack` / `npm install` / `node <built-cli>`, to avoid adding a second language runtime to this otherwise Bun-only CI pipeline. This was rejected on review: the acceptance criteria name `npm pack`, `npm install`, and `node <built-cli>` specifically, and `bin` shim generation, packed file-mode preservation, and startup behavior are exactly the kind of thing that can differ between Bun's npm-compatible tooling and real npm/Node.js. `actions/setup-node` was added instead so the smoke tests exercise the real toolchain.
 
+### A single `bun:test`-based smoke test covering npm pack, install, and startup
+
+An earlier version of this decision ran the real `npm pack` / `npm install` / `node <built-cli>` verification as a single `bun:test` test in `test/integration/npmCli.test.ts`, only on the one Node.js version and one package manager present in the CI job. This was reconsidered on review: it could not cover multiple Node.js versions in one process, could not cover package managers other than npm without adding them to every developer's local toolchain (since `bun test` also runs locally, not just in CI), and mixed three different concerns — artifact shape, Node.js runtime compatibility, package manager compatibility — into one test, so a failure did not indicate which concern broke. The verification was split into the three dedicated CI jobs described in Decision instead, and `test/integration/npmCli.test.ts` was trimmed to the fast, in-process, toolchain-independent checks (file set, `package.json` shape, shebang/executable bit, Bun/browser-UI boundary, a single `node --help` startup check) that are cheap enough to run on every `bun test`.
+
+### Crossing Node.js version and package manager in one matrix
+
+Putting `node-runtime-smoke` and `package-manager-smoke` into a single job with a matrix of (Node.js version) × (package manager) was considered. This was rejected: `node-version` compatibility is a property of the built artifact and npm alone; package-manager install/run behavior does not meaningfully change across Node.js 22/24/26. Crossing the two would multiply job count for coverage that does not exist (nothing in this package's runtime behavior depends on that combination) and would make a red job ambiguous about which axis broke.
+
 ## Consequences
 
 ### Positive Consequences
 
-- `dist-npm/` and its generated `package.json` give the npm publish boundary a single, testable definition instead of an implicit "whatever `npm publish` from root would pick up" boundary.
+- `dist/npm/` and its generated `package.json` give the npm publish boundary a single, testable definition instead of an implicit "whatever `npm publish` from root would pick up" boundary.
 - `runNodeCli`'s injectable IO keeps `process.exit` out of the unit test process while still giving the entrypoint itself full process-IO responsibility, matching the runtime-independent-core boundary from issue #86.
 - Not shipping a source map means there is no local-path/secret leak surface in the published package to sanitize, scan, or keep maintaining as the CLI grows.
 - `CliCommandModule` gives issues #88-#91 a ready-made extension point instead of each inventing its own module shape.
-- `test/integration/npmCli.test.ts` exercises the real `npm pack` / `npm install` / `node` / npm bin-shim path, so a Bun/Node.js behavioral difference in packaging or startup would be caught in this repository's own CI, not only in a future release job.
+- `package-tarball` builds and packs the tarball exactly once; `node-runtime-smoke` and `package-manager-smoke` both verify that same uploaded artifact, so what CI verifies is what would actually be published, not a separately-built copy.
+- A `node-runtime-smoke` or `package-manager-smoke` failure names its exact cause (a Node.js version, or a package manager) instead of a single mixed job that would need its log read to find out which axis broke.
+- Each package-manager smoke script is a standalone, locally-runnable POSIX `sh` script, so reproducing a `package-manager-smoke` CI failure locally does not require reading workflow YAML.
 
 ### Negative Consequences
 
-- CI now depends on two language runtimes (Bun and Node.js) instead of one.
-- `dist-npm/package.json`'s field list must be kept in sync by hand as the CLI's needs evolve (e.g. adding a runtime dependency would require updating `buildPublishPackageJson`, not just root `package.json`).
+- CI now depends on two language runtimes (Bun and Node.js) instead of one, across four jobs instead of one.
+- `dist/npm/package.json`'s field list must be kept in sync by hand as the CLI's needs evolve (e.g. adding a runtime dependency would require updating `buildPublishPackageJson`, not just root `package.json`).
 - Node.js stack traces from the installed CLI point at the bundled `bin/installerer.js`, not the original `src/cli/**/*.ts` files; debugging a production npm CLI crash is less convenient than it would be with a source map.
+- Five package-manager smoke scripts (`scripts/ci/package-manager/*.sh`) are new surface to maintain, and only `npm-smoke.sh` and `bun-smoke.sh` can be exercised without also installing Yarn/pnpm via Corepack.
 
 ### Neutral Consequences
 
 - `CliCommandModule` is unused by `dispatchCli` until issues #88-#91 wire in real command modules.
-- `engines.node` is set to `>=20.0.0` as a conservative baseline (Node.js `parseArgs`-era compatibility); it is not tied to any specific Node.js LTS schedule decision.
+- `engines.node` (`>=22.0.0`) and `@types/node` (`22.20.0`) both track Node.js 22 as the floor; raising the floor later means updating both together, plus the `node-runtime-smoke` matrix and the `package-manager-smoke` fixed Node.js version.
