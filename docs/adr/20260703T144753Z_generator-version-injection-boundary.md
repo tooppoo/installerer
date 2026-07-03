@@ -48,6 +48,17 @@ Because the parameter is optional and unread, every existing call site (`App.tsx
 
 `generatorVersion` must only ever hold a version string sourced the same way `cliVersion` is (ultimately `package.json`'s `version` field). It must not be assigned a commit hash or other revision value; a future revision-like field, if ever needed, must be named separately (e.g. `generatorRevision`) rather than overloading this one.
 
+## Enforcement
+
+"Generator core must not implicitly depend on `package.json` or `process.env`" is a rule a future edit can violate by accident (for example, a section renderer added later reaching for `process.env.SOMETHING` directly instead of threading a `RenderContext` field). This must be enforced by CI, not only by the doc comments above.
+
+`src/generatedInstaller/.oxlintrc.json` is a [nested oxlint config](https://oxc.rs/docs/guide/usage/linter/nested-config.html) that applies only to files under `src/generatedInstaller/` (including `sections/`) and adds two rules from oxlint's built-in ESLint-core rule set — no custom plugin needed, since these already cover the requirement:
+
+- `no-restricted-imports` with a `patterns` group rejecting any import matching `**/package.json` or `**/../cli/**` (i.e. anything reaching into `src/cli/`, such as `cliVersion`).
+- `no-restricted-globals` rejecting any reference to the `process` global (covers `process.env` and any other process state, not just the specific `BUN_PUBLIC_COMMIT_HASH` case).
+
+Both rules are part of oxlint's built-in `eslint` rule set (ports of ESLint core's `no-restricted-imports`/`no-restricted-globals`), already exercised by this repository's existing `bun run lint` (`oxlint --deny-warnings .`), so this required no new tooling, dependency, or plugin authoring. Oxlint's JS-plugin API (for genuinely custom rules) was in alpha at the time of this decision and was not needed here; see Alternatives Considered.
+
 ## Alternatives Considered
 
 ### Import `cliVersion` (or `package.json`) directly inside `src/generatedInstaller/`
@@ -66,6 +77,10 @@ Rejected because it is explicitly out of scope for issue #79. Doing it now would
 
 Rejected: `InstallerConfig` is user-controlled, config-derived data validated from the browser form. The installerer version is neither user input nor derived from the config; conflating the two would make `InstallerConfig` a channel for build metadata it has no other reason to carry.
 
+### Write a custom oxlint JS plugin to enforce the no-implicit-dependency rule
+
+Considered for the Enforcement section above, since a project-specific "generator core must not read `package.json`/`process.env`" rule is exactly the kind of thing a custom lint rule exists for. Rejected in favor of oxlint's built-in `no-restricted-imports` and `no-restricted-globals` (both ports of long-stable ESLint core rules): they already express this exact constraint through a nested `.oxlintrc.json`, so a custom rule would only duplicate coverage that already exists. Oxlint's JS-plugin support was also alpha at the time of this decision, an additional reason not to depend on it for a repository safety guard. If a genuinely project-specific check (not expressible with `no-restricted-imports`/`no-restricted-globals`) is needed later, a custom plugin remains an option — and should be designed so it could later be extracted and published as an independent plugin, not written as a repository-only one-off.
+
 ## Consequences
 
 ### Positive Consequences
@@ -74,11 +89,12 @@ Rejected: `InstallerConfig` is user-controlled, config-derived data validated fr
 - No existing call site changes, because the parameter is optional and currently unread.
 - `generateInstaller(config)` remains deterministic per `(config, generatorVersion)` pair; passing different `generatorVersion` values produces byte-identical output today, which is directly asserted by `src/generatedInstaller/renderContext.test.ts`.
 - A future change that whitelists `generator.version` into `renderMetadataComment` only needs to read `context.generatorVersion` and wire a real caller (e.g. `src/App.tsx` importing `cliVersion`); it does not need another signature change.
+- The "no implicit dependency on `package.json`/`process.env`" rule is enforced by CI (`bun run lint`), not only documented: `src/generatedInstaller/.oxlintrc.json` fails the build if a future edit imports `package.json` or `src/cli/`, or reads `process`, from anywhere under `src/generatedInstaller/`.
 
 ### Negative Consequences
 
 - `RenderContext.generatorVersion` is unused by every current section renderer. A reader unfamiliar with this ADR could mistake it for dead code; the doc comments on `RenderContext` and `generateInstaller` exist specifically to prevent that.
-- Nothing enforces that a future caller sources `generatorVersion` from `cliVersion` specifically, rather than from an arbitrary or commit-hash-shaped string; that discipline is documented here, not type-enforced.
+- The `no-restricted-imports`/`no-restricted-globals` rules (see Enforcement) catch a future section renderer reaching for `package.json`, `src/cli/`, or `process` directly, but they cannot enforce that a caller who does pass `generatorVersion` sourced it from `cliVersion` specifically rather than from an arbitrary or commit-hash-shaped string; that half of the discipline is documented here, not enforced by lint or the type system.
 
 ### Neutral Consequences
 
