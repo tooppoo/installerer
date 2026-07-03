@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 
 import { CliExitCode } from "./exitCodes";
 import { topLevelHelpText } from "./topLevelHelp";
+import { cliVersion } from "./version";
 
 export type CliDispatchResult = {
   stdout: string;
@@ -15,12 +16,12 @@ export type CliDispatchResult = {
  * the responsibility of the runtime entrypoints (npm CLI, standalone
  * executable), which are out of scope for this issue.
  *
- * Only `--help` / `-h` are recognized here, plus the no-argument case, which
- * is treated the same as `--help`. Actual subcommands (`init`, `generate`,
- * `validate`, `doctor`) are not implemented yet, so any positional argument
- * is reported as an unknown command; their own issues will extend this
- * dispatch with real handling and their own exit codes (see
- * docs/exit-code.md).
+ * Only `--help` / `-h` and `--version` / `-v` are recognized here, plus the
+ * no-argument case, which is treated the same as `--help`. Actual
+ * subcommands (`init`, `generate`, `validate`, `doctor`) are not implemented
+ * yet, so any positional argument is reported as an unknown command; their
+ * own issues will extend this dispatch with real handling and their own
+ * exit codes (see docs/exit-code.md).
  */
 export function dispatchCli(argv: readonly string[]): CliDispatchResult {
   if (argv.length === 0) {
@@ -30,12 +31,19 @@ export function dispatchCli(argv: readonly string[]): CliDispatchResult {
   try {
     const { values, positionals } = parseArgs({
       args: argv as string[],
-      options: { help: { type: "boolean", short: "h" } },
+      options: {
+        help: { type: "boolean", short: "h" },
+        version: { type: "boolean", short: "v" },
+      },
       allowPositionals: true,
     });
 
     if (values.help) {
       return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
+    }
+
+    if (values.version) {
+      return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
     }
 
     const [command] = positionals;
