@@ -11,6 +11,8 @@ const server = serve({
     // Serve index.html for all unmatched routes.
     "/*": index,
 
+    "/assets/*": publicAssetResponse,
+
     "/licenses.txt": () =>
       new Response(Bun.file(licensesPath), {
         headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -27,3 +29,38 @@ const server = serve({
 });
 
 console.log(`🚀 Server running at ${server.url}`);
+
+const root = path.join(import.meta.dir, "..");
+const publicDir = path.join(root, "public");
+function publicAssetResponse(req: Request): Response {
+  const url = new URL(req.url);
+  const prefix = "/assets/";
+  const relativePath = url.pathname.slice(prefix.length);
+
+  // path traversal 防止
+  if (
+    relativePath.length === 0 ||
+    relativePath.includes("\0") ||
+    relativePath.split("/").some((segment) => segment === "." || segment === "..")
+  ) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  const filePath = path.join(publicDir, "assets", relativePath);
+  const file = Bun.file(filePath);
+
+  return new Response(file, {
+    headers: {
+      "Content-Type": contentTypeFor(filePath),
+      "Cache-Control": "public, max-age=0, must-revalidate",
+    },
+  });
+}
+function contentTypeFor(filePath: string): string {
+  if (filePath.endsWith(".svg")) return "image/svg+xml; charset=utf-8";
+  if (filePath.endsWith(".txt")) return "text/plain; charset=utf-8";
+  if (filePath.endsWith(".json")) return "application/json; charset=utf-8";
+  if (filePath.endsWith(".css")) return "text/css; charset=utf-8";
+  if (filePath.endsWith(".js")) return "text/javascript; charset=utf-8";
+  return "application/octet-stream";
+}
