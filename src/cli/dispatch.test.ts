@@ -73,4 +73,28 @@ describe("dispatchCli", () => {
     expect(result.stderr.length).toBeGreaterThan(0);
     expect(result.exitCode).toBe(CliExitCode.unknownOption);
   });
+
+  test("a positional followed by --version still reports the positional as an unknown command", () => {
+    const result = dispatchCli(["bogus-command", "--version"]);
+
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("bogus-command");
+    expect(result.exitCode).toBe(CliExitCode.unknownCommand);
+  });
+
+  test("a positional followed by -v still reports the positional as an unknown command", () => {
+    const result = dispatchCli(["generate", "-v"]);
+
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("generate");
+    expect(result.exitCode).toBe(CliExitCode.unknownCommand);
+  });
+
+  test("a positional followed by --help still reports the positional as an unknown command", () => {
+    const result = dispatchCli(["generate", "--help"]);
+
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("generate");
+    expect(result.exitCode).toBe(CliExitCode.unknownCommand);
+  });
 });

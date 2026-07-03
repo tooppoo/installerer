@@ -19,9 +19,11 @@ export type CliDispatchResult = {
  * Only `--help` / `-h` and `--version` / `-v` are recognized here, plus the
  * no-argument case, which is treated the same as `--help`. Actual
  * subcommands (`init`, `generate`, `validate`, `doctor`) are not implemented
- * yet, so any positional argument is reported as an unknown command; their
- * own issues will extend this dispatch with real handling and their own
- * exit codes (see docs/exit-code.md).
+ * yet, so any positional argument is reported as an unknown command, even if
+ * `--help` / `-h` or `--version` / `-v` also appear on the same command
+ * line: `--help` / `--version` are only a top-level result when there is no
+ * positional at all. Their own issues will extend this dispatch with real
+ * handling and their own exit codes (see docs/exit-code.md).
  */
 export function dispatchCli(argv: readonly string[]): CliDispatchResult {
   if (argv.length === 0) {
@@ -38,12 +40,14 @@ export function dispatchCli(argv: readonly string[]): CliDispatchResult {
       allowPositionals: true,
     });
 
-    if (values.help) {
-      return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
-    }
+    if (positionals.length === 0) {
+      if (values.help) {
+        return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
+      }
 
-    if (values.version) {
-      return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
+      if (values.version) {
+        return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
+      }
     }
 
     const [command] = positionals;
