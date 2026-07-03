@@ -42,11 +42,19 @@ export function findBunRuntimeReferences(source: string): string[] {
   return findings;
 }
 
-const BROWSER_UI_MARKERS = ["react-dom", "react/jsx-runtime", 'from "react"', "from 'react'"];
+// Matches only real import/require specifiers (`from "react-dom"`,
+// `import("react/jsx-runtime")`, `require("react")`, …), not a bare
+// substring. `src/cli/version.ts` statically imports the root `package.json`
+// for its `version` field, and Bun.build inlines that whole JSON object
+// (including its `dependencies` map) into the bundle, so a bare
+// `source.includes("react-dom")` check false-positives on the JSON key
+// `"react-dom": "^19"`, which is not an import.
+const BROWSER_UI_SPECIFIER_PATTERN =
+  /\b(?:from|import|require)\s*\(?\s*["'](react-dom|react)(?:\/[^"']*)?["']/;
 
 /** Detects React / browser UI module references leaking into the CLI artifact. */
 export function findBrowserUiReferences(source: string): string[] {
-  return BROWSER_UI_MARKERS.filter((marker) => source.includes(marker));
+  return source.match(new RegExp(BROWSER_UI_SPECIFIER_PATTERN, "g")) ?? [];
 }
 
 export type RootPackageJson = {
