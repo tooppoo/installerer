@@ -18,6 +18,8 @@ import {
 } from "./sections/installFlow";
 import { renderCleanup, renderInstallBinary } from "./sections/installTmpFile";
 import { renderMetadataComment } from "./sections/metadataComment";
+import { renderCheckRequirements } from "./sections/requirementChecks";
+import { renderPrintRequirements } from "./sections/requirements";
 import { renderRuntimeValidation } from "./sections/runtimeValidation";
 import { renderTarget } from "./sections/target";
 import { renderUrlEncoding } from "./sections/urlEncoding";
@@ -36,7 +38,9 @@ export function composeInstallerScript(context: RenderContext): string {
     renderMain(),
     renderFail(),
     renderUsage(),
-    renderDependencies(),
+    renderPrintRequirements(context),
+    renderCheckRequirements(context),
+    renderDependencies(context),
     renderUrlEncoding(),
     renderGitTag(),
     renderVersionResolver(context),

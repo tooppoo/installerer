@@ -76,27 +76,7 @@ This is independent of runtime architecture detection: the generated installer a
 
 The generated artifact is a POSIX `sh` script, but it depends on documented external commands.
 
-Required commands for every generated installer:
-
-- `uname`
-- `mktemp`
-- `rm`
-- `mkdir`
-- `cp`
-- `mv`
-- `chmod`
-- `curl`
-- `awk`
-- `grep`
-- `od`
-- `tr`
-- `cut`
-- `sha256sum` or `shasum`
-
-Archive-format-specific commands:
-
-- `tar` when `archive.format` is `tar.gz`
-- `unzip` when `archive.format` is `zip`
+See [`docs/runtime-dependencies.md`](./runtime-dependencies.md) for the generated, authoritative list of required commands. It is derived from the same typed dependency definitions the generated installer's `--requirements` / `--check-requirements` options use.
 
 If any required command is missing, the generated installer should stop with a clear error.
 

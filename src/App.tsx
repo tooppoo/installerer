@@ -6,6 +6,8 @@ import packageJson from "../package.json";
 import { validateInstallerConfig } from "./installerConfig";
 import { buildInstallerDiagnostics } from "./installerDiagnostics";
 import { generateInstaller } from "./installerGenerator";
+import { resolveRuntimeDependencies } from "./runtimeDependencies/resolve";
+import { renderRuntimeRequirementsText } from "./runtimeDependencies/renderText";
 import {
   INSTALLER_CONTRACT_MARKDOWN,
   INSTALLER_CONTRACT_SEGMENTS,
@@ -51,6 +53,11 @@ export function App() {
   const result = useMemo(() => validateInstallerConfig(configForCore), [configForCore]);
   const diagnostics = useMemo(
     () => (result.ok ? buildInstallerDiagnostics(result.config, result.archivePreviews) : null),
+    [result],
+  );
+  const runtimeRequirementsText = useMemo(
+    () =>
+      result.ok ? renderRuntimeRequirementsText(resolveRuntimeDependencies(result.config)) : null,
     [result],
   );
 
@@ -431,6 +438,21 @@ export function App() {
                 </ul>
               )}
             </section>
+
+            {runtimeRequirementsText ? (
+              <section className="border border-[#cdd6c6] bg-white">
+                <div className="border-b border-[#cdd6c6] bg-[#f0f4ec] px-3 py-2">
+                  <h2 className="text-sm font-semibold text-[#4a4037]">Runtime requirements</h2>
+                  <p className="mt-1 text-xs leading-4 text-[#6d625a]">
+                    Derived from the same resolver the generated installer's{" "}
+                    <code>--requirements</code> / <code>--check-requirements</code> use.
+                  </p>
+                </div>
+                <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words px-3 py-3 font-mono text-xs leading-5 text-[#235b4d]">
+                  {runtimeRequirementsText}
+                </pre>
+              </section>
+            ) : null}
 
             {diagnostics ? (
               <section className="border border-[#cdd6c6] bg-white">

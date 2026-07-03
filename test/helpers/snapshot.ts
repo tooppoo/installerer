@@ -22,29 +22,37 @@ export function normalizeGeneratedInstaller(script: string): string {
 }
 
 /**
- * Compares the normalized generated installer against its committed snapshot.
+ * Compares content against its committed snapshot file `<name>.<extension>`
+ * under `test/snapshots/`.
  *
- * Snapshots are the generated-installer contract, not an implementation log:
- * update them only when code generation changes intentionally, by running
- * `bun run test:update-snapshots` and reviewing the diff.
+ * Snapshots are a committed regression contract, not an implementation log:
+ * update them only when the generator's output changes intentionally, by
+ * running `bun run test:update-snapshots` and reviewing the diff.
  */
-export function matchInstallerSnapshot(name: string, normalizedScript: string): void {
-  const path = join(SNAPSHOT_DIR, `${name}.install.sh`);
+export function matchTextSnapshot(name: string, extension: string, content: string): void {
+  const path = join(SNAPSHOT_DIR, `${name}.${extension}`);
 
   if (process.env.UPDATE_INSTALLER_SNAPSHOTS === "1") {
     mkdirSync(SNAPSHOT_DIR, { recursive: true });
-    writeFileSync(path, normalizedScript);
+    writeFileSync(path, content);
     return;
   }
 
   if (!existsSync(path)) {
     throw new Error(
-      `Missing generated-installer snapshot: ${path}\n` +
+      `Missing snapshot: ${path}\n` +
         "Snapshots are a committed regression contract and are not created implicitly. " +
         "Run `bun run test:update-snapshots` and review the diff before committing it.",
     );
   }
 
   const expected = readFileSync(path, "utf8");
-  expect(normalizedScript).toBe(expected);
+  expect(content).toBe(expected);
+}
+
+/**
+ * Compares the normalized generated installer against its committed snapshot.
+ */
+export function matchInstallerSnapshot(name: string, normalizedScript: string): void {
+  matchTextSnapshot(name, "install.sh", normalizedScript);
 }

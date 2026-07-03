@@ -9,6 +9,7 @@ import {
   type ArchiveFormat,
 } from "./archiveTemplate";
 import type { ArchitectureLabels, OsCase, TargetArch, TargetOS } from "./installerConfig";
+import { ARCHIVE_FORMAT_COMMAND_NAMES } from "./runtimeDependencies/definitions";
 
 /**
  * Browser form state for the installer generator UI.
@@ -98,13 +99,11 @@ export const ARCHIVE_FORMAT_SUFFIXES: Record<ArchiveFormat, string> = {
 
 /**
  * Archive-format-specific runtime dependency of the generated installer, shown as a
- * hint next to the select. Must stay consistent with the generated installer's
- * dependency checks and docs/installer-contract.md.
+ * hint next to the select. Derived from `runtimeDependencies/definitions.ts` so this
+ * can't drift from the generated installer's own dependency checks.
  */
-export const ARCHIVE_FORMAT_RUNTIME_DEPENDENCIES: Record<ArchiveFormat, string> = {
-  "tar.gz": "tar",
-  zip: "unzip",
-};
+export const ARCHIVE_FORMAT_RUNTIME_DEPENDENCIES: Record<ArchiveFormat, string> =
+  ARCHIVE_FORMAT_COMMAND_NAMES;
 
 export const CHECKSUM_ALGORITHM = "sha256" as const;
 

@@ -96,7 +96,7 @@ function assertRuntimeStructure(script: string): void {
 
   // Missing runtime dependencies stop with a clear error.
   expect(script).toContain('command -v "$1" >/dev/null 2>&1 || fail "$1 is required"');
-  expect(script).toContain("require_command curl");
+  expect(script).toContain("require_command 'curl'");
   expect(script).toContain('fail "sha256sum or shasum is required"');
 }
 
@@ -142,8 +142,8 @@ function assertArchiveFormat(script: string, format: ArchiveFormat): void {
 
   // Both extraction paths are emitted behind the ARCHIVE_FORMAT dispatch,
   // with the format-specific dependency check.
-  expect(script).toContain("tar.gz) require_command tar ;;");
-  expect(script).toContain("zip) require_command unzip ;;");
+  expect(script).toContain("tar.gz) require_command 'tar' ;;");
+  expect(script).toContain("zip) require_command 'unzip' ;;");
   expect(script).toContain(
     'tar -xzf "$archive_path" -C "$extract_dir" -- "$BINARY_PATH_IN_ARCHIVE"',
   );

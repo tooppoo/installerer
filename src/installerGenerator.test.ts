@@ -62,9 +62,9 @@ describe("installer generation", () => {
     const script = generateInstaller(result.config);
 
     expect(script).toContain("check_runtime_dependencies()");
-    expect(script).toContain("require_command curl");
-    expect(script).toContain("CHECKSUM_COMMAND=sha256sum");
-    expect(script).toContain("CHECKSUM_COMMAND=shasum");
+    expect(script).toContain("require_command 'curl'");
+    expect(script).toContain("CHECKSUM_COMMAND='sha256sum'");
+    expect(script).toContain("CHECKSUM_COMMAND='shasum'");
     expect(script).toContain('awk -v name="$archive_asset_name" \'$2 == name');
     expect(script).toContain(
       'tar -xzf "$archive_path" -C "$extract_dir" -- "$BINARY_PATH_IN_ARCHIVE"',
