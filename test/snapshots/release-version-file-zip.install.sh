@@ -10,6 +10,24 @@ if [ "${DEBUG:-}" = "1" ]; then
   set -x
 fi
 
+#
+# Effective installer configuration:
+#   generator.name: installerer
+#   generator.sourceUrl: https://github.com/tooppoo/installerer
+#   owner: tooppoo
+#   repo: git-kura
+#   binary.name: git-kura
+#   binary.pathInArchive: git-kura
+#   versionResolver.type: release_version_file
+#   versionResolver.fileName: VERSION
+#   archive.format: zip
+#   archive.nameTemplate: {bin}_{version}_{target}.zip
+#   archive.osCase: lowercase
+#   checksum.fileName: checksums.txt
+#   checksum.algorithm: sha256
+#   defaults.installDir: /usr/local/bin
+#   targets: linux/x86_64, darwin/arm64
+
 OWNER='tooppoo'
 REPO='git-kura'
 BINARY_NAME='git-kura'

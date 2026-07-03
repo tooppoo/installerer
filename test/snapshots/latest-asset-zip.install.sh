@@ -10,6 +10,23 @@ if [ "${DEBUG:-}" = "1" ]; then
   set -x
 fi
 
+#
+# Effective installer configuration:
+#   generator.name: installerer
+#   generator.sourceUrl: https://github.com/tooppoo/installerer
+#   owner: tooppoo
+#   repo: installerer-demo
+#   binary.name: demo
+#   binary.pathInArchive: bin/demo
+#   versionResolver.type: latest_asset
+#   archive.format: zip
+#   archive.nameTemplate: {bin}_{os}_{arch}.zip
+#   archive.osCase: lowercase
+#   checksum.fileName: SHA256SUMS
+#   checksum.algorithm: sha256
+#   defaults.installDir: ~/bin
+#   targets: linux/x86_64, darwin/arm64
+
 OWNER='tooppoo'
 REPO='installerer-demo'
 BINARY_NAME='demo'

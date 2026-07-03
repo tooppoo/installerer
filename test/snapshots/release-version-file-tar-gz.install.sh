@@ -10,6 +10,24 @@ if [ "${DEBUG:-}" = "1" ]; then
   set -x
 fi
 
+#
+# Effective installer configuration:
+#   generator.name: installerer
+#   generator.sourceUrl: https://github.com/tooppoo/installerer
+#   owner: tooppoo
+#   repo: rellog
+#   binary.name: rellog
+#   binary.pathInArchive: bin/rellog
+#   versionResolver.type: release_version_file
+#   versionResolver.fileName: VERSION
+#   archive.format: tar.gz
+#   archive.nameTemplate: {repo}_{version}_{os}_{arch}.tar.gz
+#   archive.osCase: lowercase
+#   checksum.fileName: checksums.txt
+#   checksum.algorithm: sha256
+#   defaults.installDir: $HOME/.local/bin
+#   targets: linux/x86_64, linux/arm64, darwin/x86_64, darwin/arm64
+
 OWNER='tooppoo'
 REPO='rellog'
 BINARY_NAME='rellog'
