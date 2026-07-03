@@ -1,3 +1,5 @@
+import { parseArgs } from "node:util";
+
 import { topLevelHelpText } from "./topLevelHelp";
 
 export type CliDispatchResult = {
@@ -12,15 +14,31 @@ export type CliDispatchResult = {
  * the responsibility of the runtime entrypoints (npm CLI, standalone
  * executable), which are out of scope for this issue.
  *
- * Only `--help` / `-h` are recognized here. Other commands and the
- * no-argument case are left undefined and are handled by later issues.
+ * Only `--help` / `-h` are recognized here, plus the no-argument case, which
+ * is treated the same as `--help`. Actual subcommands (`init`, `generate`,
+ * `validate`, `doctor`) are not implemented yet, so any positional argument
+ * is reported as an unknown command; their own issues will extend this
+ * dispatch with real handling.
  */
-export function dispatchCli(argv: readonly string[]): CliDispatchResult | undefined {
-  const [first] = argv;
-
-  if (first === "--help" || first === "-h") {
+export function dispatchCli(argv: readonly string[]): CliDispatchResult {
+  if (argv.length === 0) {
     return { stdout: topLevelHelpText, stderr: "", exitCode: 0 };
   }
 
-  return undefined;
+  try {
+    const { values, positionals } = parseArgs({
+      args: argv as string[],
+      options: { help: { type: "boolean", short: "h" } },
+      allowPositionals: true,
+    });
+
+    if (values.help) {
+      return { stdout: topLevelHelpText, stderr: "", exitCode: 0 };
+    }
+
+    const [command] = positionals;
+    return { stdout: "", stderr: `installerer: unknown command '${command}'\n`, exitCode: 1 };
+  } catch (error) {
+    return { stdout: "", stderr: `installerer: ${(error as Error).message}\n`, exitCode: 1 };
+  }
 }

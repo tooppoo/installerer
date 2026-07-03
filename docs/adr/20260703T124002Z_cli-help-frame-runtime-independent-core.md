@@ -20,15 +20,19 @@ This issue also needs a structure that later per-command help ([Issue #88](https
 - `CliHelpFrame` (`src/cli/help.ts`) is the minimal shared shape for any command's help text: a required `abstraction` string, a required `usage` string list, and optional `commands` / `options` string lists. It does not model a command parser, option schema, or validation schema.
 - `renderHelpText` (`src/cli/help.ts`) renders a `CliHelpFrame` to text. The Abstraction and Usage sections are always rendered. The Commands and Options sections are rendered only when the corresponding field is given and non-empty.
 - `topLevelHelpFrame` / `topLevelHelpText` (`src/cli/topLevelHelp.ts`) are the concrete top-level help content: the generator-only commands (`init`, `validate`, `generate`, `doctor`, `--version`, `--help`) and the global options (`-h, --help`, `-v, --version`). Package-installer-like commands (`install`, `run`, `exec`, `upgrade`, `uninstall`) must not appear.
-- `dispatchCli` (`src/cli/dispatch.ts`) is a pure function `argv -> { stdout, stderr, exitCode } | undefined`. It recognizes only `--help` and `-h` as the first argument and returns the rendered top-level help on stdout with exit code 0 and no stderr output. Any other input, including no arguments at all, returns `undefined` and is left for later issues (the no-argument CLI dispatch skeleton in a later issue, and each subcommand's own issue) to define.
+- `dispatchCli` (`src/cli/dispatch.ts`) is a pure function `argv -> { stdout, stderr, exitCode }`. It uses `node:util`'s `parseArgs` to recognize `--help` / `-h`, and treats no arguments the same as `--help`: both return the rendered top-level help on stdout with exit code 0 and no stderr output. Any other input reports an error: an unrecognized option (from `parseArgs`) or an unrecognized positional (any command, since `init` / `generate` / `validate` / `doctor` are not implemented yet) returns a non-empty stderr message and a non-zero exit code. Their own issues (#88-#91) will extend this dispatch with real handling instead of the generic unknown-command error.
 
 This module performs no process IO: it does not write to `process.stdout`/`process.stderr` and does not call `process.exit`. Runtime entrypoints (npm CLI in #81, standalone executable in #82) call `dispatchCli` and are responsible for actually writing its result and exiting with its `exitCode`.
 
 ## Alternatives Considered
 
-### A full argument-parsing library
+### Hand-rolled argv parsing
 
-An argument-parsing library would also solve `--help` routing, but it would pull in a dependency and a command/option schema before any subcommand exists. This issue explicitly scopes out command parsers and option schemas, so it was not selected.
+An earlier version of `dispatchCli` checked `argv[0]` against `"--help"` / `"-h"` directly. `node:util`'s `parseArgs` was selected instead: it is a Node.js standard-library API (also implemented by Bun), so it avoids hand-rolled flag parsing and its edge cases (`-h` combined with other flags, unknown-option detection) without adding a third-party dependency. It still does not model a full command/option schema, matching this issue's scope.
+
+### A third-party argument-parsing library
+
+A third-party library would also solve `--help` routing, but it would add a dependency and encourage a command/option schema before any subcommand exists. This issue explicitly scopes out command parsers and option schemas, so it was not selected.
 
 ### Building the help frame directly inside the npm/Bun entrypoints
 
@@ -44,7 +48,7 @@ Defining help text inside each runtime entrypoint would duplicate the same text 
 
 ### Negative Consequences
 
-- `dispatchCli` only handles `--help` / `-h` for now; the entrypoints built in #81/#82 must still decide what to do when it returns `undefined`.
+- `dispatchCli` only handles `--help` / `-h` and a generic unknown-command/unknown-option error for now; the entrypoints built in #81/#82 must still decide how to surface that error (e.g. writing `stderr` and calling `process.exit`), and each subcommand issue (#88-#91) must replace the generic unknown-command error with real handling for its own command.
 
 ### Neutral Consequences
 
