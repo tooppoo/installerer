@@ -379,7 +379,7 @@ detect_target
     expect(detectTarget("capitalized", "Linux", "x86_64")).toBe("Linux x86_64\n");
   });
 
-  test("detect_target canonicalizes both arm64 and aarch64 uname -m values to aarch64 (issue #76)", () => {
+  test("detect_target canonicalizes both arm64 and aarch64 uname -m values to aarch64", () => {
     const targets = [{ os: "darwin", arch: "aarch64" }];
     expect(detectTarget("lowercase", "Darwin", "arm64", targets)).toBe("darwin aarch64\n");
     expect(detectTarget("lowercase", "Darwin", "aarch64", targets)).toBe("darwin aarch64\n");
@@ -407,13 +407,14 @@ detect_target
     });
   };
 
-  test("detect_target rejects unsupported architectures, including amd64 as a raw uname -m value", () => {
-    // amd64 is a common asset-label spelling, not a real uname -m output, and
-    // must not be special-cased in runtime canonicalization (issue #76).
-    for (const unameM of ["amd64", "mips", "riscv64"]) {
+  // amd64 is a common asset-label spelling, not a real uname -m output, and
+  // must not be special-cased in runtime canonicalization.
+  test.each(["amd64", "mips", "riscv64"])(
+    "detect_target rejects unsupported architecture %j",
+    (unameM) => {
       const result = detectTargetFailure(unameM);
       expect(result.status).not.toBe(0);
       expect(result.stderr).toContain(`unsupported architecture: ${unameM}`);
-    }
-  });
+    },
+  );
 });

@@ -148,7 +148,13 @@ export function validateArchitectureLabels(
       continue;
     }
 
+    const errorCountBeforeLabel = errors.length;
     validateAssetArchLabel(label, fieldPath, errors);
+    if (errors.length > errorCountBeforeLabel) {
+      ok = false;
+      continue;
+    }
+
     resolved[arch] = label;
   }
 

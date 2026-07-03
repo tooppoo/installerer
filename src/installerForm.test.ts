@@ -175,7 +175,7 @@ describe("target selection", () => {
   });
 });
 
-describe("architecture label selection (issue #76)", () => {
+describe("architecture label selection", () => {
   test("initialFormState uses the default OS-reported architecture name mapping", () => {
     expect(initialFormState.architectureLabels).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
   });

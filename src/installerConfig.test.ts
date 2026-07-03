@@ -488,7 +488,7 @@ describe("installer config validation", () => {
   });
 });
 
-describe("architecture label mapping (issue #76)", () => {
+describe("architecture label mapping", () => {
   test("defaults architectureLabels to the OS-reported architecture name when omitted", () => {
     const { architectureLabels: _architectureLabels, ...withoutLabels } = validConfig;
     const result = validateInstallerConfig(withoutLabels);
@@ -533,8 +533,9 @@ describe("architecture label mapping (issue #76)", () => {
     }
   });
 
-  test("rejects unsafe architecture labels, including '.' and '..'", () => {
-    for (const label of ["", ".", "..", "arm/64", "arm 64", "arm\\64"]) {
+  test.each(["", ".", "..", "arm/64", "arm 64", "arm\\64"])(
+    "rejects unsafe architecture label %j",
+    (label) => {
       const result = validateInstallerConfig({
         ...validConfig,
         architectureLabels: { x86_64: label, aarch64: "arm64" },
@@ -546,8 +547,8 @@ describe("architecture label mapping (issue #76)", () => {
           expect.objectContaining({ path: "$.architectureLabels.x86_64" }),
         );
       }
-    }
-  });
+    },
+  );
 
   test("rejects unknown fields inside architectureLabels", () => {
     const result = validateInstallerConfig({

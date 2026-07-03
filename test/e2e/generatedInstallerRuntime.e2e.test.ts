@@ -227,7 +227,7 @@ describe("latest_asset runtime e2e (zip)", () => {
   });
 });
 
-describe("custom architecture label mapping e2e (issue #76)", () => {
+describe("custom architecture label mapping e2e", () => {
   test("a custom (non-preset) asset_arch_label is used to build the download URL", async () => {
     const archive = buildArchive("zip", [{ path: "demo", content: LATEST_BINARY }]);
     const assetName = "demo_linux_x64.zip";
@@ -368,7 +368,7 @@ describe("unsupported target simulation via uname shim", () => {
     expectRequests([]);
   });
 
-  test("amd64 is not accepted as a raw uname -m value (issue #76)", async () => {
+  test("amd64 is not accepted as a raw uname -m value", async () => {
     // The initial runtime canonicalization mapping only recognizes the real
     // `uname -m` outputs x86_64/aarch64/arm64. `amd64` is an asset-label
     // spelling, not a runtime architecture, and must not be special-cased.
