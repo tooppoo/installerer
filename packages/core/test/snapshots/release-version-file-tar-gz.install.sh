@@ -31,6 +31,7 @@ REPO='rellog'
 BINARY_NAME='rellog'
 BINARY_PATH_IN_ARCHIVE='bin/rellog'
 CHECKSUM_FILE_NAME='checksums.txt'
+# shellcheck disable=SC2088 # a leading '~' here is a literal default, expanded manually by resolve_install_dir, not by the shell
 DEFAULT_INSTALL_DIR='$HOME/.local/bin'
 INSTALL_DIR=
 ARCHIVE_FORMAT='tar.gz'
@@ -383,7 +384,7 @@ url_encode_segment() {
 is_valid_git_tag() {
   tag=$1
   case "$tag" in
-    ""|latest|/*|*/|*.|@|*//*|*..*|*@{*|*~*|*^*|*:*|*\?*|*\**|*\[*|*\\*) return 1 ;;
+    ""|latest|/*|*/|*.|@|*//*|*..*|*@\{*|*~*|*^*|*:*|*\?*|*\**|*\[*|*\\*) return 1 ;;
     *"$CR"*|*"$LF"*) return 1 ;;
   esac
   if LC_ALL=C printf '%s' "$tag" | grep -q '[[:cntrl:][:space:]]'; then
@@ -452,6 +453,7 @@ validate_binary_path_in_archive() {
 
 resolve_install_dir() {
   raw=$1
+  # shellcheck disable=SC2088 # '$HOME'/'~' below are literal glob prefixes matched against $raw, then expanded manually via $HOME; the shell never expands them itself
   case "$raw" in
     '$HOME') printf '%s' "$HOME" ;;
     '$HOME/'*) printf '%s/%s' "$HOME" "${raw#\$HOME/}" ;;

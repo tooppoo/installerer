@@ -18,6 +18,7 @@ _check:
   bun test --coverage
   bun run build
   bun run typecheck
+  bun run shellcheck:generated
 
 binary-release-artifacts:
   bun install --frozen-lockfile
