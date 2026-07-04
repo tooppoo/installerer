@@ -25,6 +25,17 @@ Your releases must follow a small contract for asset naming and checksum files. 
 
 npm is an auxiliary distribution channel for the JavaScript ecosystem, not the canonical binary distribution — it is a Node.js CLI package and does not download a GitHub Releases binary. The canonical distribution is a Bun-compiled standalone executable released as an OS/architecture archive; see [CLI Distribution Policy](docs/adr/20260703T091000Z_cli-distribution-policy.md) for the full decision.
 
+GitHub Releases publish the canonical standalone executable as archives named:
+
+- `installerer_{version}_Linux_x86_64.tar.gz`
+- `installerer_{version}_Linux_arm64.tar.gz`
+- `installerer_{version}_Darwin_x86_64.tar.gz`
+- `installerer_{version}_Darwin_arm64.tar.gz`
+
+Each archive contains the executable at archive-root path `installerer`. The v0 Linux archives target glibc-based systems; musl / Alpine Linux support is tracked separately in issue #92.
+
+The GitHub Release tag must exactly match `{version}` and the uploaded `VERSION` asset, without a `v` prefix.
+
 Install from npm:
 
 ```bash

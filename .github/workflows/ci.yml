@@ -78,6 +78,36 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  binary-release-artifacts:
+    name: Binary release artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: ".bun-version"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build standalone binaries
+        run: bun run build:binary
+      - name: Create release archives
+        run: bun run release:binary
+
+      - name: Upload binary release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: binary-release-artifacts
+          path: |
+            dist/binary/*.tar.gz
+            dist/binary/checksums.txt
+            dist/binary/VERSION
+          if-no-files-found: error
+          retention-days: 7
+
   node-runtime-smoke:
     name: Node runtime smoke (${{ matrix.channel }} ${{ matrix.node-version }})
     runs-on: ubuntu-latest
