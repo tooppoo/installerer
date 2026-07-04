@@ -39,7 +39,9 @@ async function main(): Promise<void> {
     for (const fixture of fixtures) {
       const parsed = parseInstallerConfig(fixture.json);
       if (!parsed.ok) {
-        throw new Error(`fixture ${fixture.name} failed to parse: ${JSON.stringify(parsed.errors)}`);
+        throw new Error(
+          `fixture ${fixture.name} failed to parse: ${JSON.stringify(parsed.errors)}`,
+        );
       }
 
       const script = generateInstaller(parsed.config);
