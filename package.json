@@ -16,6 +16,8 @@
     "build": "run-s build:npm build:web",
     "build:web": "bun run --cwd apps/web build",
     "build:npm": "bun run --cwd packages/cli build:npm",
+    "build:binary": "bun run --cwd packages/cli build:binary",
+    "release:binary": "bun run --cwd packages/cli release:binary",
     "docs:generate": "bun scripts/generate-runtime-dependency-docs.ts && bun run --cwd apps/web docs:generate",
     "docs:check": "bun scripts/generate-runtime-dependency-docs.ts --check && bun run --cwd apps/web docs:check",
     "test": "bun test",

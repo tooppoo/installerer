@@ -18,3 +18,8 @@ _check:
   bun test --coverage
   bun run build
   bun run typecheck
+
+binary-release-artifacts:
+  bun install --frozen-lockfile
+  bun run build:binary
+  bun run release:binary

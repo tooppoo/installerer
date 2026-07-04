@@ -216,7 +216,9 @@ describe("architecture label selection", () => {
     const result = validateInstallerConfig(buildInstallerConfig(form));
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.archivePreviews[0]?.latestName).toBe("rellog_linux_x64.tar.gz");
+      expect(result.archivePreviews[0]?.latestName).toBe(
+        `${initialFormState.repo}_linux_x64.tar.gz`,
+      );
     }
   });
 });

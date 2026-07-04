@@ -30,6 +30,8 @@
   "type": "module",
   "scripts": {
     "build:npm": "bun run scripts/build-npm.ts",
+    "build:binary": "bun run scripts/build-binary.ts",
+    "release:binary": "bun run scripts/releaseBinaryArchive.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
   },
   "devDependencies": {
