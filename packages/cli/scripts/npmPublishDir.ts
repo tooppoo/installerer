@@ -26,10 +26,9 @@ export function ensureShebang(source: string): string {
 
 /**
  * Workspace-only fields removed from the static `packages/cli/package.json`
- * when it is copied into the publish directory. CLI package metadata is
- * owned by that static file (issue #100); this preparation step only strips
- * fields that are meaningless outside the workspace — it must never add or
- * rewrite metadata.
+ * when it is copied into the publish directory. CLI package metadata is owned
+ * by that static file (issue #100), except installerer's canonical `version`,
+ * which is copied from the repository root `package.json`.
  *
  * - `$schema`: editor tooling hint, not package metadata.
  * - `scripts`: workspace build orchestration; nothing runs them in the
@@ -42,11 +41,13 @@ const WORKSPACE_ONLY_MANIFEST_FIELDS = ["$schema", "scripts", "devDependencies"]
 
 export function preparePublishManifest(
   staticManifest: Record<string, unknown>,
+  canonicalVersion: string,
 ): Record<string, unknown> {
   const manifest = { ...staticManifest };
   for (const field of WORKSPACE_ONLY_MANIFEST_FIELDS) {
     delete manifest[field];
   }
+  manifest.version = canonicalVersion;
   return manifest;
 }
 
@@ -70,8 +71,8 @@ export function findBunRuntimeReferences(source: string): string[] {
 
 // Matches only real import/require specifiers (`from "react-dom"`,
 // `import("react/jsx-runtime")`, `require("react")`, …), not a bare
-// substring. `packages/cli/src/version.ts` statically imports the CLI
-// `package.json` for its `version` field, and Bun.build inlines that whole
+// substring. `packages/cli/src/version.ts` statically imports the repository
+// root `package.json` for its `version` field, and Bun.build inlines that
 // JSON object into the bundle, so a bare `source.includes(...)` check would
 // false-positive on JSON keys that merely mention a module name.
 const BROWSER_UI_SPECIFIER_PATTERN =

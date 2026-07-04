@@ -10,7 +10,9 @@
 >   (`buildPublishPackageJson` is gone). CLI package metadata is owned by the
 >   static, reviewable `packages/cli/package.json`; `build:npm` copies it into
 >   the publish directory, stripping only workspace-only fields (`$schema`,
->   `scripts`, `devDependencies`).
+>   `scripts`, `devDependencies`). The published manifest's `version` is the
+>   repository root `package.json` version, matching installerer CLI/release
+>   versioning.
 > - The publish directory moved from the repository-root `dist-cli/npm/` to
 >   `packages/cli/dist/npm/`, and `build:npm` / its helpers moved to
 >   `packages/cli/scripts/`. The `dist/`-wipe collision that motivated a

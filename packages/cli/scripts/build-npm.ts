@@ -2,13 +2,15 @@
  * Assembles the npm publish directory (`packages/cli/dist/npm/`) for the
  * `installerer` Node.js CLI package: a Node-target bundle of
  * `src/node/main.ts` plus the static `packages/cli/package.json` (with
- * workspace-only fields stripped), `README.md`, and `LICENSE`.
+ * workspace-only fields stripped and `version` sourced from the repository
+ * root manifest), `README.md`, and `LICENSE`.
  *
  * CLI package metadata is owned by the static `packages/cli/package.json`
- * (issue #100); this script consumes it and must not construct metadata
- * from scratch. The script itself runs under Bun (the ADR explicitly allows
- * that), but the artifact it produces must not depend on `Bun.*` / `bun:*`
- * at runtime; see docs/adr/20260703T091000Z_cli-distribution-policy.md.
+ * (issue #100), except installerer's canonical version, which is owned by the
+ * repository root `package.json`. The script itself runs under Bun (the ADR
+ * explicitly allows that), but the artifact it produces must not depend on
+ * `Bun.*` / `bun:*` at runtime; see
+ * docs/adr/20260703T091000Z_cli-distribution-policy.md.
  *
  * Usage: bun run build:npm (from packages/cli or the repository root)
  */
@@ -53,9 +55,16 @@ async function main() {
   const staticManifest: Record<string, unknown> = await Bun.file(
     path.join(packageRoot, "package.json"),
   ).json();
+  const rootManifest: Record<string, unknown> = await Bun.file(
+    path.join(repoRoot, "package.json"),
+  ).json();
+  const canonicalVersion = rootManifest.version;
+  if (typeof canonicalVersion !== "string" || canonicalVersion.length === 0) {
+    throw new Error("build:npm: root package.json must define a non-empty version string");
+  }
   await writeFile(
     path.join(outDir, "package.json"),
-    `${JSON.stringify(preparePublishManifest(staticManifest), null, 2)}\n`,
+    `${JSON.stringify(preparePublishManifest(staticManifest, canonicalVersion), null, 2)}\n`,
   );
   await copyFile(path.join(repoRoot, "README.md"), path.join(outDir, "README.md"));
   await copyFile(path.join(repoRoot, "LICENSE"), path.join(outDir, "LICENSE"));

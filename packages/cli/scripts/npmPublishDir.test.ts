@@ -53,8 +53,8 @@ describe("findBrowserUiReferences", () => {
   });
 
   test("does not false-positive on 'react-dom' appearing as inlined JSON data", () => {
-    // packages/cli/src/version.ts imports the CLI package.json for its
-    // `version` field, and Bun.build inlines that JSON into the bundle.
+    // packages/cli/src/version.ts imports the repository root package.json
+    // for its `version` field, and Bun.build inlines that JSON into the bundle.
     // A literal object key like `"react-dom": "^19"` is not an import and
     // must not be flagged.
     const inlinedPackageJson = `var package_default = {
@@ -70,15 +70,18 @@ describe("findBrowserUiReferences", () => {
 
 describe("preparePublishManifest", () => {
   test("keeps static metadata and strips workspace-only fields", () => {
-    const manifest = preparePublishManifest({
-      $schema: "https://example.com/package.schema.json",
-      name: "@philomagi/installerer",
-      version: "1.2.3",
-      bin: { installerer: "./bin/installerer.js" },
-      engines: { node: ">=22.0.0" },
-      scripts: { "build:npm": "bun run scripts/build-npm.ts" },
-      devDependencies: { "@installerer/core": "workspace:*" },
-    });
+    const manifest = preparePublishManifest(
+      {
+        $schema: "https://example.com/package.schema.json",
+        name: "@philomagi/installerer",
+        version: "0.0.0-package",
+        bin: { installerer: "./bin/installerer.js" },
+        engines: { node: ">=22.0.0" },
+        scripts: { "build:npm": "bun run scripts/build-npm.ts" },
+        devDependencies: { "@installerer/core": "workspace:*" },
+      },
+      "1.2.3",
+    );
 
     expect(manifest.name).toBe("@philomagi/installerer");
     expect(manifest.version).toBe("1.2.3");
@@ -91,7 +94,7 @@ describe("preparePublishManifest", () => {
 
   test("does not mutate the input manifest", () => {
     const input = { name: "x", scripts: { a: "b" } };
-    preparePublishManifest(input);
+    preparePublishManifest(input, "1.2.3");
     expect(input.scripts).toEqual({ a: "b" });
   });
 });

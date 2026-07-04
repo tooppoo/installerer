@@ -155,6 +155,9 @@ async function checkSourceDir(
       if (specifier.startsWith(".")) {
         const resolved = path.resolve(path.dirname(filePath), specifier);
         if (path.relative(absolutePackageDir, resolved).startsWith("..")) {
+          if (isAllowedRootPackageJsonVersionImport(packageDir, resolved)) {
+            continue;
+          }
           violations.push(
             `${packageDir}/${sourceSubdir}/${entry}: relative import "${specifier}" escapes ${packageDir}`,
           );
@@ -170,6 +173,13 @@ async function checkSourceDir(
       }
     }
   }
+}
+
+function isAllowedRootPackageJsonVersionImport(packageDir: string, resolved: string): boolean {
+  return (
+    (packageDir === "packages/cli" || packageDir === "apps/web") &&
+    resolved === path.join(repoRoot, "package.json")
+  );
 }
 
 type PackageManifest = {

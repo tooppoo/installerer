@@ -2,7 +2,7 @@ import "./index.css";
 
 import { useMemo, useState } from "react";
 
-import packageJson from "../package.json";
+import packageJson from "../../../package.json";
 import { validateInstallerConfig } from "@installerer/core/installerConfig";
 import { buildInstallerDiagnostics } from "@installerer/core/installerDiagnostics";
 import { generateInstaller } from "@installerer/core/installerGenerator";
