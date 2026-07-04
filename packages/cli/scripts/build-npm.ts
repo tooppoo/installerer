@@ -1,37 +1,33 @@
 /**
- * Generates the npm publish directory (`dist-cli/npm/`) for the
+ * Assembles the npm publish directory (`packages/cli/dist/npm/`) for the
  * `installerer` Node.js CLI package: a Node-target bundle of
- * `src/cli/node/main.ts` plus a publish-only `package.json`, `README.md`,
- * and `LICENSE`.
+ * `src/node/main.ts` plus the static `packages/cli/package.json` (with
+ * workspace-only fields stripped), `README.md`, and `LICENSE`.
  *
- * This script itself runs under Bun (the ADR explicitly allows that), but
- * the artifact it produces must not depend on `Bun.*` / `bun:*` at runtime;
- * see docs/adr/20260703T091000Z_cli-distribution-policy.md.
+ * CLI package metadata is owned by the static `packages/cli/package.json`
+ * (issue #100); this script consumes it and must not construct metadata
+ * from scratch. The script itself runs under Bun (the ADR explicitly allows
+ * that), but the artifact it produces must not depend on `Bun.*` / `bun:*`
+ * at runtime; see docs/adr/20260703T091000Z_cli-distribution-policy.md.
  *
- * `dist-cli/npm/` is a separate top-level output root from the browser
- * SPA build's `dist/` (`build.ts`), not nested under it: `build.ts` wipes
- * the entire `dist/` directory at the start of every SPA build, and
- * nesting the npm publish directory under it would make `bun run build`
- * and `bun run build:npm` order-dependent (review feedback on PR #97).
- *
- * Usage: bun run build:npm
+ * Usage: bun run build:npm (from packages/cli or the repository root)
  */
 import { chmod, copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
-  buildPublishPackageJson,
   ensureShebang,
   findBrowserUiReferences,
   findBunRuntimeReferences,
   NPM_CLI_BIN_NAME,
-  type RootPackageJson,
+  preparePublishManifest,
 } from "./npmPublishDir";
 
-const root = path.dirname(import.meta.dir);
-const outDir = path.join(root, "dist-cli", "npm");
+const packageRoot = path.dirname(import.meta.dir);
+const repoRoot = path.join(packageRoot, "..", "..");
+const outDir = path.join(packageRoot, "dist", "npm");
 const binDir = path.join(outDir, "bin");
-const entrypoint = path.join(root, "src", "cli", "node", "main.ts");
+const entrypoint = path.join(packageRoot, "src", "node", "main.ts");
 const bundlePath = path.join(binDir, NPM_CLI_BIN_NAME);
 
 async function main() {
@@ -48,21 +44,23 @@ async function main() {
   });
   if (!result.success) {
     for (const log of result.logs) console.error(log);
-    throw new Error("build:npm: bundling src/cli/node/main.ts failed");
+    throw new Error("build:npm: bundling src/node/main.ts failed");
   }
 
   await enforceNodeRuntimeBoundary(bundlePath);
   await writeShebangAndExecutableBit(bundlePath);
 
-  const rootPkg: RootPackageJson = await Bun.file(path.join(root, "package.json")).json();
+  const staticManifest: Record<string, unknown> = await Bun.file(
+    path.join(packageRoot, "package.json"),
+  ).json();
   await writeFile(
     path.join(outDir, "package.json"),
-    `${JSON.stringify(buildPublishPackageJson(rootPkg), null, 2)}\n`,
+    `${JSON.stringify(preparePublishManifest(staticManifest), null, 2)}\n`,
   );
-  await copyFile(path.join(root, "README.md"), path.join(outDir, "README.md"));
-  await copyFile(path.join(root, "LICENSE"), path.join(outDir, "LICENSE"));
+  await copyFile(path.join(repoRoot, "README.md"), path.join(outDir, "README.md"));
+  await copyFile(path.join(repoRoot, "LICENSE"), path.join(outDir, "LICENSE"));
 
-  console.log(`npm publish directory generated at ${path.relative(root, outDir)}/`);
+  console.log(`npm publish directory generated at ${path.relative(repoRoot, outDir)}/`);
 }
 
 async function enforceNodeRuntimeBoundary(jsPath: string): Promise<void> {

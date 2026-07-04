@@ -2,21 +2,31 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
-const SRC_DIR = join(import.meta.dir, "..", "..", "src");
+const REPO_ROOT = join(import.meta.dir, "..", "..", "..", "..");
 
 /**
  * The SPA / generator runtime must not talk to the network (issue #10).
  *
+ * This is a repository-level invariant across the SPA (apps/web) and the
+ * shared generator core (packages/core), so both packages' `src/` trees are
+ * scanned from here. The scan reads files from disk; it does not import
+ * Web code, so the core package's import boundary (issue #100) is untouched.
+ *
  * Scope is the runtime executable code path only:
  * - test files are excluded,
- * - src/generated/ is excluded (docs text bundled at build time),
+ * - apps/web/src/generated/ is excluded (docs text bundled at build time),
  * - comments are stripped so documentation URLs cannot trip the scan.
  *
  * The generated installer text embedded in installerGenerator.ts is covered by
  * its own allowlist in test/helpers/staticAssertions.ts; here it must still
  * satisfy the stricter of the two shared rules (github.com URLs only).
  */
-function runtimeSourceFiles(dir = SRC_DIR): string[] {
+const SCAN_ROOTS = [
+  join(REPO_ROOT, "packages", "core", "src"),
+  join(REPO_ROOT, "apps", "web", "src"),
+];
+
+function runtimeSourceFiles(dir: string): string[] {
   const files: string[] = [];
 
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -58,21 +68,22 @@ const FORBIDDEN_RUNTIME_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
 ];
 
 describe("SPA / generator runtime network boundary", () => {
-  const files = runtimeSourceFiles();
+  const files = SCAN_ROOTS.flatMap((root) => runtimeSourceFiles(root));
 
   test("scans the expected runtime module set", () => {
-    const names = files.map((file) => relative(SRC_DIR, file));
+    const names = files.map((file) => relative(REPO_ROOT, file));
 
-    // Guard: the scan must keep covering the core generator modules. If this
-    // fails after moving files, update the expectation deliberately.
-    expect(names).toContain("installerGenerator.ts");
-    expect(names).toContain("installerConfig.ts");
-    expect(names).toContain("App.tsx");
+    // Guard: the scan must keep covering the core generator modules and the
+    // SPA. If this fails after moving files, update the expectation
+    // deliberately.
+    expect(names).toContain(join("packages", "core", "src", "installerGenerator.ts"));
+    expect(names).toContain(join("packages", "core", "src", "installerConfig.ts"));
+    expect(names).toContain(join("apps", "web", "src", "App.tsx"));
     expect(names.length).toBeGreaterThanOrEqual(10);
   });
 
   for (const file of files) {
-    const name = relative(SRC_DIR, file);
+    const name = relative(REPO_ROOT, file);
     const code = stripComments(readFileSync(file, "utf8"));
 
     test(`${name} contains no external communication API`, () => {

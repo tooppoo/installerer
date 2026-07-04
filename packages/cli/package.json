@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/package.json",
+  "name": "@philomagi/installerer",
+  "version": "0.1.0",
+  "description": "installerer CLI: generate a self-contained install.sh from a JSON config.",
+  "keywords": [
+    "cli",
+    "install.sh",
+    "installer",
+    "installerer"
+  ],
+  "homepage": "https://github.com/tooppoo/installerer#readme",
+  "bugs": {
+    "url": "https://github.com/tooppoo/installerer/issues"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tooppoo/installerer.git"
+  },
+  "bin": {
+    "installerer": "./bin/installerer.js"
+  },
+  "files": [
+    "package.json",
+    "README.md",
+    "LICENSE",
+    "bin/installerer.js"
+  ],
+  "type": "module",
+  "scripts": {
+    "build:npm": "bun run scripts/build-npm.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
+  },
+  "devDependencies": {
+    "@installerer/core": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

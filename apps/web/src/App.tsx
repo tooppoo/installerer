@@ -3,11 +3,11 @@ import "./index.css";
 import { useMemo, useState } from "react";
 
 import packageJson from "../package.json";
-import { validateInstallerConfig } from "./installerConfig";
-import { buildInstallerDiagnostics } from "./installerDiagnostics";
-import { generateInstaller } from "./installerGenerator";
-import { resolveRuntimeDependencies } from "./runtimeDependencies/resolve";
-import { renderRuntimeRequirementsText } from "./runtimeDependencies/renderText";
+import { validateInstallerConfig } from "@installerer/core/installerConfig";
+import { buildInstallerDiagnostics } from "@installerer/core/installerDiagnostics";
+import { generateInstaller } from "@installerer/core/installerGenerator";
+import { resolveRuntimeDependencies } from "@installerer/core/runtimeDependencies/resolve";
+import { renderRuntimeRequirementsText } from "@installerer/core/runtimeDependencies/renderText";
 import {
   INSTALLER_CONTRACT_MARKDOWN,
   INSTALLER_CONTRACT_SEGMENTS,

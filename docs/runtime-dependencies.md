@@ -1,7 +1,7 @@
 # Generated Installer Runtime Dependencies
 
 <!-- AUTO-GENERATED FILE — DO NOT EDIT. -->
-<!-- Source of truth: src/runtimeDependencies/definitions.ts -->
+<!-- Source of truth: packages/core/src/runtimeDependencies/definitions.ts -->
 <!-- Regenerate with: bun run docs:generate -->
 
 Required commands for every generated installer:

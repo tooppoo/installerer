@@ -13,8 +13,9 @@ check-fix:
 _check:
   bun install --frozen-lockfile
   bun run docs:check
+  bun run lint
+  bun run check:boundaries
   bun test --coverage
   bun run build
   bun run build:npm
   bun run typecheck
-  bun run typecheck:cli

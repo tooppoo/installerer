@@ -8,13 +8,13 @@ import {
   findBunRuntimeReferences,
   NODE_SHEBANG,
   PUBLISH_DIR_FILES,
-} from "../../scripts/npmPublishDir";
+} from "../scripts/npmPublishDir";
 
 /**
  * Fast, in-process checks on the npm publish boundary from issue #81:
  * `bun run build:npm` must produce a self-contained, Node.js-runnable
- * `dist-cli/npm/` directory that excludes the browser SPA build, tests, and
- * dev-only files.
+ * `packages/cli/dist/npm/` directory that excludes the browser SPA build,
+ * tests, and dev-only files.
  *
  * Real `npm pack` / `npm install` / `node` verification, across Node.js
  * versions and package managers, runs as dedicated GitHub Actions jobs
@@ -25,12 +25,12 @@ import {
  * every `bun test`, not just in CI.
  */
 
-const root = join(import.meta.dir, "..", "..");
-const outDir = join(root, "dist-cli", "npm");
+const packageRoot = join(import.meta.dir, "..");
+const outDir = join(packageRoot, "dist", "npm");
 const binPath = join(outDir, "bin", "installerer.js");
 
 function run(command: string, args: string[], options: { cwd?: string } = {}) {
-  const result = spawnSync(command, args, { cwd: options.cwd ?? root, encoding: "utf8" });
+  const result = spawnSync(command, args, { cwd: options.cwd ?? packageRoot, encoding: "utf8" });
   if (result.error) throw result.error;
   return result;
 }
@@ -65,9 +65,22 @@ describe("npm CLI publish directory (build:npm)", () => {
     const pkg = JSON.parse(readFileSync(join(outDir, "package.json"), "utf8"));
     expect(pkg.name).toBe("@philomagi/installerer");
     expect(pkg.private).toBeUndefined();
+    expect(pkg.scripts).toBeUndefined();
+    expect(pkg.devDependencies).toBeUndefined();
     expect(pkg.bin).toEqual({ installerer: "./bin/installerer.js" });
     expect(pkg.files).toEqual([...PUBLISH_DIR_FILES]);
     expect(pkg.engines?.node).toBeTruthy();
+  });
+
+  test("publish manifest metadata comes verbatim from the static packages/cli/package.json", () => {
+    const staticPkg = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
+    const publishedPkg = JSON.parse(readFileSync(join(outDir, "package.json"), "utf8"));
+    for (const field of ["name", "version", "bin", "files", "engines", "description"]) {
+      expect(publishedPkg[field]).toEqual(staticPkg[field]);
+    }
+    // `files` in the static manifest is the same single source of truth the
+    // pack-file-set check uses.
+    expect(staticPkg.files).toEqual([...PUBLISH_DIR_FILES]);
   });
 
   test("bin entry has a node shebang and the executable bit", () => {

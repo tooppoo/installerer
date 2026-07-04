@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/tsconfig.json",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // CLI source targets the Node.js runtime (docs/adr/20260703T091000Z),
+    // so it typechecks against Node ambient types only — no DOM, no Bun.
+    "lib": ["ESNext"],
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

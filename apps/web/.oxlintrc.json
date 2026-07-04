@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/packages/cli/**", "@philomagi/installerer"],
+            "message": "apps/web must not import CLI-only code (issue #100). Shared logic belongs in @installerer/core."
+          }
+        ]
+      }
+    ]
+  }
+}

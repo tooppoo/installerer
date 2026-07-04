@@ -1,0 +1,138 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "fs",
+              "node:fs",
+              "path",
+              "node:path",
+              "process",
+              "node:process",
+              "child_process",
+              "node:child_process",
+              "os",
+              "node:os",
+              "stream",
+              "node:stream",
+              "crypto",
+              "node:crypto",
+              "node:*"
+            ],
+            "message": "packages/core is runtime-neutral and must not import Node.js APIs (issue #100). Accept values as explicit parameters instead."
+          },
+          {
+            "group": ["bun", "bun:*"],
+            "message": "packages/core is runtime-neutral and must not import Bun APIs (issue #100)."
+          },
+          {
+            "group": ["react", "react/*", "react-dom", "react-dom/*"],
+            "message": "packages/core must not depend on React / Web UI modules (issue #100). UI code belongs in apps/web."
+          },
+          {
+            "group": [
+              "**/apps/**",
+              "**/packages/cli/**",
+              "@installerer/web",
+              "@philomagi/installerer"
+            ],
+            "message": "packages/core must not depend on apps/web or packages/cli (issue #100). The dependency direction is web/cli -> core only."
+          }
+        ]
+      }
+    ],
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "process",
+        "message": "packages/core is runtime-neutral and must not read process state (issue #100). Accept values as explicit parameters instead."
+      },
+      {
+        "name": "Bun",
+        "message": "packages/core is runtime-neutral and must not use the Bun global (issue #100)."
+      },
+      {
+        "name": "window",
+        "message": "packages/core is runtime-neutral and must not use browser globals (issue #100)."
+      },
+      {
+        "name": "document",
+        "message": "packages/core is runtime-neutral and must not use browser globals (issue #100)."
+      },
+      {
+        "name": "navigator",
+        "message": "packages/core is runtime-neutral and must not use browser globals (issue #100)."
+      },
+      {
+        "name": "localStorage",
+        "message": "packages/core is runtime-neutral and must not use browser storage (issue #100)."
+      },
+      {
+        "name": "sessionStorage",
+        "message": "packages/core is runtime-neutral and must not use browser storage (issue #100)."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/generatedInstaller/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "fs",
+                  "node:fs",
+                  "path",
+                  "node:path",
+                  "process",
+                  "node:process",
+                  "child_process",
+                  "node:child_process",
+                  "os",
+                  "node:os",
+                  "stream",
+                  "node:stream",
+                  "crypto",
+                  "node:crypto",
+                  "node:*",
+                  "bun",
+                  "bun:*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "**/apps/**",
+                  "**/packages/cli/**",
+                  "@installerer/web",
+                  "@philomagi/installerer"
+                ],
+                "message": "packages/core is runtime-neutral and must not import runtime-specific APIs or other packages (issue #100)."
+              },
+              {
+                "group": ["**/package.json"],
+                "message": "generator core (src/generatedInstaller/) must not import package.json directly. Accept build/package-derived values (e.g. the installerer version) as an explicit parameter instead, see docs/adr/20260703T144753Z_generator-version-injection-boundary.md."
+              },
+              {
+                "group": ["**/../cli/**"],
+                "message": "generator core (src/generatedInstaller/) must not import CLI code (e.g. cliVersion). Accept the value as an explicit parameter instead, see docs/adr/20260703T144753Z_generator-version-injection-boundary.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "test/**"],
+      "rules": {
+        "no-restricted-imports": "off",
+        "no-restricted-globals": "off"
+      }
+    }
+  ]
+}

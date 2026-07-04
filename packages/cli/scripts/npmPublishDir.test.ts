@@ -1,13 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  buildPublishPackageJson,
   ensureShebang,
   findBrowserUiReferences,
   findBunRuntimeReferences,
   NODE_SHEBANG,
-  NPM_CLI_ENGINES,
-  PUBLISH_DIR_FILES,
+  preparePublishManifest,
 } from "./npmPublishDir";
 
 describe("ensureShebang", () => {
@@ -55,10 +53,10 @@ describe("findBrowserUiReferences", () => {
   });
 
   test("does not false-positive on 'react-dom' appearing as inlined JSON data", () => {
-    // src/cli/version.ts imports the whole root package.json for its
-    // `version` field, and Bun.build inlines that JSON (including its
-    // `dependencies` map) into the bundle. The literal object key
-    // `"react-dom": "^19"` is not an import and must not be flagged.
+    // packages/cli/src/version.ts imports the CLI package.json for its
+    // `version` field, and Bun.build inlines that JSON into the bundle.
+    // A literal object key like `"react-dom": "^19"` is not an import and
+    // must not be flagged.
     const inlinedPackageJson = `var package_default = {
       name: "@philomagi/installerer",
       dependencies: {
@@ -70,17 +68,30 @@ describe("findBrowserUiReferences", () => {
   });
 });
 
-describe("buildPublishPackageJson", () => {
-  test("carries the root name/version without private/dependencies/scripts", () => {
-    const pkg = buildPublishPackageJson({ name: "@philomagi/installerer", version: "1.2.3" });
+describe("preparePublishManifest", () => {
+  test("keeps static metadata and strips workspace-only fields", () => {
+    const manifest = preparePublishManifest({
+      $schema: "https://example.com/package.schema.json",
+      name: "@philomagi/installerer",
+      version: "1.2.3",
+      bin: { installerer: "./bin/installerer.js" },
+      engines: { node: ">=22.0.0" },
+      scripts: { "build:npm": "bun run scripts/build-npm.ts" },
+      devDependencies: { "@installerer/core": "workspace:*" },
+    });
 
-    expect(pkg.name).toBe("@philomagi/installerer");
-    expect(pkg.version).toBe("1.2.3");
-    expect(pkg.private).toBeUndefined();
-    expect(pkg.dependencies).toBeUndefined();
-    expect(pkg.scripts).toBeUndefined();
-    expect(pkg.bin).toEqual({ installerer: "./bin/installerer.js" });
-    expect(pkg.files).toEqual([...PUBLISH_DIR_FILES]);
-    expect(pkg.engines).toEqual(NPM_CLI_ENGINES);
+    expect(manifest.name).toBe("@philomagi/installerer");
+    expect(manifest.version).toBe("1.2.3");
+    expect(manifest.bin).toEqual({ installerer: "./bin/installerer.js" });
+    expect(manifest.engines).toEqual({ node: ">=22.0.0" });
+    expect(manifest.$schema).toBeUndefined();
+    expect(manifest.scripts).toBeUndefined();
+    expect(manifest.devDependencies).toBeUndefined();
+  });
+
+  test("does not mutate the input manifest", () => {
+    const input = { name: "x", scripts: { a: "b" } };
+    preparePublishManifest(input);
+    expect(input.scripts).toEqual({ a: "b" });
   });
 });

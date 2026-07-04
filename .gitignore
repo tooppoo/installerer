@@ -1,10 +1,9 @@
 # dependencies (bun install)
 node_modules
 
-# output
+# output (apps/web/dist, packages/cli/dist, ...)
 out
 dist
-dist-cli
 *.tgz
 
 # code coverage

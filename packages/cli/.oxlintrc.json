@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "**/apps/**",
+              "@installerer/web",
+              "react",
+              "react/*",
+              "react-dom",
+              "react-dom/*"
+            ],
+            "message": "packages/cli must not import Web-only code (issue #100). Shared logic belongs in @installerer/core."
+          }
+        ]
+      }
+    ]
+  }
+}

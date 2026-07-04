@@ -60,11 +60,11 @@ jobs:
         run: bun run build:npm
 
       - name: Verify npm pack file set
-        working-directory: dist-cli/npm
-        run: npm pack --dry-run --json | bun run ../../scripts/ci/verifyPackFileSet.ts
+        working-directory: packages/cli/dist/npm
+        run: npm pack --dry-run --json | bun run ../../scripts/verifyPackFileSet.ts
 
       - name: Create npm pack tarball
-        working-directory: dist-cli/npm
+        working-directory: packages/cli/dist/npm
         run: |
           mkdir -p "$RUNNER_TEMP/npm-package"
           npm pack --pack-destination "$RUNNER_TEMP/npm-package"

@@ -1,42 +1,37 @@
 {
   "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/package.json",
-  "name": "@philomagi/installerer",
+  "name": "installerer-monorepo",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "type": "module",
   "scripts": {
-    "dev": "BUN_PUBLIC_COMMIT_HASH=$(scripts/get-revision.sh) bun --hot src/index.ts",
-    "start": "NODE_ENV=production BUN_PUBLIC_COMMIT_HASH=$(scripts/get-revision.sh) bun src/index.ts",
-    "build": "bun run build.ts",
-    "docs:generate": "bun scripts/generate-runtime-dependency-docs.ts && bun scripts/generate-installer-contract.ts",
-    "docs:check": "bun scripts/generate-runtime-dependency-docs.ts --check && bun scripts/generate-installer-contract.ts --check",
+    "dev": "bun run --cwd apps/web dev",
+    "start": "bun run --cwd apps/web start",
+    "build": "bun run --cwd apps/web build",
+    "preview": "bun run --cwd apps/web preview",
+    "deploy": "bun run --cwd apps/web deploy",
+    "build:npm": "bun run --cwd packages/cli build:npm",
+    "docs:generate": "bun scripts/generate-runtime-dependency-docs.ts && bun run --cwd apps/web docs:generate",
+    "docs:check": "bun scripts/generate-runtime-dependency-docs.ts --check && bun run --cwd apps/web docs:check",
     "test": "bun test",
     "test:update-snapshots": "UPDATE_INSTALLER_SNAPSHOTS=1 bun test",
     "lint": "oxlint --deny-warnings .",
+    "check:boundaries": "bun scripts/ci/check-package-boundaries.ts",
     "format:check": "oxfmt --check .",
     "format": "oxfmt .",
-    "typecheck": "tsc --noEmit",
-    "typecheck:cli": "tsc --noEmit -p tsconfig.cli.json",
-    "build:npm": "bun run scripts/build-npm.ts",
-    "deploy": "wrangler deploy",
-    "preview": "wrangler dev"
-  },
-  "dependencies": {
-    "bun-plugin-tailwind": "^0.1.2",
-    "react": "^19",
-    "react-dom": "^19",
-    "tailwindcss": "^4.1.11"
+    "typecheck": "tsc --noEmit && bun run --cwd packages/core typecheck && bun run --cwd packages/cli typecheck && bun run --cwd apps/web typecheck"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
     "@types/bun": "latest",
     "@types/node": "22.20.0",
-    "@types/react": "19.2.17",
-    "@types/react-dom": "19.2.3",
     "license-checker": "25.0.1",
     "oxfmt": "0.57.0",
     "oxlint": "1.72.0",
-    "typescript": "6.0.3",
-    "wrangler": "4.107.0"
+    "typescript": "6.0.3"
   }
 }
