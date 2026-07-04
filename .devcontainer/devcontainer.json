@@ -15,7 +15,8 @@
         "EditorConfig.EditorConfig",
         "oven.bun-vscode",
         "skellock.just",
-        "oxc.oxc-vscode"
+        "oxc.oxc-vscode",
+        "timonwong.shellcheck"
       ],
       "settings": {
         "editor.defaultFormatter": "oxc.oxc-vscode",
