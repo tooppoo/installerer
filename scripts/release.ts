@@ -24,7 +24,7 @@ function releaseCliVersion() {
   try {
     console.log("Releasing CLI version:", cliVersion, ":start");
 
-    spawnSync("git", ["tag", `${cliVersion}`], { stdio: "inherit" });
+    spawnSync("git", ["tag", `v${cliVersion}`], { stdio: "inherit" });
     spawnSync("git", ["push", "--tags"], { stdio: "inherit" });
     console.log("Releasing CLI version:", cliVersion, ":done");
   } catch (error) {
