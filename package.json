@@ -24,6 +24,7 @@
     "test:update-snapshots": "UPDATE_INSTALLER_SNAPSHOTS=1 bun test",
     "lint": "oxlint --deny-warnings .",
     "check:boundaries": "bun scripts/ci/check-package-boundaries.ts",
+    "shellcheck:generated": "bun scripts/ci/shellcheck-generated.ts",
     "format:check": "oxfmt --check .",
     "format": "oxfmt .",
     "typecheck": "run-s typecheck:base typecheck:core typecheck:cli typecheck:web",
