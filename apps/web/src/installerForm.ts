@@ -114,9 +114,9 @@ export const CHECKSUM_ALGORITHM = "sha256" as const;
 
 export const initialFormState: InstallerFormState = {
   owner: "tooppoo",
-  repo: "rellog",
-  binaryName: "rellog",
-  binaryPathInArchive: "rellog",
+  repo: "git-kura",
+  binaryName: "git-kura",
+  binaryPathInArchive: "git-kura",
   versionResolverType: "release_version_file",
   versionResolverFileName: "VERSION",
   archiveFormat: "tar.gz",
