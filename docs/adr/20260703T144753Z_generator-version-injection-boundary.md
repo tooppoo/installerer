@@ -6,8 +6,8 @@
 > **Amendment (2026-07-03, [20260703T231205Z_monorepo-package-boundaries.md](./20260703T231205Z_monorepo-package-boundaries.md)):**
 > With the monorepo migration (issue #100), this ADR's boundaries are preserved
 > but the paths moved. `src/cli/version.ts` is now
-> `packages/cli/src/version.ts`, and its canonical manifest is
-> `packages/cli/package.json` rather than the workspace-root `package.json`.
+> `packages/cli/src/version.ts`, and its canonical manifest remains the
+> workspace-root `package.json`.
 > `src/generatedInstaller/` is now `packages/core/src/generatedInstaller/`.
 > The previous nested `src/generatedInstaller/.oxlintrc.json` enforcement is
 > folded into `packages/core/.oxlintrc.json`, with the broader package-level

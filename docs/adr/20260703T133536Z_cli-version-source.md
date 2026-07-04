@@ -3,16 +3,12 @@
 - Status: Accepted
 - Created: 2026-07-03T13:35:36Z
 
-> **Amendment (2026-07-03, [20260703T231205Z_monorepo-package-boundaries.md](./20260703T231205Z_monorepo-package-boundaries.md)):**
-> With the monorepo migration (issue #100), the canonical version source is the
-> CLI package's own manifest, `packages/cli/package.json`, not the root
-> `package.json` (the root is now a private workspace root). `version.ts` lives
-> at `packages/cli/src/version.ts` and imports `../package.json`. Everything
-> else in this ADR — single source of truth, static JSON import, identical
-> resolution across distribution channels, exact-value output — stands
-> unchanged, and is in fact strengthened: the imported manifest is now the same
-> static file that gets published, so no root-to-publish version mirroring
-> remains.
+> **Amendment (2026-07-04):**
+> The monorepo package-boundary work briefly re-anchored the canonical version
+> source to `packages/cli/package.json`. That is superseded: installerer's own
+> version is again the repository root `package.json` `version` field. Package
+> manifests may carry package metadata, but installerer runtime/versioned release
+> artifacts must read the root manifest.
 
 ## Context
 
@@ -26,17 +22,17 @@
 
 The canonical source of the installerer CLI version is the `version` field of the root `package.json`. `installerer --version` and `installerer -v` print exactly that value, unchanged, to stdout, followed by a single newline, with exit code `0` and no stderr output. Program name, commit hash, git revision, and build revision must not be included in this output.
 
-`src/cli/version.ts` resolves this value with a static JSON import:
+`packages/cli/src/version.ts` resolves this value with a static JSON import:
 
 ```ts
-import packageJson from "../../package.json" with { type: "json" };
+import packageJson from "../../../package.json" with { type: "json" };
 
 export const cliVersion: string = packageJson.version;
 ```
 
 `dispatchCli` (`src/cli/dispatch.ts`) imports `cliVersion` directly, the same way it already imports `topLevelHelpText`. No runtime entrypoint has to pass the version in; it is resolved once, at module load, from the same source for every distribution channel:
 
-- The npm package build ships `package.json` as part of the published package, so a Node.js runtime resolves this relative import the normal way.
+- The npm package build bundles `packages/cli/src/node/main.ts`; Bun's Node-target bundle inlines the statically imported root `package.json` version into the published `bin/installerer.js`.
 - Bun compile resolves and inlines static imports (including JSON) into the standalone executable at build time. This import is what satisfies the distribution policy's requirement that the standalone executable embed the version as a build-time constant: no separate embedding step, environment variable, or `define` substitution is needed, because Bun's bundler already does it for any statically imported module.
 
 Both channels read the same field through the same import; there is no second version-resolution code path to keep in sync.
@@ -68,7 +64,7 @@ A dedicated `VERSION` file at the repository root, read by both the CLI and othe
 ### Negative Consequences
 
 - Changing the `package.json` path depth of `src/cli/version.ts` requires updating the relative import path to `package.json`; this is a normal refactor risk, not a design flaw, but it is not caught until the module fails to resolve.
-- This decision does not by itself guarantee the npm build output ships `package.json` at the expected relative location; that remains [Issue #81](https://github.com/tooppoo/installerer/issues/81)'s responsibility.
+- Relative-import depth is intentionally checked by tests and package-boundary policy because `packages/cli/src/version.ts` reaches from the CLI package to the repository root manifest.
 
 ### Neutral Consequences
 

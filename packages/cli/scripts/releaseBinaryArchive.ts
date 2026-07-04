@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { chmod, copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import packageJson from "../package.json" with { type: "json" };
+import packageJson from "../../../package.json" with { type: "json" };
 
 export const CLI_BINARY_ENTRYPOINT = "packages/cli/src/node/main.ts";
 export const PUBLIC_BINARY_DIR = "dist/binary";
@@ -80,7 +80,7 @@ export function assertReleaseTagMatchesVersion(releaseTag: string, version: stri
   assertReleaseVersion(version);
   if (tagVersion !== version) {
     throw new Error(
-      `release binary archive: release tag ${JSON.stringify(releaseTag)} must resolve to package version ${JSON.stringify(version)}`,
+      `release binary archive: release tag ${JSON.stringify(releaseTag)} must resolve to root package version ${JSON.stringify(version)}`,
     );
   }
 }

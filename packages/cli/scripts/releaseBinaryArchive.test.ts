@@ -84,11 +84,11 @@ describe("binary release archive contract", () => {
     expect(() => assertReleaseVersion("1.2.3")).not.toThrow();
   });
 
-  test("requires the GitHub Release tag to exactly match the package version", () => {
+  test("requires the GitHub Release tag to match the root package version", () => {
     expect(() => assertReleaseTagMatchesVersion("v1.2.3", "1.2.3")).not.toThrow();
     expect(() => assertReleaseTagMatchesVersion("1.2.3", "1.2.3")).toThrow('must start with "v"');
     expect(() => assertReleaseTagMatchesVersion("v1.2.4", "1.2.3")).toThrow(
-      "must resolve to package version",
+      "must resolve to root package version",
     );
   });
 
