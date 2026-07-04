@@ -1,15 +1,9 @@
 name: Release
 
 on:
-  release:
-    types:
-      - published
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Existing GitHub Release tag to receive binary assets.
-        required: true
-        type: string
+  push:
+    tags:
+      - "v*.*.*"
 
 permissions:
   contents: write
@@ -22,29 +16,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-        with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version-file: ".bun-version"
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-      - name: Build standalone binaries
-        run: bun run build:binary
-      - name: Create release assets
+      - name: Build and verify release assets
         env:
-          INSTALLERER_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
-        run: bun run release:binary
+          INSTALLERER_RELEASE_TAG: ${{ github.ref_name }}
+        run: just binary-release-artifacts
 
       - name: Upload release assets without overwrite
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release view "$RELEASE_TAG"
-          gh release upload "$RELEASE_TAG" \
-            dist/binary/*.tar.gz \
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+          gh release create "$RELEASE_TAG" \
+            "dist/binary/installerer_${RELEASE_VERSION}_Darwin_arm64.tar.gz" \
+            "dist/binary/installerer_${RELEASE_VERSION}_Darwin_x86_64.tar.gz" \
+            "dist/binary/installerer_${RELEASE_VERSION}_Linux_arm64.tar.gz" \
+            "dist/binary/installerer_${RELEASE_VERSION}_Linux_x86_64.tar.gz" \
             dist/binary/checksums.txt \
-            dist/binary/VERSION
+            dist/binary/VERSION \
+            --verify-tag

@@ -76,15 +76,24 @@ export function assertReleaseVersion(version: string): void {
 }
 
 export function assertReleaseTagMatchesVersion(releaseTag: string, version: string): void {
-  assertReleaseVersion(releaseTag);
+  const tagVersion = releaseVersionFromTag(releaseTag);
   assertReleaseVersion(version);
-  if (releaseTag !== version) {
+  if (tagVersion !== version) {
     throw new Error(
-      `release binary archive: release tag ${JSON.stringify(
-        releaseTag,
-      )} must exactly match package version ${JSON.stringify(version)}`,
+      `release binary archive: release tag ${JSON.stringify(releaseTag)} must resolve to package version ${JSON.stringify(version)}`,
     );
   }
+}
+
+export function releaseVersionFromTag(releaseTag: string): string {
+  if (!releaseTag.startsWith("v")) {
+    throw new Error(
+      `release binary archive: release tag ${JSON.stringify(releaseTag)} must start with "v"`,
+    );
+  }
+  const version = releaseTag.slice(1);
+  assertReleaseVersion(version);
+  return version;
 }
 
 export async function createBinaryReleaseArtifacts(
@@ -96,7 +105,7 @@ export async function createBinaryReleaseArtifacts(
 
   const publicBinaryDir = path.join(repoRoot, PUBLIC_BINARY_DIR);
   await mkdir(publicBinaryDir, { recursive: true });
-  await cleanPublicBinaryAssets(publicBinaryDir);
+  await assertNoPublicBinaryAssets(publicBinaryDir);
 
   const archives: CreatedBinaryReleaseArtifact[] = [];
   for (const target of BINARY_RELEASE_TARGETS) {
@@ -137,7 +146,7 @@ export async function createBinaryReleaseArtifacts(
   return { version, archives, checksumsPath, versionPath };
 }
 
-async function cleanPublicBinaryAssets(publicBinaryDir: string): Promise<void> {
+async function assertNoPublicBinaryAssets(publicBinaryDir: string): Promise<void> {
   for (const entry of await readdir(publicBinaryDir, { withFileTypes: true })) {
     if (
       entry.isFile() &&
@@ -145,7 +154,9 @@ async function cleanPublicBinaryAssets(publicBinaryDir: string): Promise<void> {
         entry.name === CHECKSUMS_FILE_NAME ||
         entry.name === VERSION_FILE_NAME)
     ) {
-      await rm(path.join(publicBinaryDir, entry.name), { force: true });
+      throw new Error(
+        `release binary archive: public asset ${entry.name} already exists in ${PUBLIC_BINARY_DIR}`,
+      );
     }
   }
 }
@@ -166,7 +177,6 @@ async function createTarGzWithRootBinary(options: {
 
   await runCommand([
     "tar",
-    "--sort=name",
     "--owner=0",
     "--group=0",
     "--numeric-owner",
@@ -189,7 +199,7 @@ export async function verifyCreatedArtifacts(options: {
   const archiveNames = options.archives.map((archive) => archive.archiveFileName);
   const expectedNames = [...archiveNames].sort((a, b) => a.localeCompare(b));
   if (archiveNames.join("\n") !== expectedNames.join("\n")) {
-    throw new Error("release binary archive: checksum entries are not sorted by archive name");
+    throw new Error("release binary archive: archive list is not sorted by archive name");
   }
 
   for (const archive of options.archives) {

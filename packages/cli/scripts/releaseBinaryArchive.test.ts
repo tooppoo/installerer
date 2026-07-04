@@ -1,4 +1,4 @@
-import { chmod, mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, test } from "bun:test";
 
@@ -13,6 +13,7 @@ import {
   assertReleaseVersion,
   binaryArchiveFileName,
   createBinaryReleaseArtifacts,
+  releaseVersionFromTag,
   verifyCreatedArtifacts,
 } from "./releaseBinaryArchive";
 
@@ -84,10 +85,16 @@ describe("binary release archive contract", () => {
   });
 
   test("requires the GitHub Release tag to exactly match the package version", () => {
-    expect(() => assertReleaseTagMatchesVersion("1.2.3", "1.2.3")).not.toThrow();
-    expect(() => assertReleaseTagMatchesVersion("v1.2.3", "1.2.3")).toThrow(
-      "must exactly match package version",
+    expect(() => assertReleaseTagMatchesVersion("v1.2.3", "1.2.3")).not.toThrow();
+    expect(() => assertReleaseTagMatchesVersion("1.2.3", "1.2.3")).toThrow('must start with "v"');
+    expect(() => assertReleaseTagMatchesVersion("v1.2.4", "1.2.3")).toThrow(
+      "must resolve to package version",
     );
+  });
+
+  test("normalizes v-prefixed GitHub Release tags to package versions", () => {
+    expect(releaseVersionFromTag("v1.2.3")).toBe("1.2.3");
+    expect(() => releaseVersionFromTag("1.2.3")).toThrow('must start with "v"');
   });
 
   test("formats archive filenames without exposing Bun target labels", () => {
@@ -96,7 +103,7 @@ describe("binary release archive contract", () => {
     );
   });
 
-  test("removes stale top-level public assets before generating release artifacts", async () => {
+  test("rejects stale top-level public assets before generating release artifacts", async () => {
     const repoRoot = await makeFixtureRepoRoot();
     const publicBinaryDir = path.join(repoRoot, PUBLIC_BINARY_DIR);
     await mkdir(publicBinaryDir, { recursive: true });
@@ -105,18 +112,8 @@ describe("binary release archive contract", () => {
     await writeFile(path.join(publicBinaryDir, VERSION_FILE_NAME), "0.0.0\n");
     await writeFakeRawBinaries(repoRoot);
 
-    const result = await createBinaryReleaseArtifacts({ repoRoot, version: "1.2.3" });
-
-    const publicTarballs = (await readdir(publicBinaryDir))
-      .filter((entry) => entry.endsWith(".tar.gz"))
-      .sort();
-    expect(publicTarballs).toEqual(result.archives.map((archive) => archive.archiveFileName));
-    await expect(Bun.file(path.join(publicBinaryDir, CHECKSUMS_FILE_NAME)).text()).resolves.toBe(
-      result.archives.map((archive) => `${archive.sha256}  ${archive.archiveFileName}`).join("\n") +
-        "\n",
-    );
-    await expect(Bun.file(path.join(publicBinaryDir, VERSION_FILE_NAME)).text()).resolves.toBe(
-      "1.2.3\n",
+    await expect(createBinaryReleaseArtifacts({ repoRoot, version: "1.2.3" })).rejects.toThrow(
+      "already exists",
     );
   });
 
