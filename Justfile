@@ -17,5 +17,4 @@ _check:
   bun run check:boundaries
   bun test --coverage
   bun run build
-  bun run build:npm
   bun run typecheck

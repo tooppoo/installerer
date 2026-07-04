@@ -11,9 +11,10 @@
   "scripts": {
     "dev": "bun run --cwd apps/web dev",
     "start": "bun run --cwd apps/web start",
-    "build": "bun run --cwd apps/web build",
     "preview": "bun run --cwd apps/web preview",
     "deploy": "bun run --cwd apps/web deploy",
+    "build": "run-s build:npm build:web",
+    "build:web": "bun run --cwd apps/web build",
     "build:npm": "bun run --cwd packages/cli build:npm",
     "docs:generate": "bun scripts/generate-runtime-dependency-docs.ts && bun run --cwd apps/web docs:generate",
     "docs:check": "bun scripts/generate-runtime-dependency-docs.ts --check && bun run --cwd apps/web docs:check",
@@ -23,13 +24,18 @@
     "check:boundaries": "bun scripts/ci/check-package-boundaries.ts",
     "format:check": "oxfmt --check .",
     "format": "oxfmt .",
-    "typecheck": "tsc --noEmit && bun run --cwd packages/core typecheck && bun run --cwd packages/cli typecheck && bun run --cwd apps/web typecheck"
+    "typecheck": "run-s typecheck:base typecheck:core typecheck:cli typecheck:web",
+    "typecheck:base": "tsc --noEmit ",
+    "typecheck:core": "tsc --noEmit && bun run --cwd packages/core typecheck",
+    "typecheck:cli": "bun run --cwd packages/cli typecheck && bun run --cwd apps/web typecheck",
+    "typecheck:web": "bun run --cwd apps/web typecheck"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
     "@types/bun": "latest",
     "@types/node": "22.20.0",
     "license-checker": "25.0.1",
+    "npm-run-all": "^4.1.5",
     "oxfmt": "0.57.0",
     "oxlint": "1.72.0",
     "typescript": "6.0.3"
