@@ -24,3 +24,7 @@ binary-release-artifacts:
   bun install --frozen-lockfile
   bun run build:binary
   bun run release:binary
+
+release:
+  bun install --frozen-lockfile
+  bun scripts/release.ts
