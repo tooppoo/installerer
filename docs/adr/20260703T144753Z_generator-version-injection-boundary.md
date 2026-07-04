@@ -3,6 +3,17 @@
 - Status: Accepted
 - Created: 2026-07-03T14:47:53Z
 
+> **Amendment (2026-07-03, [20260703T231205Z_monorepo-package-boundaries.md](./20260703T231205Z_monorepo-package-boundaries.md)):**
+> With the monorepo migration (issue #100), this ADR's boundaries are preserved
+> but the paths moved. `src/cli/version.ts` is now
+> `packages/cli/src/version.ts`, and its canonical manifest is
+> `packages/cli/package.json` rather than the workspace-root `package.json`.
+> `src/generatedInstaller/` is now `packages/core/src/generatedInstaller/`.
+> The previous nested `src/generatedInstaller/.oxlintrc.json` enforcement is
+> folded into `packages/core/.oxlintrc.json`, with the broader package-level
+> runtime-neutrality checks and the repository-local boundary check layered on
+> top.
+
 ## Context
 
 [Issue #87](https://github.com/tooppoo/installerer/issues/87) / [docs/adr/20260703T133536Z_cli-version-source.md](./20260703T133536Z_cli-version-source.md) defined `installerer`'s own version: `src/cli/version.ts` resolves `cliVersion` from the root `package.json`'s `version` field via a static import, at module load time, with no filesystem IO and no runtime injection.
