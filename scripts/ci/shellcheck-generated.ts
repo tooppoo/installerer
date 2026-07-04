@@ -54,7 +54,8 @@ async function main(): Promise<void> {
     const exitCode = await runShellcheck(["-s", "sh", "--severity=warning", ...scriptPaths]);
 
     if (exitCode !== 0) {
-      process.exit(exitCode);
+      process.exitCode = exitCode;
+      return;
     }
     console.log("shellcheck:generated: ok");
   } finally {
