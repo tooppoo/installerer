@@ -173,8 +173,11 @@ async function checkSourceDir(
 }
 
 type PackageManifest = {
+  bundleDependencies?: string[] | false;
+  bundledDependencies?: string[] | false;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
 };
 
@@ -182,10 +185,17 @@ async function readManifest(relativePath: string): Promise<PackageManifest> {
   return (await Bun.file(path.join(repoRoot, relativePath)).json()) as PackageManifest;
 }
 
+function dependencyNameList(names: string[] | false | undefined): string[] {
+  return Array.isArray(names) ? names : [];
+}
+
 function allDependencyNames(manifest: PackageManifest): string[] {
   return [
+    ...dependencyNameList(manifest.bundleDependencies),
+    ...dependencyNameList(manifest.bundledDependencies),
     ...Object.keys(manifest.dependencies ?? {}),
     ...Object.keys(manifest.devDependencies ?? {}),
+    ...Object.keys(manifest.optionalDependencies ?? {}),
     ...Object.keys(manifest.peerDependencies ?? {}),
   ];
 }
