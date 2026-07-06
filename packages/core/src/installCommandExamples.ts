@@ -1,3 +1,5 @@
+import { urlEncodePathSegment } from "./urlPathSegment";
+
 /**
  * Single source of truth for standard curl install command text (issue
  * #110). Both the generated installer's `usage()` (see
@@ -37,7 +39,7 @@ export function buildInstallCommandExamples(config: {
   owner: string;
   repo: string;
 }): InstallCommandExamples {
-  const rawInstallerUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/refs/heads/${INSTALLER_BRANCH}${INSTALLER_PATH}`;
+  const rawInstallerUrl = `https://raw.githubusercontent.com/${urlEncodePathSegment(config.owner)}/${urlEncodePathSegment(config.repo)}/refs/heads/${INSTALLER_BRANCH}${INSTALLER_PATH}`;
 
   return {
     rawInstallerUrl,
