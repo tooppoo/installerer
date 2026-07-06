@@ -26,6 +26,8 @@ import {
   isTargetSelected,
   OS_CASE_EXAMPLES,
   OS_CASE_OPTIONS,
+  setArchitectureLabelsPerOs,
+  TARGET_OPERATING_SYSTEMS,
   TARGET_OPTIONS,
   targetKey,
   toggleTarget,
@@ -34,6 +36,7 @@ import {
   type InstallerFormState,
   type TargetOption,
 } from "./installerForm";
+import type { TargetArch } from "@installerer/core/installerConfig";
 
 // Statically replaced at bundle time (see bunfig.toml `[serve.static].env` for `bun dev`,
 // and the `env` option passed to `Bun.build` in build.ts for `bun run build`).
@@ -343,54 +346,58 @@ export function App() {
               <legend className="px-1 text-sm font-semibold text-[#4a4037]">
                 architectureLabels
               </legend>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {CANONICAL_ARCHITECTURES.map((arch) => {
-                  const selection = architectureLabelSelection(arch, form.architectureLabels[arch]);
-                  return (
-                    <div key={arch} className="flex flex-col gap-1">
-                      <label className={labelClassName}>
-                        {arch}
-                        <select
-                          className={fieldClassName}
-                          value={selection}
-                          onChange={(event) => {
-                            const next = event.target.value;
-                            update("architectureLabels", {
-                              ...form.architectureLabels,
-                              [arch]: next === CUSTOM_ARCHITECTURE_LABEL ? "" : next,
-                            });
-                          }}
-                        >
-                          {ARCHITECTURE_LABEL_PRESETS[arch].map((preset) => (
-                            <option key={preset} value={preset}>
-                              {preset}
-                            </option>
-                          ))}
-                          <option value={CUSTOM_ARCHITECTURE_LABEL}>custom</option>
-                        </select>
-                      </label>
-                      {selection === CUSTOM_ARCHITECTURE_LABEL ? (
-                        <input
-                          className={fieldClassName}
-                          value={form.architectureLabels[arch]}
-                          placeholder="custom asset label"
-                          onChange={(event) =>
-                            update("architectureLabels", {
-                              ...form.architectureLabels,
-                              [arch]: event.target.value,
+              <label className="flex items-center gap-2 text-sm text-[#4a4037]">
+                <input
+                  type="checkbox"
+                  checked={form.architectureLabelsPerOs}
+                  onChange={(event) =>
+                    setForm((current) => setArchitectureLabelsPerOs(current, event.target.checked))
+                  }
+                />
+                Specify per OS
+              </label>
+              {form.architectureLabelsPerOs ? (
+                TARGET_OPERATING_SYSTEMS.map((os) => (
+                  <div key={os} className="flex flex-col gap-2 border-t border-[#dfe5dc] pt-2">
+                    <span className="font-mono text-sm font-semibold text-[#4a4037]">{os}</span>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {CANONICAL_ARCHITECTURES.map((arch) => (
+                        <ArchitectureLabelField
+                          key={arch}
+                          arch={arch}
+                          value={form.architectureLabelsByOs[os][arch]}
+                          onChange={(value) =>
+                            update("architectureLabelsByOs", {
+                              ...form.architectureLabelsByOs,
+                              [os]: { ...form.architectureLabelsByOs[os], [arch]: value },
                             })
                           }
-                          spellCheck={false}
                         />
-                      ) : null}
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                ))
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {CANONICAL_ARCHITECTURES.map((arch) => (
+                    <ArchitectureLabelField
+                      key={arch}
+                      arch={arch}
+                      value={form.architectureLabels[arch]}
+                      onChange={(value) =>
+                        update("architectureLabels", {
+                          ...form.architectureLabels,
+                          [arch]: value,
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              )}
               <span className="text-xs font-normal leading-snug text-[#6d625a]">
                 How {"{arch}"} and {"{target}"} render the detected architecture in Release asset
-                names. This is independent of the runtime architecture detected by the generated
-                installer.
+                names, either shared by every OS or per OS. This is independent of the runtime
+                architecture detected by the generated installer.
               </span>
             </fieldset>
 
@@ -577,6 +584,49 @@ export function App() {
 }
 
 export default App;
+
+function ArchitectureLabelField({
+  arch,
+  value,
+  onChange,
+}: {
+  arch: TargetArch;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const selection = architectureLabelSelection(arch, value);
+  return (
+    <div className="flex flex-col gap-1">
+      <label className={labelClassName}>
+        {arch}
+        <select
+          className={fieldClassName}
+          value={selection}
+          onChange={(event) => {
+            const next = event.target.value;
+            onChange(next === CUSTOM_ARCHITECTURE_LABEL ? "" : next);
+          }}
+        >
+          {ARCHITECTURE_LABEL_PRESETS[arch].map((preset) => (
+            <option key={preset} value={preset}>
+              {preset}
+            </option>
+          ))}
+          <option value={CUSTOM_ARCHITECTURE_LABEL}>custom</option>
+        </select>
+      </label>
+      {selection === CUSTOM_ARCHITECTURE_LABEL ? (
+        <input
+          className={fieldClassName}
+          value={value}
+          placeholder="custom asset label"
+          onChange={(event) => onChange(event.target.value)}
+          spellCheck={false}
+        />
+      ) : null}
+    </div>
+  );
+}
 
 function DiagnosticDetails({
   title,

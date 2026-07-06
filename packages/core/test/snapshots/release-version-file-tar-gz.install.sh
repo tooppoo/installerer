@@ -492,12 +492,15 @@ detect_target() {
 }
 
 resolve_asset_arch_label() {
-  canonical_arch=$1
+  canonical_os=$1
+  canonical_arch=$2
 
-  case "$canonical_arch" in
-    x86_64) asset_arch_label='x64' ;;
-    aarch64) asset_arch_label='arm64-v8a' ;;
-    *) fail "unsupported architecture: $canonical_arch" ;;
+  case "$canonical_os/$canonical_arch" in
+    linux/x86_64) asset_arch_label='x64' ;;
+    linux/aarch64) asset_arch_label='arm64-v8a' ;;
+    darwin/x86_64) asset_arch_label='amd64' ;;
+    darwin/aarch64) asset_arch_label='arm64' ;;
+    *) fail "unsupported target: $canonical_os/$canonical_arch" ;;
   esac
 
   printf '%s\n' "$asset_arch_label"
@@ -620,7 +623,7 @@ install_latest() {
   set -- $target
   os=$1
   arch=$2
-  asset_arch_label=$(resolve_asset_arch_label "$arch") || exit 1
+  asset_arch_label=$(resolve_asset_arch_label "$os" "$arch") || exit 1
   owner_path=$(url_encode_segment "$OWNER")
   repo_path=$(url_encode_segment "$REPO")
   version_file_path=$(url_encode_segment "$VERSION_FILE_NAME")
@@ -646,7 +649,7 @@ install_pin() {
   set -- $target
   os=$1
   arch=$2
-  asset_arch_label=$(resolve_asset_arch_label "$arch") || exit 1
+  asset_arch_label=$(resolve_asset_arch_label "$os" "$arch") || exit 1
   archive_asset_name=$(render_archive_asset_name "$pinned_version" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
   owner_path=$(url_encode_segment "$OWNER")

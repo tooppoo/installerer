@@ -64,13 +64,18 @@ The `archive.nameTemplate` must end with the suffix matching the selected format
 
 This only changes display casing of the supported `linux`/`darwin` targets; it does not add Windows as a target OS.
 
-`architectureLabels` controls how the `{arch}` and `{target}` placeholders render the detected architecture. It maps each canonical architecture the generated installer detects at runtime (`x86_64`, `aarch64`) to the label embedded in Release asset names:
+`architectureLabels` controls how the `{arch}` and `{target}` placeholders render the detected architecture. It maps each canonical architecture the generated installer detects at runtime (`x86_64`, `aarch64`) to the label embedded in Release asset names, and accepts two forms:
+
+- flat (one mapping shared by every target OS): `{ "x86_64": "amd64", "aarch64": "arm64" }`
+- per OS (one mapping per target OS, for projects whose Linux and macOS assets spell the same architecture differently): `{ "linux": { "x86_64": "x86_64", "aarch64": "aarch64" }, "darwin": { "x86_64": "amd64", "aarch64": "arm64" } }`
+
+Mixing OS keys and architecture keys in one object is rejected. In either form, omitted keys fall back to the default label:
 
 - default (when omitted): `x86_64 -> x86_64`, `aarch64 -> aarch64` (the OS-reported architecture name)
 - also selectable in the browser form as presets: `x86_64 -> amd64`, `aarch64 -> arm64` (the Go `GOARCH` convention used by tools such as goreleaser)
 - or any custom label, for example `x86_64 -> x64`, `aarch64 -> arm64-v8a`
 
-This is independent of runtime architecture detection: the generated installer always canonicalizes `uname -m` output to `x86_64`/`aarch64` first, then looks up the configured label. Changing `architectureLabels` changes only the asset name spelling, never which host architectures the installer recognizes. See [`generated-installer-runtime.md`](./generated-installer-runtime.md#target-detection-and-architecture-label-resolution) for the two-stage resolution this implies.
+This is independent of runtime architecture detection: the generated installer always canonicalizes `uname -s`/`uname -m` output to `linux`/`darwin` and `x86_64`/`aarch64` first, then looks up the configured label for that OS/architecture pair. Changing `architectureLabels` changes only the asset name spelling, never which hosts the installer recognizes. See [`generated-installer-runtime.md`](./generated-installer-runtime.md#target-detection-and-architecture-label-resolution) for the two-stage resolution this implies.
 
 ## Runtime Dependencies
 

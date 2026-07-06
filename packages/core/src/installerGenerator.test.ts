@@ -379,8 +379,36 @@ detect_target
     expect(detectTarget("lowercase", "Linux", "x86_64")).toBe("linux x86_64\n");
   });
 
-  test("detect_target reports capitalized OS names when archive.osCase is capitalized", () => {
-    expect(detectTarget("capitalized", "Linux", "x86_64")).toBe("Linux x86_64\n");
+  test("detect_target reports canonical lowercase OS names even when archive.osCase is capitalized", () => {
+    // archive.osCase is an asset-name spelling concern; it is applied by
+    // render_archive_asset_name, never by runtime target detection.
+    expect(detectTarget("capitalized", "Linux", "x86_64")).toBe("linux x86_64\n");
+  });
+
+  const renderArchiveAssetName = (osCase: "lowercase" | "capitalized") => {
+    const result = validateInstallerConfig({
+      ...configInput,
+      archive: { ...configInput.archive, osCase },
+    });
+    if (!result.ok) {
+      throw new Error("config should be valid");
+    }
+    const harness = `
+render_archive_asset_name "v1.2.3" "linux" "x86_64"
+`;
+    const script = generateInstaller(result.config).replace('\nmain "$@"\n', `\n${harness}\n`);
+    return spawnSync("sh", ["-s"], {
+      input: script,
+      encoding: "utf8",
+    }).stdout;
+  };
+
+  test("render_archive_asset_name renders the canonical OS name for lowercase osCase", () => {
+    expect(renderArchiveAssetName("lowercase")).toBe("rellog_v1.2.3_linux_x86_64.tar.gz\n");
+  });
+
+  test("render_archive_asset_name capitalizes the OS name when archive.osCase is capitalized", () => {
+    expect(renderArchiveAssetName("capitalized")).toBe("rellog_v1.2.3_Linux_x86_64.tar.gz\n");
   });
 
   test("detect_target canonicalizes both arm64 and aarch64 uname -m values to aarch64", () => {

@@ -31,7 +31,10 @@ const validConfig = {
   ],
   // Explicit so unrelated tests below don't depend on architectureLabels
   // defaults tested separately in the "architecture label mapping" describe.
-  architectureLabels: { x86_64: "x86_64", aarch64: "aarch64" },
+  architectureLabels: {
+    linux: { x86_64: "x86_64", aarch64: "aarch64" },
+    darwin: { x86_64: "x86_64", aarch64: "aarch64" },
+  },
 };
 
 describe("installer config validation", () => {
@@ -489,13 +492,16 @@ describe("installer config validation", () => {
 });
 
 describe("architecture label mapping", () => {
-  test("defaults architectureLabels to the OS-reported architecture name when omitted", () => {
+  test("defaults architectureLabels to the OS-reported architecture name for every OS when omitted", () => {
     const { architectureLabels: _architectureLabels, ...withoutLabels } = validConfig;
     const result = validateInstallerConfig(withoutLabels);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.config.architectureLabels).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
+      expect(result.config.architectureLabels).toEqual({
+        linux: { x86_64: "x86_64", aarch64: "aarch64" },
+        darwin: { x86_64: "x86_64", aarch64: "aarch64" },
+      });
       expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
         "rellog_v1.2.3_linux_x86_64.tar.gz",
         "rellog_v1.2.3_darwin_aarch64.tar.gz",
@@ -503,7 +509,7 @@ describe("architecture label mapping", () => {
     }
   });
 
-  test("accepts custom asset labels not in the presets", () => {
+  test("applies a flat architectureLabels object to every target OS", () => {
     const result = validateInstallerConfig({
       ...validConfig,
       architectureLabels: { x86_64: "x64", aarch64: "arm64-v8a" },
@@ -511,10 +517,120 @@ describe("architecture label mapping", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.config.architectureLabels).toEqual({
+        linux: { x86_64: "x64", aarch64: "arm64-v8a" },
+        darwin: { x86_64: "x64", aarch64: "arm64-v8a" },
+      });
       expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
         "rellog_v1.2.3_linux_x64.tar.gz",
         "rellog_v1.2.3_darwin_arm64-v8a.tar.gz",
       ]);
+    }
+  });
+
+  test("accepts a per-OS architectureLabels object with different labels per OS", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      archive: {
+        ...validConfig.archive,
+        osCase: "capitalized",
+      },
+      targets: [
+        { os: "linux", arch: "x86_64" },
+        { os: "linux", arch: "aarch64" },
+        { os: "darwin", arch: "x86_64" },
+        { os: "darwin", arch: "aarch64" },
+      ],
+      architectureLabels: {
+        linux: { x86_64: "x86_64", aarch64: "aarch64" },
+        darwin: { x86_64: "amd64", aarch64: "arm64" },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
+        "rellog_v1.2.3_Linux_x86_64.tar.gz",
+        "rellog_v1.2.3_Linux_aarch64.tar.gz",
+        "rellog_v1.2.3_Darwin_amd64.tar.gz",
+        "rellog_v1.2.3_Darwin_arm64.tar.gz",
+      ]);
+    }
+  });
+
+  test("defaults omitted OS and architecture keys inside a per-OS architectureLabels object", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      architectureLabels: {
+        darwin: { aarch64: "arm64" },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.config.architectureLabels).toEqual({
+        linux: { x86_64: "x86_64", aarch64: "aarch64" },
+        darwin: { x86_64: "x86_64", aarch64: "arm64" },
+      });
+    }
+  });
+
+  test("rejects mixing OS keys and architecture keys in one architectureLabels object", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      architectureLabels: { x86_64: "amd64", linux: { aarch64: "arm64" } },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({ path: "$.architectureLabels.x86_64" }),
+      );
+    }
+  });
+
+  test("rejects a per-OS entry whose value is not an object", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      architectureLabels: { linux: "amd64" },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({
+          path: "$.architectureLabels.linux",
+          reason: "Value must be an object.",
+        }),
+      );
+    }
+  });
+
+  test("rejects an unsafe architecture label inside a per-OS object with the per-OS path", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      architectureLabels: { darwin: { x86_64: "arm/64" } },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({ path: "$.architectureLabels.darwin.x86_64" }),
+      );
+    }
+  });
+
+  test("rejects unknown fields inside a per-OS architectureLabels entry", () => {
+    const result = validateInstallerConfig({
+      ...validConfig,
+      architectureLabels: { linux: { riscv64: "riscv64" } },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({ path: "$.architectureLabels.linux.riscv64" }),
+      );
     }
   });
 

@@ -10,10 +10,12 @@ import {
 } from "@installerer/core/archiveTemplate";
 import type {
   ArchitectureLabels,
+  ArchitectureLabelsByOs,
   OsCase,
   TargetArch,
   TargetOS,
 } from "@installerer/core/installerConfig";
+import { TARGET_OPERATING_SYSTEMS } from "@installerer/core/installerConfigValidators";
 import { ARCHIVE_FORMAT_COMMAND_NAMES } from "@installerer/core/runtimeDependencies/definitions";
 
 /**
@@ -45,7 +47,14 @@ export type InstallerFormState = {
   archiveOsCase: OsCase;
   checksumFileName: string;
   targets: TargetOption[];
+  /**
+   * When false, `architectureLabels` applies to every target OS and the built
+   * config uses the flat form. When true, `architectureLabelsByOs` is edited
+   * per OS and the built config uses the per-OS form.
+   */
+  architectureLabelsPerOs: boolean;
   architectureLabels: ArchitectureLabels;
+  architectureLabelsByOs: ArchitectureLabelsByOs;
   installDir: string;
 };
 
@@ -59,7 +68,7 @@ export const TARGET_OPTIONS: readonly TargetOption[] = [
 /** UI selection for the architecture label select: a known preset, or "custom" free text. */
 export const CUSTOM_ARCHITECTURE_LABEL = "custom" as const;
 
-export { ARCHITECTURE_LABEL_PRESETS, CANONICAL_ARCHITECTURES };
+export { ARCHITECTURE_LABEL_PRESETS, CANONICAL_ARCHITECTURES, TARGET_OPERATING_SYSTEMS };
 
 /**
  * Which select option represents the current label value: the preset it matches,
@@ -129,9 +138,51 @@ export const initialFormState: InstallerFormState = {
     { os: "darwin", arch: "x86_64" },
     { os: "darwin", arch: "aarch64" },
   ],
+  architectureLabelsPerOs: false,
   architectureLabels: { ...DEFAULT_ARCHITECTURE_LABELS },
+  architectureLabelsByOs: {
+    linux: { ...DEFAULT_ARCHITECTURE_LABELS },
+    darwin: { ...DEFAULT_ARCHITECTURE_LABELS },
+  },
   installDir: "$HOME/.local/bin",
 };
+
+/**
+ * Toggle between one shared architecture-label mapping and one mapping per OS.
+ * Enabling per-OS seeds every OS from the current shared values so the
+ * generated config is unchanged until an OS-specific label is edited.
+ */
+export function setArchitectureLabelsPerOs(
+  form: InstallerFormState,
+  perOs: boolean,
+): InstallerFormState {
+  if (perOs === form.architectureLabelsPerOs) {
+    return form;
+  }
+
+  if (perOs) {
+    return {
+      ...form,
+      architectureLabelsPerOs: true,
+      architectureLabelsByOs: Object.fromEntries(
+        TARGET_OPERATING_SYSTEMS.map((os) => [os, { ...form.architectureLabels }]),
+      ) as ArchitectureLabelsByOs,
+    };
+  }
+
+  return { ...form, architectureLabelsPerOs: false };
+}
+
+/** The label the built config resolves for one target, in either labels mode. */
+export function formArchitectureLabel(
+  form: InstallerFormState,
+  os: TargetOS,
+  arch: TargetArch,
+): string {
+  return form.architectureLabelsPerOs
+    ? form.architectureLabelsByOs[os][arch]
+    : form.architectureLabels[arch];
+}
 
 export function targetKey(target: TargetOption): string {
   return `${target.os}/${target.arch}`;
@@ -188,7 +239,7 @@ export function versionResolverExample(form: InstallerFormState): ResolverExampl
       bin: form.binaryName || "BIN",
       version,
       os: target.os,
-      arch: form.architectureLabels[target.arch],
+      arch: formArchitectureLabel(form, target.os, target.arch),
       osCase: form.archiveOsCase,
     });
   };
@@ -246,7 +297,9 @@ export function buildInstallerConfig(form: InstallerFormState): Record<string, u
       algorithm: CHECKSUM_ALGORITHM,
     },
     targets: form.targets,
-    architectureLabels: form.architectureLabels,
+    architectureLabels: form.architectureLabelsPerOs
+      ? form.architectureLabelsByOs
+      : form.architectureLabels,
     defaults: {
       installDir: form.installDir,
     },

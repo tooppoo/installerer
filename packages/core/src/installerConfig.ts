@@ -34,12 +34,20 @@ export type TargetArch = "x86_64" | "aarch64";
 export type OsCase = "lowercase" | "capitalized";
 
 /**
- * Resolved `canonical_arch -> asset_arch_label` mapping. `asset_arch_label` is
- * the value embedded in Release asset names via the `{arch}`/`{target}`
- * archive.nameTemplate placeholders; it is independent of `TargetArch`, the
- * runtime-detected canonical architecture (see docs/generated-installer-runtime.md).
+ * Resolved `canonical_arch -> asset_arch_label` mapping for one target OS.
+ * `asset_arch_label` is the value embedded in Release asset names via the
+ * `{arch}`/`{target}` archive.nameTemplate placeholders; it is independent of
+ * `TargetArch`, the runtime-detected canonical architecture (see
+ * docs/generated-installer-runtime.md).
  */
 export type ArchitectureLabels = Record<TargetArch, string>;
+
+/**
+ * Resolved `(target_os, canonical_arch) -> asset_arch_label` mapping. The
+ * config accepts either a flat `ArchitectureLabels` object (applied to every
+ * OS) or one `ArchitectureLabels` object per OS; both normalize to this shape.
+ */
+export type ArchitectureLabelsByOs = Record<TargetOS, ArchitectureLabels>;
 
 export type InstallerConfig = {
   owner: string;
@@ -62,7 +70,7 @@ export type InstallerConfig = {
     os: TargetOS;
     arch: TargetArch;
   }>;
-  architectureLabels: ArchitectureLabels;
+  architectureLabels: ArchitectureLabelsByOs;
   defaults: {
     installDir: string;
   };
