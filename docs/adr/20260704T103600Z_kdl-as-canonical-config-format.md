@@ -3,6 +3,57 @@
 - Status: Accepted
 - Created: 2026-07-04T10:36:00Z
 
+> **Amendment (2026-07-06, #106):** `kdljs@0.3.0` was added as a
+> `packages/core` runtime dependency, resolved and pinned in `bun.lock`. A
+> parser wrapper (`packages/core/src/kdl/parseKdlText.ts`) normalizes
+> `kdljs`'s parse behavior into `ParseKdlTextResult` (`ok: true` /
+> `ok: false`), and `kdljs`'s own AST/error behavior is pinned by
+> characterization tests (`packages/core/src/kdl/kdljsBehavior.characterization.test.ts`).
+> This issue did not implement the KDL AST -> `InstallerConfig` codec (#108).
+>
+> Findings:
+>
+> - **AST shape installerer may rely on**: a `Document` is a plain
+>   `Node[]` (no implicit single-root wrapper). Each `Node` is
+>   `{ name: string, values: Value[], properties: Record<string, Value>,
+children: Document, tags: { name: string|undefined, values:
+(string|undefined)[], properties: Record<string, string> } }`, where
+>   `Value = string | number | boolean | null`. A node with no children
+>   block and a node with an empty `{}` block both produce `children: []`
+>   (indistinguishable). A node with no type annotation has
+>   `tags.name === undefined`.
+> - **Parse failure normalization**: `kdljs@0.3.0`'s `parse()` reports KDL
+>   syntax errors via its return value (`{ output: undefined, errors:
+[...] }`) and never throws for syntax errors in KDL text; each error
+>   exposes a `token` with `startLine`/`startColumn`/`startOffset`, which
+>   the wrapper surfaces as `location`. `parse()` does throw for some
+>   malformed non-string inputs (e.g. `null`), so the wrapper also
+>   catches thrown errors to keep raw `kdljs`/chevrotain errors from
+>   reaching callers. Both cases normalize to
+>   `{ ok: false, errors: KdlSyntaxError[] }`, where each error carries a
+>   `message`, an optional `location`, and the original error as `cause`
+>   (kept for #107's diagnostics formatter).
+> - **Duplicate property**: not detectable via `kdljs`'s public AST.
+>   `kdljs` assigns each property directly onto a plain
+>   `Record<string, Value>` (last-write-wins); the discarded earlier
+>   value(s) are not retained anywhere in the parse result or the error
+>   list, and no error is raised. If duplicate-property rejection becomes
+>   a hard requirement, it cannot be implemented by inspecting `kdljs`'s
+>   AST alone; a future issue would need a separate pre-parse text scan,
+>   since replacing the parser is out of scope for v0 (per #99).
+> - **KDL 2.0.0 support**: `kdljs@0.3.0`'s CHANGELOG documents its parser,
+>   formatter, types, and KQL support as updated to KDL 2.0. This was
+>   confirmed experimentally: it accepts the KDL 2.0.0 `#true`/`#false`/
+>   `#null` keyword literals and rejects the old KDL 1.0.0 bare
+>   `true`/`false`/`null` keyword syntax as a syntax error. No limitation
+>   was found that affects the installerer canonical subset; the #99
+>   canonical KDL example parses with zero errors.
+> - **Canonical subset enforcement stays installerer's responsibility**:
+>   `kdljs` parses unknown child nodes, unexpected positional arguments,
+>   unexpected properties, and unexpected type annotations without any
+>   error. This confirms the codec/semantic validation layer (#108) must
+>   reject all of these itself; `kdljs` will not do it.
+
 ## Context
 
 `installerer` originally assumed JSON as its config file format. The canonical file name was `installerer.json`.
