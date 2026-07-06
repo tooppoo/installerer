@@ -76,7 +76,7 @@ describe("installer generation", () => {
     expect(script).toContain('[ -f "$extracted_binary" ]');
     expect(script).toContain('install_tmp=$(mktemp -- "$INSTALL_DIR/.$BINARY_NAME.tmp.XXXXXX")');
     expect(script).toContain('cp -- "$extracted_binary" "$install_tmp"');
-    expect(script).toContain('chmod 755 -- "$install_tmp"');
+    expect(script).toContain('chmod -- 755 "$install_tmp"');
     expect(script).toContain('mv -- "$install_tmp" "$INSTALL_DIR/$BINARY_NAME"');
     expect(script).toContain("install_tmp=\n}");
     expect(script).toContain("trap cleanup EXIT");

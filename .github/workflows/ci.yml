@@ -94,6 +94,45 @@ jobs:
       - name: Build and verify release archives
         run: just binary-release-artifacts
 
+  installer-runtime-e2e:
+    name: Installer runtime e2e (${{ matrix.name }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu
+            runs-on: ubuntu-24.04
+          - name: ubuntu-arm
+            runs-on: ubuntu-24.04-arm
+          - name: macos
+            runs-on: macos-15
+          - name: macos-intel
+            runs-on: macos-15-intel
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: ".bun-version"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Runs the generated installer as a real sh process against each
+      # runner's own coreutils (BSD on macOS, GNU on Ubuntu), so portability
+      # bugs like an argument order chmod only BSD chmod rejects surface here
+      # instead of only on a Linux-only CI host. Scoped to the runtime e2e
+      # and integration suites (and run from packages/core so the repo-root
+      # bunfig.toml coverage gate, meant for the full-suite `check` job,
+      # doesn't apply): everything else in the suite is OS-independent and
+      # already covered there.
+      - name: Run installer runtime tests against host coreutils
+        working-directory: packages/core
+        run: bun test test/e2e/generatedInstallerRuntime.e2e.test.ts test/integration/generatedInstallerRuntime.test.ts
+
   node-runtime-smoke:
     name: Node runtime smoke (${{ matrix.channel }} ${{ matrix.node-version }})
     runs-on: ubuntu-latest
