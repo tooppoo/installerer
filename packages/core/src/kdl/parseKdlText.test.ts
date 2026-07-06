@@ -1,31 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
+import { CANONICAL_KDL } from "./canonicalKdlFixture";
 import { parseKdlText } from "./parseKdlText";
-
-const CANONICAL_KDL = `
-installerer {
-  source owner="tooppoo" repo="git-kura"
-
-  binary name="git-kura" path-in-archive="git-kura"
-
-  version-resolver "release_version_file" file-name="VERSION"
-
-  archive format="tar.gz" name-template="{repo}_{version}_{os}_{arch}.tar.gz" os-case="lowercase"
-
-  checksum file-name="checksums.txt" algorithm="sha256"
-
-  targets {
-    target os="linux" arch="x86_64"
-    target os="linux" arch="aarch64"
-    target os="darwin" arch="x86_64"
-    target os="darwin" arch="aarch64"
-  }
-
-  architecture-labels x86_64="x86_64" aarch64="aarch64"
-
-  defaults install-dir="$HOME/.local/bin"
-}
-`;
 
 describe("parseKdlText", () => {
   test("returns ok:true with the parsed document for the #99 canonical KDL example", () => {
@@ -61,6 +37,14 @@ describe("parseKdlText", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
     expect(result.errors[0]?.cause).toBeDefined();
+  });
+
+  test("omits location for EOF-anchored syntax errors, where kdljs reports non-finite (NaN) token positions", () => {
+    const result = parseKdlText(`installerer {`);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.errors[0]?.location).toBeUndefined();
   });
 
   test("does not throw and normalizes to ok:false when kdljs itself throws (e.g. non-string input)", () => {

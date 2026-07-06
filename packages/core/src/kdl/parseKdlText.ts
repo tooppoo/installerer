@@ -63,10 +63,14 @@ function toKdlSyntaxError(cause: unknown): KdlSyntaxError {
   const like = cause as RawParseErrorLike;
   const token = like.token;
   const location =
-    typeof token?.startLine === "number" &&
-    typeof token?.startColumn === "number" &&
-    typeof token?.startOffset === "number"
-      ? { line: token.startLine, column: token.startColumn, offset: token.startOffset }
+    Number.isFinite(token?.startLine) &&
+    Number.isFinite(token?.startColumn) &&
+    Number.isFinite(token?.startOffset)
+      ? {
+          line: token?.startLine as number,
+          column: token?.startColumn as number,
+          offset: token?.startOffset as number,
+        }
       : undefined;
 
   return {

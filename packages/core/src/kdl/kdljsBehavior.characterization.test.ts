@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { parse } from "kdljs";
 
+import { CANONICAL_KDL } from "./canonicalKdlFixture";
+
 /**
  * These tests pin `kdljs@0.3.0`'s own parse behavior directly (not through
  * our wrapper). They exist so an upstream `kdljs` version bump surfaces any
@@ -14,31 +16,6 @@ import { parse } from "kdljs";
  * tests below show that `kdljs` happily parses such input, which is why
  * that layer is needed.
  */
-
-const CANONICAL_KDL = `
-installerer {
-  source owner="tooppoo" repo="git-kura"
-
-  binary name="git-kura" path-in-archive="git-kura"
-
-  version-resolver "release_version_file" file-name="VERSION"
-
-  archive format="tar.gz" name-template="{repo}_{version}_{os}_{arch}.tar.gz" os-case="lowercase"
-
-  checksum file-name="checksums.txt" algorithm="sha256"
-
-  targets {
-    target os="linux" arch="x86_64"
-    target os="linux" arch="aarch64"
-    target os="darwin" arch="x86_64"
-    target os="darwin" arch="aarch64"
-  }
-
-  architecture-labels x86_64="x86_64" aarch64="aarch64"
-
-  defaults install-dir="$HOME/.local/bin"
-}
-`;
 
 describe("kdljs@0.3.0 raw parse behavior", () => {
   test("parses the #99 canonical KDL example with no errors", () => {
@@ -145,6 +122,18 @@ describe("kdljs@0.3.0 raw parse behavior", () => {
     expect(error?.token?.startLine).toBe(1);
     expect(error?.token?.startColumn).toBe(6);
     expect(error?.token?.startOffset).toBe(5);
+  });
+
+  test('reports `NaN` (typeof "number", but not finite) token position fields for EOF-anchored syntax errors, e.g. an unclosed children block', () => {
+    const result = parse(`installerer {`);
+
+    expect(result.output).toBeUndefined();
+    expect(result.errors).toHaveLength(1);
+    const token = result.errors[0]?.token;
+    expect(typeof token?.startLine).toBe("number");
+    expect(Number.isNaN(token?.startLine)).toBe(true);
+    expect(Number.isNaN(token?.startColumn)).toBe(true);
+    expect(Number.isNaN(token?.startOffset)).toBe(true);
   });
 
   test("does throw for some malformed non-KDL-text inputs, e.g. a non-string argument", () => {
