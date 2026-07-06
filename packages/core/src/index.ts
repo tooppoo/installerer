@@ -23,3 +23,12 @@ export {
 export { buildInstallerDiagnostics, type InstallerDiagnostics } from "./installerDiagnostics";
 export { generateInstaller, previewArchiveNames } from "./installerGenerator";
 export { resolveRuntimeDependencies } from "./runtimeDependencies/resolve";
+export {
+  parseKdlText,
+  type KdlDocument,
+  type KdlNode,
+  type KdlValue,
+  type KdlSourceLocation,
+  type KdlSyntaxError,
+  type ParseKdlTextResult,
+} from "./kdl/parseKdlText";
