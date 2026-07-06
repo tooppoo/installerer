@@ -31,7 +31,7 @@ export function renderInstallLatest({ config }: RenderContext): string {
   set -- $target
   os=$1
   arch=$2
-  asset_arch_label=$(resolve_asset_arch_label "$arch") || exit 1
+  asset_arch_label=$(resolve_asset_arch_label "$os" "$arch") || exit 1
 ${latestBody(config)}
 }
 
@@ -46,7 +46,7 @@ export function renderInstallPin(): string {
   set -- $target
   os=$1
   arch=$2
-  asset_arch_label=$(resolve_asset_arch_label "$arch") || exit 1
+  asset_arch_label=$(resolve_asset_arch_label "$os" "$arch") || exit 1
   archive_asset_name=$(render_archive_asset_name "$pinned_version" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
 ${renderOwnerRepoPathEncoding()}${renderVersionedReleaseUrls("pinned_version")}  download_and_install "$archive_url" "$checksum_url" "$archive_asset_name"

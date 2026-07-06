@@ -7,8 +7,10 @@ import {
   ARCHITECTURE_LABEL_PRESETS,
   buildInstallerConfig,
   CUSTOM_ARCHITECTURE_LABEL,
+  formArchitectureLabel,
   initialFormState,
   isTargetSelected,
+  setArchitectureLabelsPerOs,
   TARGET_OPTIONS,
   toggleTarget,
   versionResolverExample,
@@ -220,5 +222,83 @@ describe("architecture label selection", () => {
         `${initialFormState.repo}_linux_x64.tar.gz`,
       );
     }
+  });
+});
+
+describe("per-OS architecture labels", () => {
+  test("enabling per-OS mode seeds every OS from the shared labels without changing the config", () => {
+    const shared: InstallerFormState = {
+      ...initialFormState,
+      architectureLabels: { x86_64: "amd64", aarch64: "arm64" },
+    };
+    const perOs = setArchitectureLabelsPerOs(shared, true);
+
+    expect(perOs.architectureLabelsByOs).toEqual({
+      linux: { x86_64: "amd64", aarch64: "arm64" },
+      darwin: { x86_64: "amd64", aarch64: "arm64" },
+    });
+
+    const sharedResult = validateInstallerConfig(buildInstallerConfig(shared));
+    const perOsResult = validateInstallerConfig(buildInstallerConfig(perOs));
+    expect(sharedResult.ok).toBe(true);
+    expect(perOsResult.ok).toBe(true);
+    if (sharedResult.ok && perOsResult.ok) {
+      expect(perOsResult.archivePreviews).toEqual(sharedResult.archivePreviews);
+    }
+  });
+
+  test("built config uses the per-OS form and per-OS labels flow into archive previews", () => {
+    const form: InstallerFormState = {
+      ...setArchitectureLabelsPerOs(initialFormState, true),
+      archiveNameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",
+      archiveOsCase: "capitalized",
+      architectureLabelsByOs: {
+        linux: { x86_64: "x86_64", aarch64: "aarch64" },
+        darwin: { x86_64: "amd64", aarch64: "arm64" },
+      },
+    };
+    const config = buildInstallerConfig(form) as {
+      architectureLabels: Record<string, Record<string, string>>;
+    };
+    expect(config.architectureLabels).toEqual({
+      linux: { x86_64: "x86_64", aarch64: "aarch64" },
+      darwin: { x86_64: "amd64", aarch64: "arm64" },
+    });
+
+    const result = validateInstallerConfig(config);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.archivePreviews.map((preview) => preview.latestName)).toEqual([
+        `${initialFormState.repo}_v1.2.3_Linux_x86_64.tar.gz`,
+        `${initialFormState.repo}_v1.2.3_Linux_aarch64.tar.gz`,
+        `${initialFormState.repo}_v1.2.3_Darwin_amd64.tar.gz`,
+        `${initialFormState.repo}_v1.2.3_Darwin_arm64.tar.gz`,
+      ]);
+    }
+  });
+
+  test("formArchitectureLabel resolves per-OS labels only in per-OS mode", () => {
+    const perOs: InstallerFormState = {
+      ...setArchitectureLabelsPerOs(initialFormState, true),
+      architectureLabelsByOs: {
+        linux: { x86_64: "x86_64", aarch64: "aarch64" },
+        darwin: { x86_64: "amd64", aarch64: "arm64" },
+      },
+    };
+    expect(formArchitectureLabel(perOs, "darwin", "x86_64")).toBe("amd64");
+    expect(formArchitectureLabel(perOs, "linux", "x86_64")).toBe("x86_64");
+
+    const shared = setArchitectureLabelsPerOs(perOs, false);
+    expect(formArchitectureLabel(shared, "darwin", "x86_64")).toBe("x86_64");
+  });
+
+  test("disabling per-OS mode falls back to the shared labels in the built config", () => {
+    const perOs = setArchitectureLabelsPerOs(initialFormState, true);
+    const backToShared = setArchitectureLabelsPerOs(perOs, false);
+    const config = buildInstallerConfig(backToShared) as {
+      architectureLabels: Record<string, string>;
+    };
+    expect(config.architectureLabels).toEqual({ x86_64: "x86_64", aarch64: "aarch64" });
+    expect(validateInstallerConfig(config).ok).toBe(true);
   });
 });

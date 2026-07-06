@@ -61,6 +61,19 @@ const CUSTOM_ARCH_LABEL_CONFIG = {
   architectureLabels: { x86_64: "x64", aarch64: "arm64-v8a" },
 };
 
+/** Per-OS architecture labels: the same canonical arch publishes under a different label per OS. */
+const PER_OS_ARCH_LABEL_CONFIG = {
+  ...LATEST_ASSET_CONFIG,
+  targets: [
+    { os: "linux", arch: "x86_64" },
+    { os: "darwin", arch: "x86_64" },
+  ],
+  architectureLabels: {
+    linux: { x86_64: "x86_64" },
+    darwin: { x86_64: "amd64" },
+  },
+};
+
 const LATEST_BINARY = "#!/bin/sh\necho demo latest fixture\n";
 const PINNED_BINARY = "#!/bin/sh\necho demo pinned fixture\n";
 
@@ -248,6 +261,32 @@ describe("custom architecture label mapping e2e", () => {
     ]);
     expect(run.leftoverTmpEntries).toEqual([]);
   });
+
+  test.each([
+    { unameOs: "Linux", assetName: "demo_linux_x86_64.zip" },
+    { unameOs: "Darwin", assetName: "demo_darwin_amd64.zip" },
+  ])(
+    "per-OS architectureLabels resolve the label for the detected OS ($unameOs)",
+    async ({ unameOs, assetName }) => {
+      const archive = buildArchive("zip", [{ path: "demo", content: LATEST_BINARY }]);
+      server.setLatestRelease(OWNER, REPO, {
+        [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
+        [assetName]: archive,
+      });
+
+      const env = createInstallerRunEnv();
+      const run = await env.run(testScript(PER_OS_ARCH_LABEL_CONFIG), { unameOs });
+
+      expect(run.stderr).toBe("");
+      expect(run.status).toBe(0);
+      expectInstalledBinary(env.defaultInstallDir, "demo", LATEST_BINARY);
+      expectRequests([
+        `/${OWNER}/${REPO}/releases/latest/download/${CHECKSUM_FILE_NAME}`,
+        `/${OWNER}/${REPO}/releases/latest/download/${assetName}`,
+      ]);
+      expect(run.leftoverTmpEntries).toEqual([]);
+    },
+  );
 });
 
 describe("dispatch and argument handling", () => {

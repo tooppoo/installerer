@@ -33,8 +33,8 @@ JSON config intentionally has no `defaults.version` field.
 Both `install_latest` and `install_pin` call `detect_target()` first, then resolve the asset architecture label before rendering the archive asset name. This is two distinct stages, not one (issue #76):
 
 ```text
-raw runtime architecture (uname -m)
-  -> canonical_arch
+raw runtime OS/architecture (uname -s / uname -m)
+  -> canonical_os, canonical_arch
   -> asset_arch_label
   -> archive asset name
 ```
@@ -49,25 +49,28 @@ case "$arch" in
 esac
 ```
 
-`arm64` (as reported by some `uname -m` builds) canonicalizes to `aarch64`. `amd64` is not accepted here — it is a Release-asset-label spelling, not a `uname -m` output, and is out of scope for this initial mapping. Any other value fails immediately with `unsupported architecture: <value>`, before the configured `os/arch` target list is even consulted. `detect_target()` then checks the canonical `os/arch` pair against the configured `targets` and fails with `unsupported target: <os>/<arch>` if the pair was not selected.
+`arm64` (as reported by some `uname -m` builds) canonicalizes to `aarch64`. `amd64` is not accepted here — it is a Release-asset-label spelling, not a `uname -m` output, and is out of scope for this initial mapping. Any other value fails immediately with `unsupported architecture: <value>`, before the configured `os/arch` target list is even consulted. `detect_target()` then checks the canonical `os/arch` pair against the configured `targets` and fails with `unsupported target: <os>/<arch>` if the pair was not selected. `detect_target()` always outputs the canonical lowercase pair; asset-name spelling concerns (`archive.osCase` casing, `architectureLabels`) are applied downstream by `render_archive_asset_name()` and `resolve_asset_arch_label()`.
 
-**Stage 2 — architecture label resolution.** `resolve_asset_arch_label()` maps the canonical architecture to the `asset_arch_label` embedded in Release asset names, using a `case` statement generated from `architectureLabels`:
+**Stage 2 — architecture label resolution.** `resolve_asset_arch_label()` maps the canonical OS/architecture pair to the `asset_arch_label` embedded in Release asset names, using a `case` statement generated from `architectureLabels`. The mapping is per OS, so the same canonical architecture may publish under a different label on each OS:
 
 ```sh
 resolve_asset_arch_label() {
-  canonical_arch=$1
+  canonical_os=$1
+  canonical_arch=$2
 
-  case "$canonical_arch" in
-    x86_64) asset_arch_label='x86_64' ;;
-    aarch64) asset_arch_label='aarch64' ;;
-    *) fail "unsupported architecture: $canonical_arch" ;;
+  case "$canonical_os/$canonical_arch" in
+    linux/x86_64) asset_arch_label='x86_64' ;;
+    linux/aarch64) asset_arch_label='aarch64' ;;
+    darwin/x86_64) asset_arch_label='x86_64' ;;
+    darwin/aarch64) asset_arch_label='aarch64' ;;
+    *) fail "unsupported target: $canonical_os/$canonical_arch" ;;
   esac
 
   printf '%s\n' "$asset_arch_label"
 }
 ```
 
-The case values shown above are the default mapping — each canonical architecture maps to itself, the OS-reported name, not a build-tool convention such as Go's GOARCH (`amd64`/`arm64`). A custom `architectureLabels` config changes only the right-hand side of each case arm, never the left-hand `canonical_arch` values or the runtime canonicalization in stage 1. `{arch}` and `{target}` in `archive.nameTemplate` expand to `asset_arch_label`, not to `canonical_arch` — so the same binary target can be published under any configured asset name spelling (`x86_64`, `amd64`, or a custom label such as `x64`) without changing how the generated installer detects the host. Two canonical architectures may resolve to the same `asset_arch_label` (for example both mapped to `universal`); this is allowed and is treated as a distribution/naming choice, not a validation error.
+The case values shown above are the default mapping — each canonical architecture maps to itself on every OS, the OS-reported name, not a build-tool convention such as Go's GOARCH (`amd64`/`arm64`). A custom `architectureLabels` config (flat, applied to every OS, or per OS — see [`installer-contract.md`](installer-contract.md#archive-format-contract)) changes only the right-hand side of each case arm, never the left-hand `canonical_os`/`canonical_arch` values or the runtime canonicalization in stage 1. `{arch}` and `{target}` in `archive.nameTemplate` expand to `asset_arch_label`, not to `canonical_arch` — so the same binary target can be published under any configured asset name spelling (`x86_64`, `amd64`, or a custom label such as `x64`) without changing how the generated installer detects the host. Multiple targets may resolve to the same `asset_arch_label` (for example both architectures mapped to `universal`); this is allowed and is treated as a distribution/naming choice, not a validation error.
 
 `asset_arch_label` values are validated at generation time against `^[A-Za-z0-9._+-]+$`, with `.` and `..` rejected explicitly even though they match that pattern (see [Variable Dependency Graph And Context-Specific Validation](archive-template-dependency-graph.md)). After expansion, the full archive asset filename is re-validated the same way as any other archive filename.
 

@@ -129,7 +129,7 @@ export function validateArchiveTemplateForConfig(
       repo: config.repo,
       bin: config.binary.name,
       os: target.os,
-      arch: config.architectureLabels[target.arch],
+      arch: config.architectureLabels[target.os][target.arch],
       osCase: config.archive.osCase,
     };
     const latestName = expandArchiveNameTemplate(segments, { ...baseValues, version: "v1.2.3" });
@@ -287,14 +287,18 @@ export function buildInstallPinGraph(
 
 /**
  * `asset_arch_label` is the value actually embedded in `archive_asset_name`
- * via `{arch}`/`{target}`; the canonical `arch` variable and the configured
- * architecture label mapping only reach the filename through this node.
+ * via `{arch}`/`{target}`; the canonical `os`/`arch` variables and the
+ * configured per-OS architecture label mapping only reach the filename
+ * through this node.
  */
 function architectureLabelEdges(): GraphEdge[] {
   return [
+    { derived: "asset_arch_label", source: "os" },
     { derived: "asset_arch_label", source: "arch" },
-    { derived: "asset_arch_label", source: "architectureLabels.x86_64" },
-    { derived: "asset_arch_label", source: "architectureLabels.aarch64" },
+    { derived: "asset_arch_label", source: "architectureLabels.linux.x86_64" },
+    { derived: "asset_arch_label", source: "architectureLabels.linux.aarch64" },
+    { derived: "asset_arch_label", source: "architectureLabels.darwin.x86_64" },
+    { derived: "asset_arch_label", source: "architectureLabels.darwin.aarch64" },
   ];
 }
 
@@ -373,13 +377,21 @@ function graphSourceValuesForConfig(config: InstallerConfig): GraphSourceValuesB
       path: "$.archive.nameTemplate",
       value: config.archive.nameTemplate,
     },
-    "architectureLabels.x86_64": {
-      path: "$.architectureLabels.x86_64",
-      value: config.architectureLabels.x86_64,
+    "architectureLabels.linux.x86_64": {
+      path: "$.architectureLabels.linux.x86_64",
+      value: config.architectureLabels.linux.x86_64,
     },
-    "architectureLabels.aarch64": {
-      path: "$.architectureLabels.aarch64",
-      value: config.architectureLabels.aarch64,
+    "architectureLabels.linux.aarch64": {
+      path: "$.architectureLabels.linux.aarch64",
+      value: config.architectureLabels.linux.aarch64,
+    },
+    "architectureLabels.darwin.x86_64": {
+      path: "$.architectureLabels.darwin.x86_64",
+      value: config.architectureLabels.darwin.x86_64,
+    },
+    "architectureLabels.darwin.aarch64": {
+      path: "$.architectureLabels.darwin.aarch64",
+      value: config.architectureLabels.darwin.aarch64,
     },
     ...(config.versionResolver.type === "release_version_file"
       ? {

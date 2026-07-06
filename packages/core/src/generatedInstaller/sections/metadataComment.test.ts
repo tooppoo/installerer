@@ -31,7 +31,10 @@ const baseConfig: InstallerConfig = {
     { os: "darwin", arch: "x86_64" },
     { os: "darwin", arch: "aarch64" },
   ],
-  architectureLabels: { x86_64: "x86_64", aarch64: "aarch64" },
+  architectureLabels: {
+    linux: { x86_64: "x86_64", aarch64: "aarch64" },
+    darwin: { x86_64: "x86_64", aarch64: "aarch64" },
+  },
   defaults: {
     installDir: "$HOME/.local/bin",
   },

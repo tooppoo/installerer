@@ -1,6 +1,13 @@
-import type { OsCase, TargetArch, TargetOS } from "../../installerConfig";
+import type { TargetArch, TargetOS } from "../../installerConfig";
 import type { RenderContext } from "../renderContext";
 
+/**
+ * detect_target() outputs the canonical OS/architecture pair only. Asset-name
+ * concerns — `archive.osCase` casing and `architectureLabels` resolution —
+ * are applied later, in render_archive_asset_name() and
+ * resolve_asset_arch_label(), so every consumer of detect_target sees the
+ * canonical values.
+ */
 export function renderTarget({ config }: RenderContext): string {
   return `detect_target() {
   os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -22,7 +29,7 @@ export function renderTarget({ config }: RenderContext): string {
 ${targetCases(config.targets)}
     *) fail "unsupported target: $os/$arch" ;;
   esac
-${osCaseConversion(config.archive.osCase)}
+
   printf '%s %s\\n' "$os" "$arch"
 }
 
@@ -31,17 +38,4 @@ ${osCaseConversion(config.archive.osCase)}
 
 function targetCases(targets: Array<{ os: TargetOS; arch: TargetArch }>) {
   return targets.map((target) => `    ${target.os}/${target.arch}) ;;`).join("\n");
-}
-
-function osCaseConversion(osCase: OsCase) {
-  if (osCase !== "capitalized") {
-    return "";
-  }
-
-  return `
-  case "$os" in
-    linux) os=Linux ;;
-    darwin) os=Darwin ;;
-  esac
-`;
 }

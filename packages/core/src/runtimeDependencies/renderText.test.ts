@@ -25,7 +25,10 @@ const baseConfig: InstallerConfig = {
     algorithm: "sha256",
   },
   targets: [{ os: "linux", arch: "x86_64" }],
-  architectureLabels: { x86_64: "x86_64", aarch64: "aarch64" },
+  architectureLabels: {
+    linux: { x86_64: "x86_64", aarch64: "aarch64" },
+    darwin: { x86_64: "x86_64", aarch64: "aarch64" },
+  },
   defaults: {
     installDir: "$HOME/.local/bin",
   },

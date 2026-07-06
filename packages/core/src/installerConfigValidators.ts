@@ -3,16 +3,23 @@ import {
   DEFAULT_ARCHITECTURE_LABELS,
   validateAssetArchLabel,
 } from "./architectureLabels";
-import type { ArchitectureLabels, InstallerConfig, TargetArch, TargetOS } from "./installerConfig";
+import type {
+  ArchitectureLabels,
+  ArchitectureLabelsByOs,
+  InstallerConfig,
+  TargetArch,
+  TargetOS,
+} from "./installerConfig";
 import { isAscii, rejectUnknownFields, requireObject, requireString } from "./validation";
-import type { ValidationError } from "./validation";
+import type { JsonObject, ValidationError } from "./validation";
 
 export const DEFAULT_INSTALL_DIR = "$HOME/.local/bin";
 export const SAFE_FILENAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 export const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 export const GITHUB_REPO_PATTERN = /^[A-Za-z0-9._-]+$/;
 const SHELL_SENSITIVE_PATH_CHARS = /[ \t\r\n'"`$;&|<>()[\]{}*!?~#]/;
-export const TARGET_OS = new Set<TargetOS>(["linux", "darwin"]);
+export const TARGET_OPERATING_SYSTEMS: readonly TargetOS[] = ["linux", "darwin"];
+export const TARGET_OS = new Set<TargetOS>(TARGET_OPERATING_SYSTEMS);
 export const TARGET_ARCH = new Set<TargetArch>(["x86_64", "aarch64"]);
 
 export function validateDefaults(
@@ -116,13 +123,24 @@ export function validateTargets(
   return targets.length > 0 ? targets : undefined;
 }
 
+/**
+ * `architectureLabels` accepts two forms:
+ *
+ * - flat: `{ x86_64?, aarch64? }` — one mapping applied to every target OS
+ * - per-OS: `{ linux?: { x86_64?, aarch64? }, darwin?: {...} }` — a mapping
+ *   per target OS
+ *
+ * The two key sets are disjoint, so the form is detected from the keys; mixing
+ * OS keys and architecture keys in one object is rejected. Both forms (and any
+ * omitted key) normalize to a full `ArchitectureLabelsByOs`.
+ */
 export function validateArchitectureLabels(
   value: unknown,
   path: string,
   errors: ValidationError[],
-): ArchitectureLabels | undefined {
+): ArchitectureLabelsByOs | undefined {
   if (value === undefined) {
-    return { ...DEFAULT_ARCHITECTURE_LABELS };
+    return architectureLabelsForAllOs({ ...DEFAULT_ARCHITECTURE_LABELS });
   }
 
   const labels = requireObject(value, path, errors);
@@ -130,6 +148,55 @@ export function validateArchitectureLabels(
     return undefined;
   }
 
+  const isPerOsForm = TARGET_OPERATING_SYSTEMS.some((os) => os in labels);
+  if (!isPerOsForm) {
+    const flat = validateArchitectureLabelMap(labels, path, errors);
+    return flat === undefined ? undefined : architectureLabelsForAllOs(flat);
+  }
+
+  rejectUnknownFields(labels, path, [...TARGET_OPERATING_SYSTEMS], errors);
+
+  const resolved: Partial<ArchitectureLabelsByOs> = {};
+  let ok = true;
+
+  for (const os of TARGET_OPERATING_SYSTEMS) {
+    const fieldPath = `${path}.${os}`;
+    const rawValue = labels[os];
+
+    if (rawValue === undefined) {
+      resolved[os] = { ...DEFAULT_ARCHITECTURE_LABELS };
+      continue;
+    }
+
+    const osLabels = requireObject(rawValue, fieldPath, errors);
+    if (!osLabels) {
+      ok = false;
+      continue;
+    }
+
+    const validated = validateArchitectureLabelMap(osLabels, fieldPath, errors);
+    if (validated === undefined) {
+      ok = false;
+      continue;
+    }
+
+    resolved[os] = validated;
+  }
+
+  return ok ? (resolved as ArchitectureLabelsByOs) : undefined;
+}
+
+function architectureLabelsForAllOs(labels: ArchitectureLabels): ArchitectureLabelsByOs {
+  return Object.fromEntries(
+    TARGET_OPERATING_SYSTEMS.map((os) => [os, { ...labels }]),
+  ) as ArchitectureLabelsByOs;
+}
+
+function validateArchitectureLabelMap(
+  labels: JsonObject,
+  path: string,
+  errors: ValidationError[],
+): ArchitectureLabels | undefined {
   rejectUnknownFields(labels, path, [...CANONICAL_ARCHITECTURES], errors);
 
   const resolved: Partial<ArchitectureLabels> = {};

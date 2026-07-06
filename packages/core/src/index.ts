@@ -11,6 +11,7 @@ export {
   parseInstallerConfig,
   validateInstallerConfig,
   type ArchitectureLabels,
+  type ArchitectureLabelsByOs,
   type InstallerConfig,
   type OsCase,
   type ParseInstallerConfigResult,

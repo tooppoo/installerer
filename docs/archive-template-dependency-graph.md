@@ -84,15 +84,18 @@ Edges then connect config-derived source variables (`owner`, `repo`, `bin`, `os`
 
 ### `asset_arch_label` (Issue #76)
 
-`{arch}` and `{target}` do not derive `archive_asset_name` from the canonical `arch` variable directly. Instead, `architectureLabelEdges()` (called by both `buildInstallLatestGraph` and `buildInstallPinGraph`) inserts an intermediate node:
+`{arch}` and `{target}` do not derive `archive_asset_name` from the canonical `arch` variable directly. Instead, `architectureLabelEdges()` (called by both `buildInstallLatestGraph` and `buildInstallPinGraph`) inserts an intermediate node. The label mapping is per OS, so `asset_arch_label` depends on the canonical `os` as well as `arch`, plus one node per `(os, arch)` config value:
 
 ```text
+{ derived: "asset_arch_label", source: "os" }
 { derived: "asset_arch_label", source: "arch" }
-{ derived: "asset_arch_label", source: "architectureLabels.x86_64" }
-{ derived: "asset_arch_label", source: "architectureLabels.aarch64" }
+{ derived: "asset_arch_label", source: "architectureLabels.linux.x86_64" }
+{ derived: "asset_arch_label", source: "architectureLabels.linux.aarch64" }
+{ derived: "asset_arch_label", source: "architectureLabels.darwin.x86_64" }
+{ derived: "asset_arch_label", source: "architectureLabels.darwin.aarch64" }
 ```
 
-`addArchiveTemplateEdges` then adds `{ derived: "archive_asset_name", source: "asset_arch_label" }` whenever the template uses `{arch}` or `{target}`, rather than an edge from `arch` directly. This means the two `architectureLabels.<canonical_arch>` config values — not just the canonical `arch` variable — inherit `archive_asset_name`'s contexts (`archive filename context`, `checksum lookup context`, `shell literal context`) whenever the template embeds architecture information. `graphSourceValuesForConfig` maps `architectureLabels.x86_64`/`architectureLabels.aarch64` back to `$.architectureLabels.x86_64`/`$.architectureLabels.aarch64`, so the existing `archive-filename-context` and `shell-literal-context` rules validate custom architecture labels the same way they validate `owner`, `repo`, or `checksum.fileName` — no dedicated rule was needed. This is defense in depth: `architectureLabels` values are already rejected at parse time by a dedicated `^[A-Za-z0-9._+-]+$` check (with `.`/`..` rejected explicitly) regardless of whether `{arch}`/`{target}` appear in the template at all.
+`addArchiveTemplateEdges` then adds `{ derived: "archive_asset_name", source: "asset_arch_label" }` whenever the template uses `{arch}` or `{target}`, rather than an edge from `arch` directly. This means the `architectureLabels.<os>.<canonical_arch>` config values — not just the canonical `os`/`arch` variables — inherit `archive_asset_name`'s contexts (`archive filename context`, `checksum lookup context`, `shell literal context`) whenever the template embeds architecture information. `graphSourceValuesForConfig` maps each `architectureLabels.<os>.<canonical_arch>` node back to its normalized config path (for example `$.architectureLabels.linux.x86_64`), so the existing `archive-filename-context` and `shell-literal-context` rules validate custom architecture labels the same way they validate `owner`, `repo`, or `checksum.fileName` — no dedicated rule was needed. This is defense in depth: `architectureLabels` values are already rejected at parse time by a dedicated `^[A-Za-z0-9._+-]+$` check (with `.`/`..` rejected explicitly) regardless of whether `{arch}`/`{target}` appear in the template at all.
 
 ## Context-Specific Validation Policy
 
