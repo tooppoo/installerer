@@ -36,15 +36,22 @@ function assertForbiddenConstructsAbsent(script: string): void {
 
 function assertNetworkBoundary(script: string): void {
   expect(script).not.toContain("api.github.com");
-  expect(script).not.toContain("raw.githubusercontent.com");
   expect(script).not.toContain("gist.githubusercontent.com");
+
+  // raw.githubusercontent.com is legitimate only inside usage()'s printed
+  // help text (issue #110's standard curl install command example): the
+  // running installer never fetches it, it only prints it for the user to
+  // copy. It must not appear anywhere else in the generated script.
+  const scriptOutsideUsage = excludeFunctionBody(script, "usage");
+  expect(scriptOutsideUsage).not.toContain("raw.githubusercontent.com");
 
   // The leading disclaimer is a human-readable comment block, not executable
   // shell: it links to the project's homepage, which is not a release asset
   // download URL. Exclude comment lines from the allowlist scan below so the
   // boundary check stays scoped to network access the script can actually
-  // perform.
-  const codeLines = script
+  // perform. usage()'s help text is excluded for the same reason: it only
+  // ever prints instructional URLs, it never fetches them.
+  const codeLines = scriptOutsideUsage
     .split("\n")
     .filter((line) => !/^\s*#/.test(line))
     .join("\n");
@@ -61,6 +68,25 @@ function assertNetworkBoundary(script: string): void {
   // Every scheme occurrence must have been captured by the URL scan above,
   // so no second URL construction path can hide behind string assembly.
   expect(codeLines.split("://").length - 1).toBe(urls.length);
+}
+
+/**
+ * Removes a top-level `<functionName>() {` ... `}` block (as emitted by this
+ * generator's section renderers, which always close a top-level function
+ * with a lone `}` line) from `text`, so callers can scope a check to code
+ * outside that function.
+ */
+function excludeFunctionBody(text: string, functionName: string): string {
+  const lines = text.split("\n");
+  const start = lines.findIndex((line) => line === `${functionName}() {`);
+  if (start === -1) {
+    return text;
+  }
+  let end = start + 1;
+  while (end < lines.length && lines[end] !== "}") {
+    end += 1;
+  }
+  return [...lines.slice(0, start), ...lines.slice(end + 1)].join("\n");
 }
 
 function assertRuntimeStructure(script: string): void {

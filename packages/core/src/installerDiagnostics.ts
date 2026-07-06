@@ -1,4 +1,5 @@
 import type { ArchiveNamePreview } from "./archiveTemplate";
+import { localInstallCommandExamples } from "./installCommandExamples";
 import type { InstallerConfig } from "./installerConfig";
 
 // packages/core typechecks with no DOM/Node/Bun ambient types (issue #100),
@@ -74,7 +75,7 @@ export function buildInstallerDiagnostics(
         "Latest install first reads the version file from the latest release, then downloads assets from the resolved tag.",
         "Pinned install skips the version file and downloads checksum and archive assets from the supplied tag.",
       ],
-      installCommands: installCommandExamples(),
+      installCommands: localInstallCommandExamples(),
     };
   }
 
@@ -96,7 +97,7 @@ export function buildInstallerDiagnostics(
       "Latest install downloads checksum and archive assets directly from the latest release.",
       "Pinned install downloads checksum and archive assets from the supplied tag.",
     ],
-    installCommands: installCommandExamples(),
+    installCommands: localInstallCommandExamples(),
   };
 }
 
@@ -133,16 +134,4 @@ function isUnreservedUrlByte(byte: number) {
     byte === 0x5f ||
     byte === 0x7e
   );
-}
-
-function installCommandExamples() {
-  return {
-    valid: [
-      "sh install.sh",
-      `sh install.sh --version ${EXAMPLE_PINNED_VERSION}`,
-      'sh install.sh --install-dir "$HOME/bin"',
-      `sh install.sh --version ${EXAMPLE_PINNED_VERSION} --install-dir "$HOME/bin"`,
-    ],
-    invalid: ["sh install.sh --version latest"],
-  };
 }

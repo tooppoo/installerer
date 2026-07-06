@@ -20,11 +20,19 @@ const REPO_ROOT = join(import.meta.dir, "..", "..", "..", "..");
  * The generated installer text embedded in installerGenerator.ts is covered by
  * its own allowlist in test/helpers/staticAssertions.ts; here it must still
  * satisfy the stricter of the two shared rules (github.com URLs only).
+ *
+ * `installCommandExamples.ts` is a narrow, deliberate exception (issue #110):
+ * it is the single shared source of the standard curl install command text,
+ * which by design names `raw.githubusercontent.com` as the URL a user's shell
+ * downloads/pipes `install.sh` from. Nothing in this module ever calls that
+ * URL itself — it only builds display/copy text that `usage()` and the Web UI
+ * print — so every other scanned file must still stay free of that domain.
  */
 const SCAN_ROOTS = [
   join(REPO_ROOT, "packages", "core", "src"),
   join(REPO_ROOT, "apps", "web", "src"),
 ];
+const CURL_INSTALL_COMMAND_SOURCE = join("packages", "core", "src", "installCommandExamples.ts");
 
 function runtimeSourceFiles(dir: string): string[] {
   const files: string[] = [];
@@ -85,9 +93,13 @@ describe("SPA / generator runtime network boundary", () => {
   for (const file of files) {
     const name = relative(REPO_ROOT, file);
     const code = stripComments(readFileSync(file, "utf8"));
+    const isCurlInstallCommandSource = name === CURL_INSTALL_COMMAND_SOURCE;
 
     test(`${name} contains no external communication API`, () => {
       for (const { pattern, label } of FORBIDDEN_RUNTIME_PATTERNS) {
+        if (isCurlInstallCommandSource && label === "raw content URL") {
+          continue;
+        }
         const match = code.match(pattern);
         if (match) {
           throw new Error(`${name} contains forbidden ${label}: ${JSON.stringify(match[0])}`);
@@ -106,7 +118,8 @@ describe("SPA / generator runtime network boundary", () => {
         const allowed =
           url.startsWith("https://github.com/") ||
           url.startsWith("https://www.apache.org/") ||
-          url.startsWith("https://img.shields.io/");
+          url.startsWith("https://img.shields.io/") ||
+          (isCurlInstallCommandSource && url.startsWith("https://raw.githubusercontent.com/"));
         if (!allowed) {
           throw new Error(`${name} contains a URL outside the allowlist: ${url}`);
         }

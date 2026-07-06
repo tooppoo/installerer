@@ -37,7 +37,7 @@ export function composeInstallerScript(context: RenderContext): string {
     renderConstants(context),
     renderMain(),
     renderFail(),
-    renderUsage(),
+    renderUsage(context),
     renderPrintRequirements(context),
     renderCheckRequirements(context),
     renderDependencies(context),

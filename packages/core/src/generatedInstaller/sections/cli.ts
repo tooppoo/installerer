@@ -1,3 +1,7 @@
+import { buildInstallCommandExamples } from "../../installCommandExamples";
+import type { RenderContext } from "../renderContext";
+import { shellLiteral } from "../shell";
+
 export function renderMain(): string {
   return `main() {
   version=
@@ -68,12 +72,52 @@ export function renderMain(): string {
 `;
 }
 
-export function renderUsage(): string {
+/**
+ * `usage()` documents the CLI surface plus how to invoke this installer
+ * remotely. The curl commands and the branch/path assumption they rely on
+ * come from `buildInstallCommandExamples` (issue #110) so this help text and
+ * the Web UI's "Standard curl install" section cannot drift into separate
+ * wordings for the same commands.
+ *
+ * The `$0`-bearing lines are intentionally double-quoted so the shell
+ * expands `$0` to the real invocation name at runtime; every other line is a
+ * static example and is single-quoted via `shellLiteral` so literal example
+ * text like `$HOME/bin` is never expanded by the running shell.
+ */
+export function renderUsage({ config }: RenderContext): string {
+  const examples = buildInstallCommandExamples(config);
+
+  const staticLines = [
+    "",
+    "options:",
+    "  --version <version>     Install a specific release tag instead of latest.",
+    "  --install-dir <dir>     Install into <dir> instead of the default install directory.",
+    "  --requirements          Print the runtime requirements for this installer.",
+    "  --check-requirements    Check whether runtime requirements are satisfied.",
+    "  --help                  Show this help message.",
+    "",
+    "local execution examples:",
+    ...examples.localCommands.valid.map((command) => `  ${command}`),
+    "",
+    "standard curl install:",
+    `  ${examples.standardCurlCommand}`,
+    `  ${examples.standardCurlAssumption}`,
+    "",
+    "curl examples passing installer arguments (use sh -s --):",
+    `  ${examples.pinnedVersionCurlCommand}`,
+    `  ${examples.installDirCurlCommand}`,
+    "",
+    "review-first alternative:",
+    ...examples.reviewFirstCommands.map((command) => `  ${command}`),
+  ];
+  const staticBody = staticLines.map((line) => `  printf '%s\\n' ${shellLiteral(line)}`).join("\n");
+
   return `usage() {
   printf '%s\\n' "usage: $0 [--version <version>] [--install-dir <dir>]"
   printf '%s\\n' "       $0 --requirements [--check-requirements]"
   printf '%s\\n' "       $0 --check-requirements"
   printf '%s\\n' "       $0 --help"
+${staticBody}
 }
 
 `;

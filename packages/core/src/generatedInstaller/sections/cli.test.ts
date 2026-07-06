@@ -61,3 +61,70 @@ describe("main() install-option / test-option handling", () => {
     expect(result.stdout).toContain("usage:");
   });
 });
+
+describe("--help output content (issue #110)", () => {
+  test("describes every option", () => {
+    const script = generateScript();
+
+    const result = spawnSync("sh", ["-s", "--", "--help"], {
+      input: script,
+      encoding: "utf8",
+    });
+
+    expect(result.stdout).toContain("--version <version>");
+    expect(result.stdout).toContain("--install-dir <dir>");
+    expect(result.stdout).toContain("--requirements ");
+    expect(result.stdout).toContain("--check-requirements ");
+    expect(result.stdout).toContain("--help ");
+  });
+
+  test("includes the generated raw GitHub installer URL", () => {
+    const script = generateScript();
+
+    const result = spawnSync("sh", ["-s", "--", "--help"], {
+      input: script,
+      encoding: "utf8",
+    });
+
+    expect(result.stdout).toContain(
+      "https://raw.githubusercontent.com/tooppoo/rellog/refs/heads/main/install.sh",
+    );
+  });
+
+  test("states the standard curl command's main/install.sh assumption", () => {
+    const script = generateScript();
+
+    const result = spawnSync("sh", ["-s", "--", "--help"], {
+      input: script,
+      encoding: "utf8",
+    });
+
+    expect(result.stdout).toContain("install.sh");
+    expect(result.stdout).toContain("main branch");
+  });
+
+  test("curl argument examples use sh -s --", () => {
+    const script = generateScript();
+
+    const result = spawnSync("sh", ["-s", "--", "--help"], {
+      input: script,
+      encoding: "utf8",
+    });
+
+    expect(result.stdout).toContain("| sh -s -- --version");
+    expect(result.stdout).toContain('| sh -s -- --install-dir "$HOME/bin"');
+  });
+
+  test("includes the review-first alternative commands", () => {
+    const script = generateScript();
+
+    const result = spawnSync("sh", ["-s", "--", "--help"], {
+      input: script,
+      encoding: "utf8",
+    });
+
+    expect(result.stdout).toContain("curl -fsSLO");
+    expect(result.stdout).toContain("sh ./install.sh --help");
+    expect(result.stdout).toContain("sh ./install.sh");
+  });
+});
