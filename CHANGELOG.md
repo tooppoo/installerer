@@ -8,7 +8,9 @@
 
 <!-- rellog:entry:start -->
 <!-- rellog:body:start -->
+
 fix `chmod` not work on BSD
+
 <!-- rellog:body:end -->
 <!-- rellog:entry:end -->
 
@@ -18,6 +20,8 @@ fix `chmod` not work on BSD
 
 <!-- rellog:entry:start -->
 <!-- rellog:body:start -->
-add `standard install example` for installer to `installerer --help` and web ui 
+
+add `standard install example` for installer to `installerer --help` and web ui
+
 <!-- rellog:body:end -->
 <!-- rellog:entry:end -->

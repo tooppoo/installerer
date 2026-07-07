@@ -1,15 +1,21 @@
 
-default:
-  @just check
+default: check
 
-check:
-  @just _check
+[group('check')]
+check: _check fmt
+[group('check')]
+check-fix: _check fmt-fix
+
+[group('check')]
+[group('fmt')]
+fmt:
   bun run format:check
-
-check-fix:
-  @just _check
+[group('check')]
+[group('fmt')]
+fmt-fix:
   bun run format
 
+[private]
 _check:
   bun install --frozen-lockfile
   bun run docs:check
@@ -20,11 +26,13 @@ _check:
   bun run typecheck
   bun run shellcheck:generated
 
+[group('release')]
 binary-release-artifacts:
   bun install --frozen-lockfile
   bun run build:binary
   bun run release:binary
 
+[group('release')]
 release:
   bun install --frozen-lockfile
   bun scripts/release.ts
