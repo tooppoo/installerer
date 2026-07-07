@@ -20,6 +20,14 @@ export {
   type ValidationError,
 } from "./installerConfig";
 export {
+  configDiagnosticFromKdlSyntaxError,
+  configDiagnosticFromValidationError,
+  formatConfigDiagnostics,
+  type ConfigDiagnostic,
+  type ConfigDiagnosticPhase,
+  type ConfigDiagnosticSeverity,
+} from "./configDiagnostics";
+export {
   checkExpectedReleaseTag,
   type ExpectedReleaseTagCheckInput,
   type ExpectedReleaseTagCheckResult,

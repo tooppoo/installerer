@@ -1,0 +1,46 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`formatConfigDiagnostics formats the #107 example: codec error with path and expected, semantic warning without expected 1`] = `
+"error[codec] installerer.binary.path-in-archive
+  reason: Required property is missing.
+  expected: string
+
+warning[semantic] installerer.archive.name-template
+  reason: Archive name template does not include {version}.
+"
+`;
+
+exports[`formatConfigDiagnostics formats a syntax error without path as line:column 1`] = `
+"error[syntax] 3:18
+  reason: KDL syntax parse failed.
+"
+`;
+
+exports[`formatConfigDiagnostics formats a syntax error with neither path nor location as phase only 1`] = `
+"error[syntax]
+  reason: KDL syntax parse failed unexpectedly.
+"
+`;
+
+exports[`formatConfigDiagnostics formats a mixed batch, pinning the separator between diagnostics 1`] = `
+"error[syntax] 3:18
+  reason: KDL syntax parse failed.
+
+error[codec] installerer.binary.path-in-archive
+  reason: Required property is missing.
+  expected: string
+
+warning[semantic] installerer.archive.name-template
+  reason: Archive name template does not include {version}.
+
+error[syntax]
+  reason: KDL syntax parse failed unexpectedly.
+"
+`;
+
+exports[`formatConfigDiagnostics prefers path over location when a diagnostic carries both 1`] = `
+"error[codec] installerer.binary.path-in-archive
+  reason: Required property is missing.
+  expected: string
+"
+`;
