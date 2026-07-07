@@ -49,6 +49,14 @@ Add a config diagnostics model and a pure string formatter to
   `configDiagnosticFromValidationError` / `configDiagnosticFromKdlSyntaxError`
   convert at the boundary, adding the severity and phase that validators
   and the parser wrapper do not know about.
+- `configDiagnosticFromKdlSyntaxError` collapses `KdlSyntaxError.message`
+  to a single line (`\s+` -> single space) before it becomes `reason`.
+  `kdljs`'s underlying chevrotain parser reports some syntax failures
+  (e.g. an unterminated string) via a multi-line "one of these possible
+  Token sequences" dump that can run past a hundred lines and contains
+  blank lines of its own; left as-is, that would break the formatter's
+  one-`reason:`-line-per-diagnostic contract and make its blank-line
+  diagnostic separator ambiguous.
 
 ## Alternatives Considered
 

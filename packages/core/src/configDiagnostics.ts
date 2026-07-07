@@ -44,8 +44,20 @@ export function configDiagnosticFromKdlSyntaxError(error: KdlSyntaxError): Confi
     severity: "error",
     phase: "syntax",
     location: error.location,
-    reason: error.message,
+    reason: toSingleLineReason(error.message),
   };
+}
+
+/**
+ * `kdljs`'s underlying chevrotain parser reports some syntax failures (e.g.
+ * an unterminated string) via a multi-line "one of these possible Token
+ * sequences" message, spanning dozens of lines and containing blank lines
+ * of its own. Collapsing it to one line keeps every `reason:` on a single
+ * line and keeps blank lines a reliable diagnostic separator, per the
+ * formatter's output contract.
+ */
+function toSingleLineReason(message: string): string {
+  return message.replace(/\s+/g, " ").trim();
 }
 
 /**

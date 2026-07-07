@@ -120,6 +120,25 @@ describe("configDiagnosticFromKdlSyntaxError", () => {
 
     expect(diagnostic.location).toBeUndefined();
   });
+
+  test("collapses kdljs's multi-line chevrotain message so the formatted reason stays on one line", () => {
+    const result = parseKdlText(`node "unterminated`);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+
+    // kdljs's underlying chevrotain parser reports this failure via a
+    // multi-line "one of these possible Token sequences" message; guard
+    // that real-world case rather than only a hand-built object literal.
+    expect(result.errors[0]!.message).toInclude("\n");
+
+    const diagnostic = configDiagnosticFromKdlSyntaxError(result.errors[0]!);
+    const formatted = formatConfigDiagnostics([diagnostic]);
+    const reasonLines = formatted.split("\n").filter((line) => line.startsWith("  reason:"));
+
+    expect(diagnostic.reason).not.toInclude("\n");
+    expect(reasonLines).toHaveLength(1);
+  });
 });
 
 describe("configDiagnosticFromValidationError", () => {
