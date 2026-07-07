@@ -1,6 +1,6 @@
 # latest_asset Resolver Does Not Resolve the Latest Release Tag And Fetches Versionless Assets Directly
 
-- Status: Accepted
+- Status: Superseded by [20260707T022251Z_template-driven-latest-install-tag-resolution.md](./20260707T022251Z_template-driven-latest-install-tag-resolution.md)
 - Created: 2026-07-01T14:39:39Z
 
 ## Context

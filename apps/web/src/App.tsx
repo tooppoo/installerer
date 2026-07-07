@@ -3,6 +3,10 @@ import "./index.css";
 import { useMemo, useState } from "react";
 
 import packageJson from "../../../package.json";
+import {
+  checkExpectedReleaseTag,
+  type ExpectedReleaseTagCheckResult,
+} from "@installerer/core/expectedReleaseTag";
 import { buildInstallCommandExamples } from "@installerer/core/installCommandExamples";
 import { validateInstallerConfig } from "@installerer/core/installerConfig";
 import { buildInstallerDiagnostics } from "@installerer/core/installerDiagnostics";
@@ -32,8 +36,6 @@ import {
   TARGET_OPTIONS,
   targetKey,
   toggleTarget,
-  VERSION_RESOLVER_DESCRIPTIONS,
-  VERSION_RESOLVER_OPTIONS,
   type InstallerFormState,
   type TargetOption,
 } from "./installerForm";
@@ -53,6 +55,11 @@ export function App() {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [contractCopyState, setContractCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [curlCopyState, setCurlCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [tagCheckMode, setTagCheckMode] = useState<"checksum-index" | "archive-filename">(
+    "checksum-index",
+  );
+  const [tagCheckText, setTagCheckText] = useState("");
+  const [tagCheckTargetKey, setTagCheckTargetKey] = useState<string | null>(null);
 
   const configForCore = useMemo(() => buildInstallerConfig(form), [form]);
   const result = useMemo(() => validateInstallerConfig(configForCore), [configForCore]);
@@ -69,6 +76,34 @@ export function App() {
     () => (result.ok ? buildInstallCommandExamples(result.config) : null),
     [result],
   );
+
+  const tagCheckTarget = result.ok
+    ? (result.config.targets.find((target) => targetKey(target) === tagCheckTargetKey) ??
+      result.config.targets[0])
+    : undefined;
+
+  // Offline only: never fetches GitHub, and does not confirm the release exists.
+  // Re-runs the same prefix/suffix algorithm the generated installer's checksum-index
+  // scan uses (issue #111), against text or a filename the user pasted in themselves.
+  const expectedTagCheck: ExpectedReleaseTagCheckResult | null = useMemo(() => {
+    if (!result.ok || !tagCheckTarget || tagCheckText.trim().length === 0) {
+      return null;
+    }
+    return checkExpectedReleaseTag({
+      archiveNameTemplate: result.config.archive.nameTemplate,
+      archiveFormat: result.config.archive.format,
+      osCase: result.config.archive.osCase,
+      owner: result.config.owner,
+      repo: result.config.repo,
+      bin: result.config.binary.name,
+      target: tagCheckTarget,
+      assetArchLabel: result.config.architectureLabels[tagCheckTarget.os][tagCheckTarget.arch],
+      source:
+        tagCheckMode === "checksum-index"
+          ? { kind: "checksum-index", text: tagCheckText }
+          : { kind: "archive-filename", fileName: tagCheckText },
+    });
+  }, [result, tagCheckTarget, tagCheckMode, tagCheckText]);
 
   // Generation runs only on a validated config; capture any generation error so we
   // never fall back to a previously generated installer as if it were current output.
@@ -174,8 +209,8 @@ export function App() {
             <p className="mt-2 max-w-2xl text-sm text-[#4a4037]">
               Fill in the form to generate a POSIX <code>install.sh</code>. Copy the output and save
               it as <code>install.sh</code>. POSIX shell behavior, download, checksum verification,
-              and version-file resolution are the generated installer&apos;s responsibility — this
-              page never calls GitHub or fetches a <code>VERSION</code> asset.
+              and latest-release tag resolution are the generated installer&apos;s responsibility —
+              this page never calls GitHub or fetches any release asset.
             </p>
           </div>
           <div
@@ -237,42 +272,6 @@ export function App() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className={labelClassName}>
-                versionResolver.type
-                <select
-                  className={fieldClassName}
-                  value={form.versionResolverType}
-                  onChange={(event) =>
-                    update(
-                      "versionResolverType",
-                      event.target.value as InstallerFormState["versionResolverType"],
-                    )
-                  }
-                >
-                  {VERSION_RESOLVER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs font-normal leading-snug text-[#6d625a]">
-                  {VERSION_RESOLVER_DESCRIPTIONS[form.versionResolverType]}
-                </span>
-              </label>
-              {form.versionResolverType === "release_version_file" ? (
-                <label className={labelClassName}>
-                  versionResolver.fileName
-                  <input
-                    className={fieldClassName}
-                    value={form.versionResolverFileName}
-                    onChange={(event) => update("versionResolverFileName", event.target.value)}
-                    spellCheck={false}
-                  />
-                </label>
-              ) : null}
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className={labelClassName}>
                 archive.format
                 <select
                   className={fieldClassName}
@@ -304,6 +303,11 @@ export function App() {
                   onChange={(event) => update("archiveNameTemplate", event.target.value)}
                   spellCheck={false}
                 />
+                <span className="text-xs font-normal leading-snug text-[#6d625a]">
+                  {form.archiveNameTemplate.includes("{version}")
+                    ? "Contains {version}: latest install resolves the release tag from a checksum-index scan (at most one {version})."
+                    : "No {version}: latest install downloads directly from the latest release, with no resolved tag."}
+                </span>
               </label>
               <label className={labelClassName}>
                 archive.osCase
@@ -470,7 +474,7 @@ export function App() {
                 <div className="border-b border-[#cdd6c6] bg-[#f0f4ec] px-3 py-2">
                   <h2 className="text-sm font-semibold text-[#4a4037]">Runtime requirements</h2>
                   <p className="mt-1 text-xs leading-4 text-[#6d625a]">
-                    Derived from the same resolver the generated installer's{" "}
+                    Derived from the same dependency list the generated installer's{" "}
                     <code>--requirements</code> / <code>--check-requirements</code> use.
                   </p>
                 </div>
@@ -503,9 +507,9 @@ export function App() {
                   <DiagnosticDetails title="Latest URL preview" values={diagnostics.urls.latest} />
                   <DiagnosticDetails title="Pinned URL preview" values={diagnostics.urls.pinned} />
                   <DiagnosticDetails
-                    title="Resolver notes"
+                    title="Latest install notes"
                     values={[
-                      ...diagnostics.resolverNotes,
+                      ...diagnostics.latestInstallNotes,
                       "Omitting --version installs latest; --version <version> installs a pinned tag.",
                       "--version latest is invalid, and JSON config has no defaults.version.",
                     ]}
@@ -518,6 +522,85 @@ export function App() {
                     title="Invalid command example"
                     values={diagnostics.installCommands.invalid}
                   />
+                </div>
+              </section>
+            ) : null}
+
+            {result.ok ? (
+              <section className="border border-[#cdd6c6] bg-white">
+                <div className="border-b border-[#cdd6c6] bg-[#f0f4ec] px-3 py-2">
+                  <h2 className="text-sm font-semibold text-[#4a4037]">
+                    Expected release tag check
+                  </h2>
+                  <p className="mt-1 text-xs leading-4 text-[#6d625a]">
+                    Offline only: never fetches GitHub and does not confirm the release exists.
+                    Paste a checksum file's text (as published) or a single archive filename you
+                    observed, and this runs the same prefix/suffix scan the generated installer's
+                    checksum-index latest install uses.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 p-3">
+                  {result.config.targets.length > 1 ? (
+                    <label className={labelClassName}>
+                      target
+                      <select
+                        className={fieldClassName}
+                        value={tagCheckTarget ? targetKey(tagCheckTarget) : ""}
+                        onChange={(event) => setTagCheckTargetKey(event.target.value)}
+                      >
+                        {result.config.targets.map((target) => (
+                          <option key={targetKey(target)} value={targetKey(target)}>
+                            {targetKey(target)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+
+                  <div className="flex gap-4 text-sm text-[#4a4037]">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={tagCheckMode === "checksum-index"}
+                        onChange={() => setTagCheckMode("checksum-index")}
+                      />
+                      Paste checksum file text
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={tagCheckMode === "archive-filename"}
+                        onChange={() => setTagCheckMode("archive-filename")}
+                      />
+                      Paste a single archive filename
+                    </label>
+                  </div>
+
+                  <label className={labelClassName}>
+                    {tagCheckMode === "checksum-index" ? "checksum file text" : "archive filename"}
+                    {tagCheckMode === "checksum-index" ? (
+                      <textarea
+                        className={`${fieldClassName} min-h-[100px] resize-y`}
+                        value={tagCheckText}
+                        onChange={(event) => setTagCheckText(event.target.value)}
+                        spellCheck={false}
+                        placeholder={"<sha256>  " + "rellog_v1.2.3_linux_x86_64.tar.gz"}
+                      />
+                    ) : (
+                      <input
+                        className={fieldClassName}
+                        value={tagCheckText}
+                        onChange={(event) => setTagCheckText(event.target.value)}
+                        spellCheck={false}
+                        placeholder="rellog_v1.2.3_linux_x86_64.tar.gz"
+                      />
+                    )}
+                  </label>
+
+                  {expectedTagCheck ? (
+                    <ExpectedTagCheckResultView result={expectedTagCheck} />
+                  ) : null}
                 </div>
               </section>
             ) : null}
@@ -714,5 +797,58 @@ function DiagnosticDetails({
         ))}
       </ul>
     </details>
+  );
+}
+
+/** Human-readable message for each `checkExpectedReleaseTag` failure reason. */
+function expectedTagCheckFailureMessage(
+  result: Extract<ExpectedReleaseTagCheckResult, { ok: false }>,
+): string {
+  switch (result.reason) {
+    case "malformed-template":
+      return "archive.nameTemplate is malformed; fix it above before checking a tag.";
+    case "template-has-no-version":
+      return "This archive.nameTemplate has no {version}. Latest install always fetches directly from the latest release; there is no tag to resolve or check.";
+    case "no-match":
+      return `No match: expected a filename starting with "${result.prefix}" and ending with "${result.suffix}".`;
+    case "ambiguous":
+      return `Ambiguous: ${result.candidates.length} distinct filenames match "${result.prefix}"…"${result.suffix}": ${result.candidates.join(", ")}.`;
+    case "invalid-git-tag":
+      return `"${result.candidate}" is not a valid Git tag.`;
+    case "unsafe-filename-tag":
+      return `"${result.candidate}" is not supported: tags used for {version} extraction must not contain '/', '\\', whitespace, or control characters.`;
+  }
+}
+
+function ExpectedTagCheckResultView({ result }: { result: ExpectedReleaseTagCheckResult }) {
+  if (!result.ok && result.reason === "template-has-no-version") {
+    return (
+      <div className="border border-[#aeb8a8] bg-[#f7f6f2] p-3 text-sm text-[#4a4037]">
+        {expectedTagCheckFailureMessage(result)}
+      </div>
+    );
+  }
+
+  if (!result.ok) {
+    return (
+      <div className="border border-[#d1887f] bg-[#fff4f1] p-3 text-sm text-[#3b2f2a]">
+        {expectedTagCheckFailureMessage(result)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-[#78a86c] bg-[#edf8e9] p-3 text-sm text-[#174c2e]">
+      <div>
+        expected release tag: <code className="font-mono font-semibold">{result.expectedTag}</code>
+      </div>
+      <div className="mt-1 text-xs text-[#174c2e]">
+        matched archive asset: <code className="font-mono">{result.archiveAssetName}</code>
+      </div>
+      <div className="mt-2 text-xs text-[#4a4037]">
+        This is an offline computation only — it does not confirm that this release or asset
+        actually exists on GitHub.
+      </div>
+    </div>
   );
 }

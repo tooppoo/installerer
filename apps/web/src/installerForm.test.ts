@@ -13,7 +13,6 @@ import {
   setArchitectureLabelsPerOs,
   TARGET_OPTIONS,
   toggleTarget,
-  versionResolverExample,
   type InstallerFormState,
 } from "./installerForm";
 
@@ -34,24 +33,16 @@ describe("buildInstallerConfig", () => {
     expect(installer.startsWith("#!/bin/sh")).toBe(true);
   });
 
-  test("release_version_file includes fileName", () => {
-    const config = buildInstallerConfig({
-      ...initialFormState,
-      versionResolverType: "release_version_file",
-      versionResolverFileName: "VERSION",
-    });
-    expect(config.versionResolver).toEqual({ type: "release_version_file", fileName: "VERSION" });
+  test("built config never includes versionResolver (removed in issue #111)", () => {
+    const config = buildInstallerConfig(initialFormState);
+    expect("versionResolver" in config).toBe(false);
   });
 
-  test("latest_asset omits fileName", () => {
+  test("a versionless archive template validates against the core", () => {
     const config = buildInstallerConfig({
       ...initialFormState,
-      versionResolverType: "latest_asset",
-      versionResolverFileName: "VERSION",
-      // latest_asset requires a versionless archive template (core is the source of truth).
       archiveNameTemplate: "{repo}_{os}_{arch}.tar.gz",
     });
-    expect(config.versionResolver).toEqual({ type: "latest_asset" });
     expect(validateInstallerConfig(config).ok).toBe(true);
   });
 
@@ -101,56 +92,6 @@ describe("buildInstallerConfig", () => {
       return;
     }
     expect(result.errors.some((error) => error.path === "$.owner")).toBe(true);
-  });
-});
-
-describe("versionResolverExample", () => {
-  test("release_version_file shows the VERSION lookup then the resolved-tag download", () => {
-    const steps = versionResolverExample({
-      ...initialFormState,
-      owner: "tooppoo",
-      repo: "rellog",
-      versionResolverType: "release_version_file",
-      versionResolverFileName: "VERSION",
-    });
-    expect(steps).toHaveLength(2);
-    expect(steps[0]?.url).toBe(
-      "https://github.com/tooppoo/rellog/releases/latest/download/VERSION",
-    );
-    expect(steps[1]?.url).toContain("https://github.com/tooppoo/rellog/releases/download/v1.2.3/");
-  });
-
-  test("latest_asset shows a single direct latest download", () => {
-    const steps = versionResolverExample({
-      ...initialFormState,
-      owner: "tooppoo",
-      repo: "rellog",
-      versionResolverType: "latest_asset",
-      archiveNameTemplate: "{repo}_{os}_{arch}.tar.gz",
-    });
-    expect(steps).toHaveLength(1);
-    expect(steps[0]?.url).toBe(
-      "https://github.com/tooppoo/rellog/releases/latest/download/rellog_linux_x86_64.tar.gz",
-    );
-  });
-
-  test("respects archiveOsCase when rendering the example archive name", () => {
-    const steps = versionResolverExample({
-      ...initialFormState,
-      owner: "tooppoo",
-      repo: "rellog",
-      versionResolverType: "latest_asset",
-      archiveNameTemplate: "{repo}_{os}_{arch}.tar.gz",
-      archiveOsCase: "capitalized",
-    });
-    expect(steps[0]?.url).toBe(
-      "https://github.com/tooppoo/rellog/releases/latest/download/rellog_Linux_x86_64.tar.gz",
-    );
-  });
-
-  test("falls back to placeholders for empty owner/repo", () => {
-    const steps = versionResolverExample({ ...initialFormState, owner: "", repo: "" });
-    expect(steps[0]?.url).toContain("https://github.com/OWNER/REPO/releases");
   });
 });
 
@@ -210,7 +151,6 @@ describe("architecture label selection", () => {
   test("custom architecture labels flow into the generated archive name", () => {
     const form: InstallerFormState = {
       ...initialFormState,
-      versionResolverType: "latest_asset",
       archiveNameTemplate: "{repo}_{os}_{arch}.tar.gz",
       targets: [{ os: "linux", arch: "x86_64" }],
       architectureLabels: { x86_64: "x64", aarch64: "arm64-v8a" },

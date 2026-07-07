@@ -3,11 +3,7 @@ import {
   CANONICAL_ARCHITECTURES,
   DEFAULT_ARCHITECTURE_LABELS,
 } from "@installerer/core/architectureLabels";
-import {
-  expandArchiveNameTemplate,
-  parseArchiveNameTemplate,
-  type ArchiveFormat,
-} from "@installerer/core/archiveTemplate";
+import type { ArchiveFormat } from "@installerer/core/archiveTemplate";
 import type {
   ArchitectureLabels,
   ArchitectureLabelsByOs,
@@ -28,8 +24,6 @@ import { ARCHIVE_FORMAT_COMMAND_NAMES } from "@installerer/core/runtimeDependenc
  * `checksum.algorithm` is fixed to `sha256` and `defaults.version` is intentionally
  * not part of the form (see issue #8).
  */
-export type VersionResolverType = "release_version_file" | "latest_asset";
-
 export type TargetOption = {
   os: TargetOS;
   arch: TargetArch;
@@ -40,8 +34,6 @@ export type InstallerFormState = {
   repo: string;
   binaryName: string;
   binaryPathInArchive: string;
-  versionResolverType: VersionResolverType;
-  versionResolverFileName: string;
   archiveFormat: ArchiveFormat;
   archiveNameTemplate: string;
   archiveOsCase: OsCase;
@@ -82,19 +74,6 @@ export function architectureLabelSelection(
   return ARCHITECTURE_LABEL_PRESETS[arch].includes(value) ? value : CUSTOM_ARCHITECTURE_LABEL;
 }
 
-export const VERSION_RESOLVER_OPTIONS: readonly VersionResolverType[] = [
-  "release_version_file",
-  "latest_asset",
-];
-
-/** Short, human-readable description of each version resolver, shown next to the select. */
-export const VERSION_RESOLVER_DESCRIPTIONS: Record<VersionResolverType, string> = {
-  release_version_file:
-    "Reads a VERSION file from the latest release to resolve the tag, then downloads that tag's assets.",
-  latest_asset:
-    "Downloads assets straight from the latest release. No VERSION file; templates must be versionless.",
-};
-
 export const ARCHIVE_FORMAT_OPTIONS: readonly ArchiveFormat[] = ["tar.gz", "zip"];
 
 export const OS_CASE_OPTIONS: readonly OsCase[] = ["lowercase", "capitalized"];
@@ -126,8 +105,6 @@ export const initialFormState: InstallerFormState = {
   repo: "git-kura",
   binaryName: "git-kura",
   binaryPathInArchive: "git-kura",
-  versionResolverType: "release_version_file",
-  versionResolverFileName: "VERSION",
   archiveFormat: "tar.gz",
   archiveNameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",
   archiveOsCase: "lowercase",
@@ -210,62 +187,6 @@ export function toggleTarget(form: InstallerFormState, target: TargetOption): In
   };
 }
 
-export type ResolverExampleStep = {
-  label: string;
-  url: string;
-};
-
-/** Version used only to illustrate a resolved-tag download URL in the resolver example. */
-const EXAMPLE_RESOLVED_VERSION = "v1.2.3";
-
-/**
- * Build a small, concrete illustration of how the selected resolver turns the current
- * form values into GitHub download URLs. Purely for display — it never fetches anything.
- */
-export function versionResolverExample(form: InstallerFormState): ResolverExampleStep[] {
-  const owner = form.owner || "OWNER";
-  const repo = form.repo || "REPO";
-  const target = form.targets[0] ?? { os: "linux", arch: "x86_64" };
-  const releasesBase = `https://github.com/${owner}/${repo}/releases`;
-
-  const archiveName = (version: string): string => {
-    const parsed = parseArchiveNameTemplate(form.archiveNameTemplate);
-    if (!parsed.ok) {
-      return form.archiveNameTemplate || "<archive>";
-    }
-    return expandArchiveNameTemplate(parsed.segments, {
-      owner,
-      repo,
-      bin: form.binaryName || "BIN",
-      version,
-      os: target.os,
-      arch: formArchitectureLabel(form, target.os, target.arch),
-      osCase: form.archiveOsCase,
-    });
-  };
-
-  if (form.versionResolverType === "release_version_file") {
-    const fileName = form.versionResolverFileName || "VERSION";
-    return [
-      {
-        label: `1. Read ${fileName} from the latest release to resolve the tag`,
-        url: `${releasesBase}/latest/download/${fileName}`,
-      },
-      {
-        label: `2. Download the asset for the resolved tag (e.g. ${EXAMPLE_RESOLVED_VERSION})`,
-        url: `${releasesBase}/download/${EXAMPLE_RESOLVED_VERSION}/${archiveName(EXAMPLE_RESOLVED_VERSION)}`,
-      },
-    ];
-  }
-
-  return [
-    {
-      label: "Download the asset directly from the latest release",
-      url: `${releasesBase}/latest/download/${archiveName("")}`,
-    },
-  ];
-}
-
 /**
  * Build the JSON config object that is handed to the generator core.
  *
@@ -274,11 +195,6 @@ export function versionResolverExample(form: InstallerFormState): ResolverExampl
  * receives.
  */
 export function buildInstallerConfig(form: InstallerFormState): Record<string, unknown> {
-  const versionResolver =
-    form.versionResolverType === "release_version_file"
-      ? { type: "release_version_file", fileName: form.versionResolverFileName }
-      : { type: "latest_asset" };
-
   return {
     owner: form.owner,
     repo: form.repo,
@@ -286,7 +202,6 @@ export function buildInstallerConfig(form: InstallerFormState): Record<string, u
       name: form.binaryName,
       pathInArchive: form.binaryPathInArchive,
     },
-    versionResolver,
     archive: {
       format: form.archiveFormat,
       nameTemplate: form.archiveNameTemplate,

@@ -13,10 +13,6 @@ const validConfig = {
     name: "rellog",
     pathInArchive: "bin/rellog",
   },
-  versionResolver: {
-    type: "release_version_file",
-    fileName: "VERSION",
-  },
   archive: {
     format: "tar.gz",
     nameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",
@@ -217,41 +213,41 @@ describe("installer config validation", () => {
     }
   });
 
-  test("validates resolver-specific fields and latest_asset versionless templates", () => {
-    const latestAssetWithFile = validateInstallerConfig({
+  test("rejects versionResolver as an unknown field (removed in issue #111)", () => {
+    const result = validateInstallerConfig({
       ...validConfig,
-      versionResolver: {
-        type: "latest_asset",
-        fileName: "VERSION",
-      },
+      versionResolver: { type: "release_version_file", fileName: "VERSION" },
     });
-    const releaseVersionWithoutFile = validateInstallerConfig({
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({
+          path: "$.versionResolver",
+          reason: "Unknown field is not supported.",
+        }),
+      );
+    }
+  });
+
+  test("rejects an archive.nameTemplate with {version} more than once", () => {
+    const result = validateInstallerConfig({
       ...validConfig,
-      versionResolver: {
-        type: "release_version_file",
-      },
-    });
-    const unsupportedResolver = validateInstallerConfig({
-      ...validConfig,
-      versionResolver: {
-        type: "redirect_tag",
-      },
-    });
-    const latestAssetWithVersionTemplate = validateInstallerConfig({
-      ...validConfig,
-      versionResolver: {
-        type: "latest_asset",
-      },
       archive: {
         format: "tar.gz",
-        nameTemplate: "{repo}_{version}_{target}.tar.gz",
+        nameTemplate: "{repo}_{version}_{os}_{version}.tar.gz",
       },
     });
 
-    expect(latestAssetWithFile.ok).toBe(false);
-    expect(releaseVersionWithoutFile.ok).toBe(false);
-    expect(unsupportedResolver.ok).toBe(false);
-    expect(latestAssetWithVersionTemplate.ok).toBe(false);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({
+          path: "$.archive.nameTemplate",
+          reason: expect.stringContaining("{version} must occur zero or one times"),
+        }),
+      );
+    }
   });
 
   test("rejects unsafe config filenames and archive paths", () => {
@@ -289,7 +285,7 @@ describe("installer config validation", () => {
     }
   });
 
-  test("allows release_version_file template to contain version", () => {
+  test("allows an archive.nameTemplate to contain {version}", () => {
     const result = validateInstallerConfig({
       ...validConfig,
       archive: {
@@ -301,12 +297,9 @@ describe("installer config validation", () => {
     expect(result.ok).toBe(true);
   });
 
-  test("does not propagate archive filename context to pinned_version for versionless latest_asset templates", () => {
+  test("does not propagate archive filename context to pinned_version for versionless templates", () => {
     const result = validateInstallerConfig({
       ...validConfig,
-      versionResolver: {
-        type: "latest_asset",
-      },
       archive: {
         format: "tar.gz",
         nameTemplate: "{repo}_{target}.tar.gz",
@@ -416,18 +409,12 @@ describe("installer config validation", () => {
         format: "zip",
         nameTemplate: "{bin}_{target}.zip",
       },
-      versionResolver: {
-        type: "latest_asset",
-      },
     });
     const mismatch = validateInstallerConfig({
       ...validConfig,
       archive: {
         format: "zip",
         nameTemplate: "{bin}_{target}.tar.gz",
-      },
-      versionResolver: {
-        type: "latest_asset",
       },
     });
 
@@ -441,9 +428,6 @@ describe("installer config validation", () => {
       archive: {
         format: "tar.gz",
         nameTemplate: "-{repo}_{target}.tar.gz",
-      },
-      versionResolver: {
-        type: "latest_asset",
       },
     });
 
@@ -690,6 +674,7 @@ describe("isValidGitTagName", () => {
   test("rejects empty names, path-like names, ref syntax, lock suffixes, and unsafe chars", () => {
     for (const tag of [
       "",
+      "latest",
       "/v1.2.3",
       "v1.2.3/",
       "v1.2.3.",

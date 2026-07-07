@@ -8,7 +8,6 @@ const configInput = {
   owner: "tooppoo",
   repo: "rellog",
   binary: { name: "rellog", pathInArchive: "bin/rellog" },
-  versionResolver: { type: "release_version_file", fileName: "VERSION" },
   archive: { format: "tar.gz", nameTemplate: "{repo}_{version}_{target}.tar.gz" },
   checksum: { fileName: "checksums.txt", algorithm: "sha256" },
   targets: [{ os: "linux", arch: "x86_64" }],

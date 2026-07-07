@@ -10,10 +10,6 @@ const baseConfig = {
     name: "rellog",
     pathInArchive: "rellog",
   },
-  versionResolver: {
-    type: "release_version_file",
-    fileName: "VERSION",
-  },
   archive: {
     format: "tar.gz",
     nameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",
@@ -40,7 +36,7 @@ describe("urlEncodePathSegment", () => {
 });
 
 describe("buildInstallerDiagnostics", () => {
-  test("builds release_version_file helper previews from validated config output", () => {
+  test("builds helper previews for a {version} archive template from validated config output", () => {
     const result = validateInstallerConfig(baseConfig);
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -49,16 +45,15 @@ describe("buildInstallerDiagnostics", () => {
 
     const diagnostics = buildInstallerDiagnostics(result.config, result.archivePreviews);
     expect(diagnostics.typoCommands).toContain(
-      "curl -fsIL https://github.com/tooppoo/rellog/releases/latest/download/VERSION >/dev/null",
+      "curl -fsIL https://github.com/tooppoo/rellog/releases/latest/download/checksums.txt >/dev/null",
     );
     expect(diagnostics.expectedReleaseAssets).toEqual([
-      "VERSION",
       "checksums.txt",
       "rellog_v1.2.3_linux_x86_64.tar.gz",
       "rellog_v1.2.3_darwin_aarch64.tar.gz",
     ]);
     expect(diagnostics.urls.latest).toEqual([
-      "https://github.com/tooppoo/rellog/releases/latest/download/VERSION",
+      "https://github.com/tooppoo/rellog/releases/latest/download/checksums.txt",
       "https://github.com/tooppoo/rellog/releases/download/v1.2.3/checksums.txt",
       "https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_linux_x86_64.tar.gz",
       "https://github.com/tooppoo/rellog/releases/download/v1.2.3/rellog_v1.2.3_darwin_aarch64.tar.gz",
@@ -69,10 +64,9 @@ describe("buildInstallerDiagnostics", () => {
     expect(diagnostics.installCommands.invalid).toEqual(["sh install.sh --version latest"]);
   });
 
-  test("builds latest_asset helper previews without a VERSION asset", () => {
+  test("builds helper previews for a versionless archive template without a VERSION asset", () => {
     const result = validateInstallerConfig({
       ...baseConfig,
-      versionResolver: { type: "latest_asset" },
       archive: {
         format: "tar.gz",
         nameTemplate: "{repo}_{os}_{arch}#asset.tar.gz",

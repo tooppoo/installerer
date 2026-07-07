@@ -1,5 +1,5 @@
 {
-  "description": "Version resolvers outside release_version_file and latest_asset are rejected.",
+  "description": "{version} may occur at most once in archive.nameTemplate.",
   "config": {
     "owner": "tooppoo",
     "repo": "rellog",
@@ -7,12 +7,9 @@
       "name": "rellog",
       "pathInArchive": "bin/rellog"
     },
-    "versionResolver": {
-      "type": "redirect_tag"
-    },
     "archive": {
       "format": "tar.gz",
-      "nameTemplate": "{repo}_{target}.tar.gz"
+      "nameTemplate": "{repo}_{version}_{os}_{version}.tar.gz"
     },
     "checksum": {
       "fileName": "checksums.txt",
@@ -21,6 +18,9 @@
     "targets": [{ "os": "linux", "arch": "x86_64" }]
   },
   "expectedErrors": [
-    { "path": "$.versionResolver.type", "reasonIncludes": "Unsupported version resolver." }
+    {
+      "path": "$.archive.nameTemplate",
+      "reasonIncludes": "{version} must occur zero or one times"
+    }
   ]
 }

@@ -156,6 +156,15 @@ export function parseArchiveNameTemplate(
     segments.push({ type: "literal", value: template.slice(literalStart) });
   }
 
+  if (countPlaceholderOccurrences(segments, "version") > 1) {
+    errors.push({
+      path,
+      reason: "Malformed archive filename template: {version} must occur zero or one times.",
+      expected: "at most one {version} placeholder",
+    });
+    return { ok: false, errors };
+  }
+
   return { ok: true, segments };
 }
 
@@ -164,6 +173,36 @@ export function templateUsesPlaceholder(
   name: ArchivePlaceholder,
 ) {
   return segments.some((segment) => segment.type === "placeholder" && segment.name === name);
+}
+
+export function countPlaceholderOccurrences(
+  segments: ArchiveTemplateSegment[],
+  name: ArchivePlaceholder,
+) {
+  return segments.filter((segment) => segment.type === "placeholder" && segment.name === name)
+    .length;
+}
+
+/**
+ * Splits `segments` into the parts before and after the single occurrence of
+ * `name`, or `undefined` if `name` does not occur. Callers that need this
+ * (the checksum-index tag extraction, both in generated shell and in
+ * `expectedReleaseTag.ts`) only ever call it after confirming exactly one
+ * occurrence via `countPlaceholderOccurrences`.
+ */
+export function splitTemplateAtPlaceholder(
+  segments: ArchiveTemplateSegment[],
+  name: ArchivePlaceholder,
+): { before: ArchiveTemplateSegment[]; after: ArchiveTemplateSegment[] } | undefined {
+  const index = segments.findIndex(
+    (segment) => segment.type === "placeholder" && segment.name === name,
+  );
+
+  if (index === -1) {
+    return undefined;
+  }
+
+  return { before: segments.slice(0, index), after: segments.slice(index + 1) };
 }
 
 export function formatOsForDisplay(os: TargetOS, osCase: OsCase): string {

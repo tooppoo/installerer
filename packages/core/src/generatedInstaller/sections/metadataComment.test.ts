@@ -12,10 +12,6 @@ const baseConfig: InstallerConfig = {
     name: "rellog",
     pathInArchive: "bin/rellog",
   },
-  versionResolver: {
-    type: "release_version_file",
-    fileName: "VERSION",
-  },
   archive: {
     format: "tar.gz",
     nameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",
@@ -51,8 +47,6 @@ describe("renderMetadataComment", () => {
     expect(comment).toContain("#   repo: rellog");
     expect(comment).toContain("#   binary.name: rellog");
     expect(comment).toContain("#   binary.pathInArchive: bin/rellog");
-    expect(comment).toContain("#   versionResolver.type: release_version_file");
-    expect(comment).toContain("#   versionResolver.fileName: VERSION");
     expect(comment).toContain("#   archive.format: tar.gz");
     expect(comment).toContain("#   archive.nameTemplate: {repo}_{version}_{os}_{arch}.tar.gz");
     expect(comment).toContain("#   archive.osCase: lowercase");
@@ -64,17 +58,15 @@ describe("renderMetadataComment", () => {
     );
   });
 
-  test("omits versionResolver.fileName for latest_asset", () => {
+  test("never mentions versionResolver (removed in issue #111)", () => {
     const config: InstallerConfig = {
       ...baseConfig,
-      versionResolver: { type: "latest_asset" },
       archive: { ...baseConfig.archive, nameTemplate: "{repo}_{os}_{arch}.tar.gz" },
     };
 
     const comment = renderMetadataComment(createRenderContext(config));
 
-    expect(comment).toContain("#   versionResolver.type: latest_asset");
-    expect(comment).not.toContain("versionResolver.fileName");
+    expect(comment).not.toContain("versionResolver");
   });
 
   test("does not include a timestamp", () => {

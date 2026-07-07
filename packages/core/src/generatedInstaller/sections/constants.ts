@@ -12,7 +12,6 @@ DEFAULT_INSTALL_DIR=${shellLiteral(config.defaults.installDir)}
 INSTALL_DIR=
 ARCHIVE_FORMAT=${shellLiteral(config.archive.format)}
 ARCHIVE_SUFFIX=${shellLiteral(archiveSuffix)}
-${config.versionResolver.type === "release_version_file" ? `VERSION_FILE_NAME=${shellLiteral(config.versionResolver.fileName)}` : ""}
 LF='
 '
 CR=$(printf '\\r')

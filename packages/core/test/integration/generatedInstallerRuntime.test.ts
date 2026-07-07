@@ -19,20 +19,40 @@ const HOST_OS = platform() === "linux" ? "linux" : platform() === "darwin" ? "da
 const HOST_ARCH = arch() === "x64" ? "x86_64" : arch() === "arm64" ? "aarch64" : null;
 const hostTargetSupported = HOST_OS !== null && HOST_ARCH !== null;
 
+/**
+ * `with-version-tar-gz`'s architectureLabels mapping, mirrored here so tests
+ * can compute the exact asset filename a checksum-index row must contain to
+ * match the real host target (see that fixture's architectureLabels).
+ */
+const ARCH_LABELS: Record<string, Record<string, string>> = {
+  linux: { x86_64: "x64", aarch64: "arm64-v8a" },
+  darwin: { x86_64: "amd64", aarch64: "arm64" },
+};
+const hostAssetArchLabel =
+  HOST_OS !== null && HOST_ARCH !== null ? ARCH_LABELS[HOST_OS]?.[HOST_ARCH] : undefined;
+
 const CURL_STUB = `#!/bin/sh
-# Test stub: records the requested URL, serves VERSION fixtures, fails downloads.
+# Test stub: records the requested URL, serves an INDEX_URL fixture (writing
+# to -o's output path, like real curl, since curl_download always uses -o),
+# fails every other download (matching a real fetch of an unstubbed URL).
 url=
+output=
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -o) shift 2 ;;
+    -o) output=$2; shift 2 ;;
     -*) shift ;;
     *) url=$1; shift ;;
   esac
 done
 printf '%s\\n' "$url" >> "$CURL_LOG"
-case "$url" in
-  */VERSION) printf '%s\\n' "$VERSION_FIXTURE" ; exit 0 ;;
-esac
+if [ -n "$INDEX_URL" ] && [ "$url" = "$INDEX_URL" ]; then
+  if [ -n "$output" ]; then
+    printf '%s\\n' "$INDEX_FIXTURE" > "$output"
+  else
+    printf '%s\\n' "$INDEX_FIXTURE"
+  fi
+  exit 0
+fi
 exit 1
 `;
 
@@ -62,7 +82,7 @@ function generateFromFixture(fixtureName: string): string {
   return generateInstaller(result.config);
 }
 
-function runInstaller(script: string, args: string[], versionFixture = "v9.9.9") {
+function runInstaller(script: string, args: string[], index?: { url: string; fixture: string }) {
   runCounter += 1;
   const curlLog = join(stubDir, `curl-${runCounter}.log`);
   const run = spawnSync("sh", ["-s", "--", ...args], {
@@ -72,7 +92,8 @@ function runInstaller(script: string, args: string[], versionFixture = "v9.9.9")
       ...process.env,
       PATH: `${stubDir}:${process.env.PATH ?? ""}`,
       CURL_LOG: curlLog,
-      VERSION_FIXTURE: versionFixture,
+      INDEX_URL: index?.url ?? "",
+      INDEX_FIXTURE: index?.fixture ?? "",
       HOME: join(stubDir, "home"),
     },
   });
@@ -84,7 +105,7 @@ function runInstaller(script: string, args: string[], versionFixture = "v9.9.9")
 
 describe("generated installer runtime dispatch", () => {
   test("rejects --version latest before any dispatch or network access", () => {
-    const script = generateFromFixture("latest-asset-tar-gz");
+    const script = generateFromFixture("without-version-tar-gz");
     const run = runInstaller(script, ["--version", "latest"]);
 
     expect(run.status).toBe(1);
@@ -93,7 +114,7 @@ describe("generated installer runtime dispatch", () => {
   });
 
   test("the latest rejection is exact lowercase; Latest flows into ordinary pin handling", () => {
-    const script = generateFromFixture("latest-asset-tar-gz");
+    const script = generateFromFixture("without-version-tar-gz");
     const run = runInstaller(script, ["--version", "Latest"]);
 
     expect(run.stderr).not.toContain("ambiguous");
@@ -111,9 +132,9 @@ describe("generated installer runtime dispatch", () => {
   });
 
   test.skipIf(!hostTargetSupported)(
-    "latest_asset dispatches to install_latest and downloads versionless latest assets",
+    "without {version}, install_latest downloads versionless latest assets directly",
     () => {
-      const script = generateFromFixture("latest-asset-tar-gz");
+      const script = generateFromFixture("without-version-tar-gz");
       const run = runInstaller(script, []);
 
       expect(run.status).toBe(1);
@@ -126,9 +147,9 @@ describe("generated installer runtime dispatch", () => {
   );
 
   test.skipIf(!hostTargetSupported)(
-    "latest_asset pin encodes the release tag as a URL path segment",
+    "without {version}, pin encodes the release tag as a URL path segment",
     () => {
-      const script = generateFromFixture("latest-asset-tar-gz");
+      const script = generateFromFixture("without-version-tar-gz");
       const run = runInstaller(script, ["--version", "release/v1.2.3"]);
 
       expect(run.status).toBe(1);
@@ -139,25 +160,30 @@ describe("generated installer runtime dispatch", () => {
   );
 
   test.skipIf(!hostTargetSupported)(
-    "release_version_file latest resolves the VERSION asset, then downloads from the resolved tag",
+    "with {version}, latest resolves the tag from a checksum-index scan, then downloads from the resolved tag",
     () => {
-      const script = generateFromFixture("release-version-file-tar-gz");
-      const run = runInstaller(script, [], "v9.9.9");
+      const script = generateFromFixture("with-version-tar-gz");
+      const assetName = `rellog_v9.9.9_${HOST_OS}_${hostAssetArchLabel}.tar.gz`;
+      const indexUrl = "https://github.com/tooppoo/rellog/releases/latest/download/checksums.txt";
+      const run = runInstaller(script, [], {
+        url: indexUrl,
+        fixture: `${"0".repeat(64)}  ${assetName}`,
+      });
 
       expect(run.status).toBe(1);
       expect(run.stdout).toContain("installerer: resolved latest version v9.9.9");
       expect(run.stderr).toContain("failed to download checksum file");
       expect(run.requestedUrls).toEqual([
-        "https://github.com/tooppoo/rellog/releases/latest/download/VERSION",
+        indexUrl,
         "https://github.com/tooppoo/rellog/releases/download/v9.9.9/checksums.txt",
       ]);
     },
   );
 
   test.skipIf(!hostTargetSupported)(
-    "release_version_file pin skips VERSION resolution and uses the pinned tag",
+    "with {version}, pin skips checksum-index resolution and uses the pinned tag",
     () => {
-      const script = generateFromFixture("release-version-file-tar-gz");
+      const script = generateFromFixture("with-version-tar-gz");
       const run = runInstaller(script, ["--version", "v1.2.3"]);
 
       expect(run.status).toBe(1);
@@ -169,7 +195,7 @@ describe("generated installer runtime dispatch", () => {
   );
 
   test("rejects a pinned version that is not a valid Git tag", () => {
-    const script = generateFromFixture("release-version-file-tar-gz");
+    const script = generateFromFixture("with-version-tar-gz");
     const run = runInstaller(script, ["--version", "v1 .2"]);
 
     expect(run.status).toBe(1);

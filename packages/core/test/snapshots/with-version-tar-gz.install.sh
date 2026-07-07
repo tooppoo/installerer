@@ -16,8 +16,6 @@ fi
 #   repo: rellog
 #   binary.name: rellog
 #   binary.pathInArchive: bin/rellog
-#   versionResolver.type: release_version_file
-#   versionResolver.fileName: VERSION
 #   archive.format: tar.gz
 #   archive.nameTemplate: {repo}_{version}_{os}_{arch}.tar.gz
 #   archive.osCase: lowercase
@@ -36,7 +34,6 @@ DEFAULT_INSTALL_DIR='$HOME/.local/bin'
 INSTALL_DIR=
 ARCHIVE_FORMAT='tar.gz'
 ARCHIVE_SUFFIX='.tar.gz'
-VERSION_FILE_NAME='VERSION'
 LF='
 '
 CR=$(printf '\r')
@@ -415,21 +412,51 @@ is_valid_git_tag() {
   return 0
 }
 
-read_version_file() {
-  url=$1
-  content=$(curl -fsSL "$url" && printf x) || fail "failed to resolve latest version from $url"
-  content=${content%x}
-  while true; do
-    case "$content" in
-      *[[:space:]]) content=${content%?} ;;
-      *) break ;;
-    esac
-  done
-  [ -n "$content" ] || fail "VERSION file is empty"
-  case "$content" in
-    *"$CR"*|*"$LF"*) fail "VERSION file must contain a single line" ;;
+# A Git tag may legitimately contain '/' (e.g. "release/v1.2.3"), but a value
+# extracted from a checksum-index archive filename cannot: '/' would split it
+# across path segments. installerer treats such tags as unsupported for
+# {version} extraction (issue #111) even though --version pinning still
+# accepts them.
+is_filename_unsafe_tag() {
+  value=$1
+  case "$value" in
+    */*|*\\*) return 0 ;;
   esac
-  printf '%s' "$content"
+  if LC_ALL=C printf '%s' "$value" | grep -q '[[:cntrl:][:space:]]'; then
+    return 0
+  fi
+  return 1
+}
+resolve_expected_release_tag() {
+  index_path=$1
+  prefix=$2
+  suffix=$3
+  match=
+  match_count=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    set -f
+    set -- $line
+    set +f
+    filename=$2
+    [ -n "$filename" ] || continue
+    case "$filename" in
+      "$prefix"*"$suffix")
+        if [ "$filename" != "$match" ]; then
+          match_count=$((match_count + 1))
+          match=$filename
+        fi
+        ;;
+    esac
+  done < "$index_path"
+  [ "$match_count" -gt 0 ] \
+    || fail "no release asset in $CHECKSUM_FILE_NAME matches the configured archive filename template"
+  [ "$match_count" -eq 1 ] \
+    || fail "ambiguous: multiple release assets in $CHECKSUM_FILE_NAME match the configured archive filename template"
+  candidate=${match#"$prefix"}
+  candidate=${candidate%"$suffix"}
+  is_valid_git_tag "$candidate" || fail "extracted release tag is not a valid Git tag: $candidate"
+  is_filename_unsafe_tag "$candidate" && fail "extracted release tag is not safe as a filename: $candidate"
+  printf '%s' "$candidate"
 }
 
 validate_archive_asset_name() {
@@ -528,6 +555,22 @@ render_archive_asset_name() {
   printf '\n'
 }
 
+render_archive_asset_name_prefix() {
+  os=$1
+  asset_arch_label=$2
+  target="${os}_${asset_arch_label}"
+  printf '%s' "$REPO" '_'
+  printf '\n'
+}
+
+render_archive_asset_name_suffix() {
+  os=$1
+  asset_arch_label=$2
+  target="${os}_${asset_arch_label}"
+  printf '%s' '_' "$os" '_' "$asset_arch_label" '.tar.gz'
+  printf '\n'
+}
+
 curl_download() {
   url=$1
   output_path=$2
@@ -618,13 +661,6 @@ download_and_install() {
   archive_url=$1
   checksum_url=$2
   archive_asset_name=$3
-  trap cleanup EXIT
-  trap cleanup_on_signal HUP INT TERM
-  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
-  archive_path="$tmpdir/archive"
-  checksum_path="$tmpdir/checksums"
-  extract_dir="$tmpdir/extract"
-
   curl_download "$checksum_url" "$checksum_path" "checksum file"
   curl_download "$archive_url" "$archive_path" "archive"
   verify_sha256
@@ -639,13 +675,21 @@ install_latest() {
   os=$1
   arch=$2
   asset_arch_label=$(resolve_asset_arch_label "$os" "$arch") || exit 1
+  trap cleanup EXIT
+  trap cleanup_on_signal HUP INT TERM
+  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
+  archive_path="$tmpdir/archive"
+  checksum_path="$tmpdir/checksums"
+  checksum_index_path="$tmpdir/checksums_index"
+  extract_dir="$tmpdir/extract"
   owner_path=$(url_encode_segment "$OWNER")
   repo_path=$(url_encode_segment "$REPO")
-  version_file_path=$(url_encode_segment "$VERSION_FILE_NAME")
-  version_file_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$version_file_path"
-  printf '%s\n' "installerer: requesting $version_file_url"
-  resolved_version=$(read_version_file "$version_file_url") || exit 1
-  is_valid_git_tag "$resolved_version" || fail "resolved version is not a valid Git tag: $resolved_version"
+  checksum_index_path_segment=$(url_encode_segment "$CHECKSUM_FILE_NAME")
+  checksum_index_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$checksum_index_path_segment"
+  curl_download "$checksum_index_url" "$checksum_index_path" "checksum index"
+  prefix=$(render_archive_asset_name_prefix "$os" "$asset_arch_label")
+  suffix=$(render_archive_asset_name_suffix "$os" "$asset_arch_label")
+  resolved_version=$(resolve_expected_release_tag "$checksum_index_path" "$prefix" "$suffix") || exit 1
   printf '%s\n' "installerer: resolved latest version $resolved_version"
   archive_asset_name=$(render_archive_asset_name "$resolved_version" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
@@ -665,6 +709,12 @@ install_pin() {
   os=$1
   arch=$2
   asset_arch_label=$(resolve_asset_arch_label "$os" "$arch") || exit 1
+  trap cleanup EXIT
+  trap cleanup_on_signal HUP INT TERM
+  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
+  archive_path="$tmpdir/archive"
+  checksum_path="$tmpdir/checksums"
+  extract_dir="$tmpdir/extract"
   archive_asset_name=$(render_archive_asset_name "$pinned_version" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
   owner_path=$(url_encode_segment "$OWNER")

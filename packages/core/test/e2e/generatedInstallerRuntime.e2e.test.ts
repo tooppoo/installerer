@@ -23,32 +23,29 @@ import { assertGeneratedInstallerContract } from "../helpers/staticAssertions";
  * involved. OS/arch detection is simulated with a `uname` PATH shim so the
  * suite does not depend on the CI host.
  *
- * Fixture configs deliberately use configured asset names (`LATEST_VERSION`,
- * `SHA256SUMS`) instead of the representative `VERSION` / `checksums.txt` so
- * a runtime that hard-codes the representative names fails here.
+ * Fixture configs deliberately use a configured checksum file name
+ * (`SHA256SUMS`) instead of the representative `checksums.txt` so a runtime
+ * that hard-codes the representative name fails here.
  */
 
 const OWNER = "fixture-owner";
 const REPO = "fixture-repo";
-const VERSION_FILE_NAME = "LATEST_VERSION";
 const CHECKSUM_FILE_NAME = "SHA256SUMS";
 
-const RELEASE_VERSION_FILE_CONFIG = {
+const WITH_VERSION_CONFIG = {
   owner: OWNER,
   repo: REPO,
   binary: { name: "demo", pathInArchive: "bin/demo" },
-  versionResolver: { type: "release_version_file", fileName: VERSION_FILE_NAME },
   archive: { format: "tar.gz", nameTemplate: "{bin}_{version}_{os}_{arch}.tar.gz" },
   checksum: { fileName: CHECKSUM_FILE_NAME, algorithm: "sha256" },
   targets: [{ os: "linux", arch: "x86_64" }],
   defaults: { installDir: "$HOME/.local/bin" },
 };
 
-const LATEST_ASSET_CONFIG = {
+const WITHOUT_VERSION_CONFIG = {
   owner: OWNER,
   repo: REPO,
   binary: { name: "demo", pathInArchive: "demo" },
-  versionResolver: { type: "latest_asset" },
   archive: { format: "zip", nameTemplate: "{bin}_{os}_{arch}.zip" },
   checksum: { fileName: CHECKSUM_FILE_NAME, algorithm: "sha256" },
   targets: [{ os: "linux", arch: "x86_64" }],
@@ -57,13 +54,13 @@ const LATEST_ASSET_CONFIG = {
 
 /** Custom (non-preset) architecture labels (issue #76), distinct per canonical arch. */
 const CUSTOM_ARCH_LABEL_CONFIG = {
-  ...LATEST_ASSET_CONFIG,
+  ...WITHOUT_VERSION_CONFIG,
   architectureLabels: { x86_64: "x64", aarch64: "arm64-v8a" },
 };
 
 /** Per-OS architecture labels: the same canonical arch publishes under a different label per OS. */
 const PER_OS_ARCH_LABEL_CONFIG = {
-  ...LATEST_ASSET_CONFIG,
+  ...WITHOUT_VERSION_CONFIG,
   targets: [
     { os: "linux", arch: "x86_64" },
     { os: "darwin", arch: "x86_64" },
@@ -103,7 +100,7 @@ function generateProductionScript(config: unknown): string {
   // non-GitHub network path before the harness applies the test-only seam.
   assertGeneratedInstallerContract(script, {
     archiveFormat: result.config.archive.format,
-    resolverType: result.config.versionResolver.type,
+    hasVersionPlaceholder: result.config.archive.nameTemplate.includes("{version}"),
   });
   expect(script).not.toContain("http://");
 
@@ -135,21 +132,23 @@ function placeExistingBinary(installDir: string, name: string, content: string):
   return path;
 }
 
-describe("release_version_file runtime e2e (tar.gz)", () => {
+describe("with-version runtime e2e (tar.gz)", () => {
   const archive = buildArchive("tar.gz", [{ path: "bin/demo", content: LATEST_BINARY }]);
   const pinnedArchive = buildArchive("tar.gz", [{ path: "bin/demo", content: PINNED_BINARY }]);
   const latestAssetName = "demo_v2.0.0_linux_x86_64.tar.gz";
   const pinnedAssetName = "demo_v1.0.0_linux_x86_64.tar.gz";
+  /** Index-scan row content only needs a matching filename; the hash is never checked here. */
+  const indexRow = (filename: string) => `${"0".repeat(64)}  ${filename}\n`;
 
-  test("latest install resolves the configured version file, then installs from the tag", async () => {
-    server.setLatestRelease(OWNER, REPO, { [VERSION_FILE_NAME]: "v2.0.0\n" });
+  test("latest install resolves the tag from a checksum-index scan, then installs from that tag", async () => {
+    server.setLatestRelease(OWNER, REPO, { [CHECKSUM_FILE_NAME]: indexRow(latestAssetName) });
     server.setTaggedRelease(OWNER, REPO, "v2.0.0", {
       [CHECKSUM_FILE_NAME]: checksumRow(archive, latestAssetName),
       [latestAssetName]: archive,
     });
 
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(RELEASE_VERSION_FILE_CONFIG));
+    const run = await env.run(testScript(WITH_VERSION_CONFIG));
 
     expect(run.stderr).toBe("");
     expect(run.status).toBe(0);
@@ -159,10 +158,11 @@ describe("release_version_file runtime e2e (tar.gz)", () => {
     // --install-dir omitted: the default must resolve to $HOME/.local/bin.
     expectInstalledBinary(env.defaultInstallDir, "demo", LATEST_BINARY);
 
-    // Exactly version file -> checksum file -> archive, all in the GitHub
-    // Release download path shape; nothing else (no API, no raw/gist).
+    // Exactly checksum index -> tag-specific checksum -> tag-specific archive,
+    // all in the GitHub Release download path shape; nothing else (no API,
+    // no raw/gist).
     expectRequests([
-      `/${OWNER}/${REPO}/releases/latest/download/${VERSION_FILE_NAME}`,
+      `/${OWNER}/${REPO}/releases/latest/download/${CHECKSUM_FILE_NAME}`,
       `/${OWNER}/${REPO}/releases/download/v2.0.0/${CHECKSUM_FILE_NAME}`,
       `/${OWNER}/${REPO}/releases/download/v2.0.0/${latestAssetName}`,
     ]);
@@ -170,14 +170,14 @@ describe("release_version_file runtime e2e (tar.gz)", () => {
     expect(run.leftoverTmpEntries).toEqual([]);
   });
 
-  test("pinned install never touches the version file asset", async () => {
+  test("pinned install never touches the checksum index", async () => {
     server.setTaggedRelease(OWNER, REPO, "v1.0.0", {
       [CHECKSUM_FILE_NAME]: checksumRow(pinnedArchive, pinnedAssetName),
       [pinnedAssetName]: pinnedArchive,
     });
 
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(RELEASE_VERSION_FILE_CONFIG), {
+    const run = await env.run(testScript(WITH_VERSION_CONFIG), {
       args: ["--version", "v1.0.0"],
     });
 
@@ -191,21 +191,78 @@ describe("release_version_file runtime e2e (tar.gz)", () => {
     ]);
     expect(run.leftoverTmpEntries).toEqual([]);
   });
+
+  test("no candidate in the checksum index fails before any tag-specific request", async () => {
+    server.setLatestRelease(OWNER, REPO, {
+      [CHECKSUM_FILE_NAME]: indexRow("demo_v2.0.0_darwin_aarch64.tar.gz"),
+    });
+
+    const env = createInstallerRunEnv();
+    const run = await env.run(testScript(WITH_VERSION_CONFIG));
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("no release asset");
+    expectRequests([`/${OWNER}/${REPO}/releases/latest/download/${CHECKSUM_FILE_NAME}`]);
+    expect(run.leftoverTmpEntries).toEqual([]);
+  });
+
+  test("two candidates in the checksum index are reported as ambiguous", async () => {
+    server.setLatestRelease(OWNER, REPO, {
+      [CHECKSUM_FILE_NAME]:
+        indexRow("demo_v2.0.0_linux_x86_64.tar.gz") + indexRow("demo_v2.0.1_linux_x86_64.tar.gz"),
+    });
+
+    const env = createInstallerRunEnv();
+    const run = await env.run(testScript(WITH_VERSION_CONFIG));
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("ambiguous");
+    expectRequests([`/${OWNER}/${REPO}/releases/latest/download/${CHECKSUM_FILE_NAME}`]);
+    expect(run.leftoverTmpEntries).toEqual([]);
+  });
+
+  test("an extracted tag that is not a valid Git tag fails before any tag-specific request", async () => {
+    server.setLatestRelease(OWNER, REPO, {
+      [CHECKSUM_FILE_NAME]: indexRow("demo_..bad_linux_x86_64.tar.gz"),
+    });
+
+    const env = createInstallerRunEnv();
+    const run = await env.run(testScript(WITH_VERSION_CONFIG));
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("not a valid Git tag");
+    expectRequests([`/${OWNER}/${REPO}/releases/latest/download/${CHECKSUM_FILE_NAME}`]);
+    expect(run.leftoverTmpEntries).toEqual([]);
+  });
+
+  test("an extracted tag containing a slash is rejected as filename-unsafe, even though it is a valid Git tag", async () => {
+    server.setLatestRelease(OWNER, REPO, {
+      [CHECKSUM_FILE_NAME]: indexRow("demo_release/v2.0.0_linux_x86_64.tar.gz"),
+    });
+
+    const env = createInstallerRunEnv();
+    const run = await env.run(testScript(WITH_VERSION_CONFIG));
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("not safe as a filename");
+    expectRequests([`/${OWNER}/${REPO}/releases/latest/download/${CHECKSUM_FILE_NAME}`]);
+    expect(run.leftoverTmpEntries).toEqual([]);
+  });
 });
 
-describe("latest_asset runtime e2e (zip)", () => {
+describe("without-version runtime e2e (zip)", () => {
   const archive = buildArchive("zip", [{ path: "demo", content: LATEST_BINARY }]);
   const pinnedArchive = buildArchive("zip", [{ path: "demo", content: PINNED_BINARY }]);
   const assetName = "demo_linux_x86_64.zip";
 
-  test("latest install downloads versionless assets and never a version file", async () => {
+  test("latest install downloads versionless assets directly, with no tag resolution", async () => {
     server.setLatestRelease(OWNER, REPO, {
       [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
       [assetName]: archive,
     });
 
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(LATEST_ASSET_CONFIG));
+    const run = await env.run(testScript(WITHOUT_VERSION_CONFIG));
 
     expect(run.stderr).toBe("");
     expect(run.status).toBe(0);
@@ -218,14 +275,14 @@ describe("latest_asset runtime e2e (zip)", () => {
     expect(run.leftoverTmpEntries).toEqual([]);
   });
 
-  test("pinned install uses the tag URL and never a version file", async () => {
+  test("pinned install uses the tag URL and never the latest-release path", async () => {
     server.setTaggedRelease(OWNER, REPO, "v3.1.4", {
       [CHECKSUM_FILE_NAME]: checksumRow(pinnedArchive, assetName),
       [assetName]: pinnedArchive,
     });
 
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(LATEST_ASSET_CONFIG), {
+    const run = await env.run(testScript(WITHOUT_VERSION_CONFIG), {
       args: ["--version", "v3.1.4"],
     });
 
@@ -292,7 +349,7 @@ describe("custom architecture label mapping e2e", () => {
 describe("dispatch and argument handling", () => {
   test("--version latest is rejected before any network access", async () => {
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(LATEST_ASSET_CONFIG), {
+    const run = await env.run(testScript(WITHOUT_VERSION_CONFIG), {
       args: ["--version", "latest"],
     });
 
@@ -314,7 +371,7 @@ describe("dispatch and argument handling", () => {
     });
 
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(LATEST_ASSET_CONFIG), {
+    const run = await env.run(testScript(WITHOUT_VERSION_CONFIG), {
       args: ["--version", "release/v1.2.3"],
     });
 
@@ -343,7 +400,7 @@ describe("failure handling", () => {
 
     const env = createInstallerRunEnv();
     const existing = placeExistingBinary(env.defaultInstallDir, "demo", "existing binary\n");
-    const run = await env.run(testScript(RELEASE_VERSION_FILE_CONFIG), { args: pinArgs });
+    const run = await env.run(testScript(WITH_VERSION_CONFIG), { args: pinArgs });
 
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("archive checksum mismatch");
@@ -360,7 +417,7 @@ describe("failure handling", () => {
 
     const env = createInstallerRunEnv();
     const existing = placeExistingBinary(env.defaultInstallDir, "demo", "existing binary\n");
-    const run = await env.run(testScript(RELEASE_VERSION_FILE_CONFIG), { args: pinArgs });
+    const run = await env.run(testScript(WITH_VERSION_CONFIG), { args: pinArgs });
 
     expect(run.status).toBe(1);
     expect(run.stderr).toContain(`checksum entry not found for ${assetName}`);
@@ -379,7 +436,7 @@ describe("failure handling", () => {
     });
 
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(RELEASE_VERSION_FILE_CONFIG), { args: pinArgs });
+    const run = await env.run(testScript(WITH_VERSION_CONFIG), { args: pinArgs });
 
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("failed to extract bin/demo");
@@ -391,7 +448,7 @@ describe("failure handling", () => {
 describe("unsupported target simulation via uname shim", () => {
   test("unsupported OS fails before any network access", async () => {
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(LATEST_ASSET_CONFIG), { unameOs: "SunOS" });
+    const run = await env.run(testScript(WITHOUT_VERSION_CONFIG), { unameOs: "SunOS" });
 
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("unsupported OS: sunos");
@@ -400,7 +457,7 @@ describe("unsupported target simulation via uname shim", () => {
 
   test("unsupported architecture fails before any network access", async () => {
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(LATEST_ASSET_CONFIG), { unameArch: "mips" });
+    const run = await env.run(testScript(WITHOUT_VERSION_CONFIG), { unameArch: "mips" });
 
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("unsupported architecture: mips");
@@ -412,7 +469,7 @@ describe("unsupported target simulation via uname shim", () => {
     // `uname -m` outputs x86_64/aarch64/arm64. `amd64` is an asset-label
     // spelling, not a runtime architecture, and must not be special-cased.
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(LATEST_ASSET_CONFIG), { unameArch: "amd64" });
+    const run = await env.run(testScript(WITHOUT_VERSION_CONFIG), { unameArch: "amd64" });
 
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("unsupported architecture: amd64");
@@ -421,7 +478,7 @@ describe("unsupported target simulation via uname shim", () => {
 
   test("recognized but unconfigured target fails before any network access", async () => {
     const env = createInstallerRunEnv();
-    const run = await env.run(testScript(RELEASE_VERSION_FILE_CONFIG), {
+    const run = await env.run(testScript(WITH_VERSION_CONFIG), {
       unameOs: "Darwin",
       unameArch: "arm64",
     });

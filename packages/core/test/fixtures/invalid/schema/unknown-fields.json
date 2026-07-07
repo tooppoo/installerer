@@ -25,6 +25,7 @@
   },
   "expectedErrors": [
     { "path": "$.signing", "reasonIncludes": "Unknown field is not supported." },
-    { "path": "$.binary.mode", "reasonIncludes": "Unknown field is not supported." }
+    { "path": "$.binary.mode", "reasonIncludes": "Unknown field is not supported." },
+    { "path": "$.versionResolver", "reasonIncludes": "Unknown field is not supported." }
   ]
 }

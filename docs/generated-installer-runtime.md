@@ -4,7 +4,7 @@
 
 The generated script contains a small runtime that parses arguments, detects the host target, resolves GitHub Release asset URLs, downloads an archive and checksum file, verifies the archive checksum, extracts the configured binary entry, and places the binary in the install directory.
 
-This document describes runtime mechanics: how arguments are parsed, how URLs are encoded, how checksum lookup is implemented, and how extraction and binary placement work. Resolver-specific semantics (what a latest vs. pinned install actually resolves to, the network access boundary per resolver, reproducibility differences, and the guarantees and limits of checksum verification) are documented in [`docs/resolver-semantics.md`](./resolver-semantics.md). This document does not redefine that semantics; it references it where relevant.
+This document describes runtime mechanics: how arguments are parsed, how URLs are encoded, how checksum lookup is implemented, and how extraction and binary placement work. Latest/pinned install semantics (what a latest vs. pinned install actually resolves to, the network access boundary, reproducibility differences, and the guarantees and limits of checksum verification) are documented in [`docs/resolver-semantics.md`](./resolver-semantics.md). This document does not redefine that semantics; it references it where relevant.
 
 ## Arguments
 
@@ -18,7 +18,7 @@ The generated installer accepts:
 --help
 ```
 
-Omitting `--version` installs the latest release according to the configured resolver.
+Omitting `--version` installs the latest release; whether that resolves an actual release tag depends on whether `archive.nameTemplate` contains `{version}` (see below).
 
 Passing `--version <version>` installs the pinned release tag. `--version latest` is rejected because latest installs are represented by omitting `--version`.
 
@@ -84,27 +84,29 @@ The case values shown above are the default mapping — each canonical architect
 
 Both `install_latest` and `install_pin` validate the version as a Git tag name inside the runtime, using a helper that mirrors checking `refs/tags/<version>` as a Git refname. The generated script does not depend on the `git` command. Empty values, `latest`, whitespace, control characters, and other refname-invalid values are rejected as unsafe version strings.
 
-For the `release_version_file` resolver, `install_latest` downloads the configured version file asset (`versionResolver.fileName`; represented below as `VERSION`) from the GitHub Release `latest/download` URL and reads its content as the release tag name:
+Whether `install_latest` resolves an actual release tag is decided entirely by whether `archive.nameTemplate` contains `{version}` (0 or 1 occurrences only; 2+ is a generation-time error) — there is no separate resolver concept to configure.
 
-- The content is treated as a single line holding the release tag name.
-- Only a single trailing `LF` or `CRLF` is removed as a line terminator.
-- Any remaining `CR` or `LF` makes it a multiple-line `VERSION`, which is rejected.
-- Empty content is rejected.
-- Leading and trailing whitespace is not auto-trimmed; whitespace that violates Git tag validation is rejected as an unsafe version string.
+For a template **with** `{version}`, `install_latest` runs a checksum-index scan before it can build the archive filename:
 
-The resolved version is logged before download. `install_pin` never fetches the version file asset.
+1. It downloads the configured checksum file (`checksum.fileName`) from the GitHub Release `latest/download` URL. This copy is used only as a version-resolution index — it is not the copy verified against the downloaded archive.
+2. It expands every placeholder except `{version}` for the detected target, producing a literal prefix and suffix around where `{version}` sits in the template.
+3. It scans the index's filename column (exact whitespace-delimited field, same as checksum lookup) for entries starting with that prefix and ending with that suffix, using literal string matching — never a regex or glob. Zero matches or two-or-more distinct matches is a hard error.
+4. The substring between the prefix and suffix is the candidate release tag. It must pass Git tag validation, and it must not contain `/`, `\`, whitespace, or control characters — tags containing `/` are valid Git tags but are rejected here, since a `/` in an archive filename component cannot round-trip correctly (`--version` pinning still accepts such tags directly).
+5. Once resolved, the checksum file and archive asset are re-downloaded from the resolved tag's `/releases/download/<tag>/` URL, and it is this tag-specific checksum file — not the index copy — that verification runs against.
+
+The resolved version is logged before the tag-specific download. `install_pin` never performs the checksum-index scan.
 
 The release tag version is used two ways, which are kept distinct: it is percent-encoded as a URL path segment for the GitHub Release URL, and it is expanded raw (not URL-encoded) into the `{version}` placeholder of the archive filename template. The expanded archive filename is then re-validated so that a Git-tag-valid version producing an unsafe archive filename (for example a tag containing `/`) is rejected.
 
-The `installerer` browser app never fetches, generates, places, or manages the `VERSION` asset. It only emits an installer script that performs this resolution at runtime.
+The `installerer` browser app never fetches any GitHub Release asset. It only emits an installer script that performs this resolution at runtime; a separate offline, pure function (`checkExpectedReleaseTag`, exported from `@installerer/core/expectedReleaseTag`) mirrors the same prefix/suffix algorithm so the Web UI can check a pasted checksum file or archive filename against the configured template without fetching anything.
 
-For the `latest_asset` resolver, `install_latest` does not resolve a release tag at all. It downloads the checksum file and the archive asset directly from the GitHub Release `latest/download` URL:
+For a template **without** `{version}`, `install_latest` does not resolve a release tag at all. It downloads the checksum file and the archive asset directly from the GitHub Release `latest/download` URL:
 
-- The archive filename is rendered from a versionless template. Because no release tag is resolved, `latest_asset` rejects `archive.nameTemplate` values that contain `{version}` at generation time as a hard error.
+- The archive filename is rendered from the versionless template.
 - The install source is logged as `latest`; no resolved version is logged.
-- The checksum file and the archive asset are fetched with two separate requests to `latest/download`. If the latest release changes between those requests, the checksum file and the archive can come from different releases. That inconsistency surfaces as a checksum mismatch and stops with a hard error. `latest_asset` does not pin the latest install to a single release tag; use `release_version_file` when an atomic latest resolution is required.
+- The checksum file and the archive asset are fetched with two separate requests to `latest/download`. If the latest release changes between those requests, the checksum file and the archive can come from different releases. That inconsistency surfaces as a checksum mismatch and stops with a hard error. A versionless template does not pin the latest install to a single release tag; use a template with `{version}` when an atomic latest resolution is required.
 
-`install_pin` for `latest_asset` behaves like the pinned install for `release_version_file`: the `--version` value is validated as a Git tag name, percent-encoded as a URL path segment, and used in the `/releases/download/<encoded version>/<asset>` URL. The archive filename is still rendered from the versionless template, so the URL-encoded version is never used as part of the archive filename.
+`install_pin` behaves the same regardless of `{version}` presence: the `--version` value is validated as a Git tag name, percent-encoded as a URL path segment, and used in the `/releases/download/<encoded version>/<asset>` URL.
 
 ## Runtime Dependencies
 

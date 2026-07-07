@@ -19,5 +19,21 @@ export function renderGitTag(): string {
   done
   return 0
 }
+
+# A Git tag may legitimately contain '/' (e.g. "release/v1.2.3"), but a value
+# extracted from a checksum-index archive filename cannot: '/' would split it
+# across path segments. installerer treats such tags as unsupported for
+# {version} extraction (issue #111) even though --version pinning still
+# accepts them.
+is_filename_unsafe_tag() {
+  value=$1
+  case "$value" in
+    */*|*\\\\*) return 0 ;;
+  esac
+  if LC_ALL=C printf '%s' "$value" | grep -q '[[:cntrl:][:space:]]'; then
+    return 0
+  fi
+  return 1
+}
 `;
 }
