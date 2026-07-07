@@ -1,11 +1,9 @@
 import type { ArchiveNamePreview } from "./archiveTemplate";
+import { localInstallCommandExamples } from "./installCommandExamples";
 import type { InstallerConfig } from "./installerConfig";
+import { urlEncodePathSegment } from "./urlPathSegment";
 
-// packages/core typechecks with no DOM/Node/Bun ambient types (issue #100),
-// so the WHATWG Encoding API global — provided by every supported runtime
-// (browsers, Node.js >= 22, Bun) but not part of ECMAScript's own lib — is
-// declared module-locally with just the surface used here.
-declare const TextEncoder: new () => { encode(input: string): Uint8Array };
+export { urlEncodePathSegment } from "./urlPathSegment";
 
 export type InstallerDiagnostics = {
   typoCommands: string[];
@@ -74,7 +72,7 @@ export function buildInstallerDiagnostics(
         "Latest install first reads the version file from the latest release, then downloads assets from the resolved tag.",
         "Pinned install skips the version file and downloads checksum and archive assets from the supplied tag.",
       ],
-      installCommands: installCommandExamples(),
+      installCommands: localInstallCommandExamples(),
     };
   }
 
@@ -96,23 +94,8 @@ export function buildInstallerDiagnostics(
       "Latest install downloads checksum and archive assets directly from the latest release.",
       "Pinned install downloads checksum and archive assets from the supplied tag.",
     ],
-    installCommands: installCommandExamples(),
+    installCommands: localInstallCommandExamples(),
   };
-}
-
-export function urlEncodePathSegment(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  let encoded = "";
-
-  for (const byte of bytes) {
-    if (isUnreservedUrlByte(byte)) {
-      encoded += String.fromCharCode(byte);
-    } else {
-      encoded += `%${byte.toString(16).toUpperCase().padStart(2, "0")}`;
-    }
-  }
-
-  return encoded;
 }
 
 function githubRepoUrl(config: InstallerConfig) {
@@ -121,28 +104,4 @@ function githubRepoUrl(config: InstallerConfig) {
 
 function githubReleasesBase(config: InstallerConfig) {
   return `${githubRepoUrl(config)}/releases`;
-}
-
-function isUnreservedUrlByte(byte: number) {
-  return (
-    (byte >= 0x30 && byte <= 0x39) ||
-    (byte >= 0x41 && byte <= 0x5a) ||
-    (byte >= 0x61 && byte <= 0x7a) ||
-    byte === 0x2d ||
-    byte === 0x2e ||
-    byte === 0x5f ||
-    byte === 0x7e
-  );
-}
-
-function installCommandExamples() {
-  return {
-    valid: [
-      "sh install.sh",
-      `sh install.sh --version ${EXAMPLE_PINNED_VERSION}`,
-      'sh install.sh --install-dir "$HOME/bin"',
-      `sh install.sh --version ${EXAMPLE_PINNED_VERSION} --install-dir "$HOME/bin"`,
-    ],
-    invalid: ["sh install.sh --version latest"],
-  };
 }

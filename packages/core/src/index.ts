@@ -20,6 +20,7 @@ export {
   type ValidationError,
   type VersionResolver,
 } from "./installerConfig";
+export { buildInstallCommandExamples, type InstallCommandExamples } from "./installCommandExamples";
 export { buildInstallerDiagnostics, type InstallerDiagnostics } from "./installerDiagnostics";
 export { generateInstaller, previewArchiveNames } from "./installerGenerator";
 export { resolveRuntimeDependencies } from "./runtimeDependencies/resolve";

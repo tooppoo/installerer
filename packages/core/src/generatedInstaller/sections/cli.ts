@@ -1,3 +1,6 @@
+import { localInstallCommandExamples } from "../../installCommandExamples";
+import { shellLiteral } from "../shell";
+
 export function renderMain(): string {
   return `main() {
   version=
@@ -68,12 +71,44 @@ export function renderMain(): string {
 `;
 }
 
+/**
+ * `usage()` documents the CLI surface: option descriptions and local
+ * execution examples. It deliberately does not document a remote curl
+ * install command — that lives in the `installerer` generator CLI's own
+ * `--help` and the Web UI instead (issue #110), both built from the same
+ * `buildInstallCommandExamples` core helper this module's local examples
+ * also come from (`localInstallCommandExamples`), so a generated
+ * `install.sh` stays focused on how to run the script you already have in
+ * hand.
+ *
+ * The `$0`-bearing lines are intentionally double-quoted so the shell
+ * expands `$0` to the real invocation name at runtime; every other line is a
+ * static example and is single-quoted via `shellLiteral` so literal example
+ * text like `$HOME/bin` is never expanded by the running shell.
+ */
 export function renderUsage(): string {
+  const localCommands = localInstallCommandExamples();
+
+  const staticLines = [
+    "",
+    "options:",
+    "  --version <version>     Install a specific release tag instead of latest.",
+    "  --install-dir <dir>     Install into <dir> instead of the default install directory.",
+    "  --requirements          Print the runtime requirements for this installer.",
+    "  --check-requirements    Check whether runtime requirements are satisfied.",
+    "  --help                  Show this help message.",
+    "",
+    "local execution examples:",
+    ...localCommands.valid.map((command) => `  ${command}`),
+  ];
+  const staticBody = staticLines.map((line) => `  printf '%s\\n' ${shellLiteral(line)}`).join("\n");
+
   return `usage() {
   printf '%s\\n' "usage: $0 [--version <version>] [--install-dir <dir>]"
   printf '%s\\n' "       $0 --requirements [--check-requirements]"
   printf '%s\\n' "       $0 --check-requirements"
   printf '%s\\n' "       $0 --help"
+${staticBody}
 }
 
 `;

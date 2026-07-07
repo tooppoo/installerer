@@ -3,6 +3,7 @@ import "./index.css";
 import { useMemo, useState } from "react";
 
 import packageJson from "../../../package.json";
+import { buildInstallCommandExamples } from "@installerer/core/installCommandExamples";
 import { validateInstallerConfig } from "@installerer/core/installerConfig";
 import { buildInstallerDiagnostics } from "@installerer/core/installerDiagnostics";
 import { generateInstaller } from "@installerer/core/installerGenerator";
@@ -51,6 +52,7 @@ export function App() {
   const [form, setForm] = useState<InstallerFormState>(initialFormState);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [contractCopyState, setContractCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [curlCopyState, setCurlCopyState] = useState<"idle" | "copied" | "error">("idle");
 
   const configForCore = useMemo(() => buildInstallerConfig(form), [form]);
   const result = useMemo(() => validateInstallerConfig(configForCore), [configForCore]);
@@ -61,6 +63,10 @@ export function App() {
   const runtimeRequirementsText = useMemo(
     () =>
       result.ok ? renderRuntimeRequirementsText(resolveRuntimeDependencies(result.config)) : null,
+    [result],
+  );
+  const installCommandExamples = useMemo(
+    () => (result.ok ? buildInstallCommandExamples(result.config) : null),
     [result],
   );
 
@@ -100,6 +106,19 @@ export function App() {
       setCopyState("error");
     }
     window.setTimeout(() => setCopyState("idle"), 2000);
+  };
+
+  const onCopyCurl = async () => {
+    if (installCommandExamples === null) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(installCommandExamples.standardCurlCommand);
+      setCurlCopyState("copied");
+    } catch {
+      setCurlCopyState("error");
+    }
+    window.setTimeout(() => setCurlCopyState("idle"), 2000);
   };
 
   const onCopyContract = async () => {
@@ -553,6 +572,40 @@ export function App() {
             </details>
           </div>
         </section>
+
+        {statusOk && installCommandExamples !== null ? (
+          <section className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[#4a4037]">Standard curl install</h2>
+              <button
+                type="button"
+                onClick={onCopyCurl}
+                className="border border-[#287047] bg-[#e2f2df] px-4 py-1.5 text-sm font-semibold text-[#174c2e] transition-colors hover:bg-[#d0ebca]"
+              >
+                {curlCopyState === "copied"
+                  ? "Copied!"
+                  : curlCopyState === "error"
+                    ? "Copy failed"
+                    : "Copy"}
+              </button>
+            </div>
+            <pre className="overflow-auto whitespace-pre-wrap break-words border border-[#4d5c57] bg-[#111816] p-4 font-mono text-xs leading-5 text-[#e9f0ea]">
+              {installCommandExamples.standardCurlCommand}
+            </pre>
+            <p className="text-xs leading-4 text-[#6d625a]">
+              {installCommandExamples.standardCurlAssumption}
+            </p>
+
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xs font-semibold uppercase text-[#4a4037]">
+                Review-first alternative
+              </h3>
+              <pre className="overflow-auto whitespace-pre-wrap break-words border border-[#aeb8a8] bg-white p-3 font-mono text-xs leading-5 text-[#3b2f2a]">
+                {installCommandExamples.reviewFirstCommands.join("\n")}
+              </pre>
+            </div>
+          </section>
+        ) : null}
 
         {statusOk && installer !== null ? (
           <section className="flex flex-col gap-2">

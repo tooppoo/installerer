@@ -50,22 +50,44 @@ describe("renderHelpText", () => {
     expect(text).toContain(["Options:", "  -h, --help"].join("\n"));
   });
 
-  test("renders sections in the order abstraction, usage, commands, options", () => {
+  test("omits the examples section when examples is not given", () => {
+    const text = renderHelpText({
+      abstraction: "example CLI",
+      usage: ["example <command>"],
+    });
+
+    expect(text).not.toContain("Examples:");
+  });
+
+  test("renders the examples section when examples is given", () => {
+    const text = renderHelpText({
+      abstraction: "example CLI",
+      usage: ["example <command>"],
+      examples: ["example init --name demo"],
+    });
+
+    expect(text).toContain(["Examples:", "  example init --name demo"].join("\n"));
+  });
+
+  test("renders sections in the order abstraction, usage, commands, options, examples", () => {
     const text = renderHelpText({
       abstraction: "example CLI",
       usage: ["example <command>"],
       commands: ["example init"],
       options: ["-h, --help"],
+      examples: ["example init --name demo"],
     });
 
     const abstractionIndex = text.indexOf("example CLI");
     const usageIndex = text.indexOf("Usage:");
     const commandsIndex = text.indexOf("Commands:");
     const optionsIndex = text.indexOf("Options:");
+    const examplesIndex = text.indexOf("Examples:");
 
     expect(abstractionIndex).toBeLessThan(usageIndex);
     expect(usageIndex).toBeLessThan(commandsIndex);
     expect(commandsIndex).toBeLessThan(optionsIndex);
+    expect(optionsIndex).toBeLessThan(examplesIndex);
   });
 
   test("ends with exactly one trailing newline", () => {

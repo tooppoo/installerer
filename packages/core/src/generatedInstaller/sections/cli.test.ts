@@ -61,3 +61,48 @@ describe("main() install-option / test-option handling", () => {
     expect(result.stdout).toContain("usage:");
   });
 });
+
+describe("--help output content (issue #110)", () => {
+  test("describes every option", () => {
+    const script = generateScript();
+
+    const result = spawnSync("sh", ["-s", "--", "--help"], {
+      input: script,
+      encoding: "utf8",
+    });
+
+    expect(result.stdout).toContain("--version <version>");
+    expect(result.stdout).toContain("--install-dir <dir>");
+    expect(result.stdout).toContain("--requirements ");
+    expect(result.stdout).toContain("--check-requirements ");
+    expect(result.stdout).toContain("--help ");
+  });
+
+  test("includes local execution examples", () => {
+    const script = generateScript();
+
+    const result = spawnSync("sh", ["-s", "--", "--help"], {
+      input: script,
+      encoding: "utf8",
+    });
+
+    expect(result.stdout).toContain("sh install.sh");
+    expect(result.stdout).toContain("sh install.sh --version v0.1.2");
+    expect(result.stdout).toContain('sh install.sh --install-dir "$HOME/bin"');
+  });
+
+  test("does not document a remote curl install command", () => {
+    // A generated install.sh's own --help stays scoped to how to run the
+    // script you already have; the curl install command lives in the
+    // installerer generator CLI's --help and the Web UI instead.
+    const script = generateScript();
+
+    const result = spawnSync("sh", ["-s", "--", "--help"], {
+      input: script,
+      encoding: "utf8",
+    });
+
+    expect(result.stdout).not.toContain("curl");
+    expect(result.stdout).not.toContain("raw.githubusercontent.com");
+  });
+});

@@ -23,6 +23,15 @@ describe("topLevelHelpText", () => {
         "  -h, --help",
         "  -v, --version",
         "",
+        "Examples:",
+        "  curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/refs/heads/main/install.sh | sh",
+        "  Assumes install.sh is committed at /install.sh on the main branch.",
+        "  curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/refs/heads/main/install.sh | sh -s -- --version v0.1.2",
+        '  curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/refs/heads/main/install.sh | sh -s -- --install-dir "$HOME/bin"',
+        "  curl -fsSLO https://raw.githubusercontent.com/<owner>/<repo>/refs/heads/main/install.sh",
+        "  sh ./install.sh --help",
+        "  sh ./install.sh",
+        "",
       ].join("\n"),
     );
   });
@@ -45,5 +54,36 @@ describe("topLevelHelpText", () => {
   test("lists -h, --help and -v, --version in options", () => {
     expect(topLevelHelpFrame.options).toContain("-h, --help");
     expect(topLevelHelpFrame.options).toContain("-v, --version");
+  });
+
+  test("shows a standard curl install example built from the shared core helper", () => {
+    const examples = topLevelHelpFrame.examples ?? [];
+
+    expect(examples).toContain(
+      "curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/refs/heads/main/install.sh | sh",
+    );
+  });
+
+  test("passes installer arguments via sh -s -- in the curl examples", () => {
+    const text = topLevelHelpText;
+
+    expect(text).toContain("| sh -s -- --version");
+    expect(text).toContain('| sh -s -- --install-dir "$HOME/bin"');
+  });
+
+  test("includes the review-first alternative commands", () => {
+    const text = topLevelHelpText;
+
+    expect(text).toContain("curl -fsSLO");
+    expect(text).toContain("sh ./install.sh --help");
+    expect(text).toContain("sh ./install.sh");
+  });
+
+  test("uses a placeholder owner/repo since no config is loaded at the top level", () => {
+    const examples = topLevelHelpFrame.examples ?? [];
+
+    for (const example of examples) {
+      expect(example).not.toMatch(/raw\.githubusercontent\.com\/(?!<owner>\/<repo>)/);
+    }
   });
 });

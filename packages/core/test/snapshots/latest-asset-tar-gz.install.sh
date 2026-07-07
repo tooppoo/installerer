@@ -116,6 +116,19 @@ usage() {
   printf '%s\n' "       $0 --requirements [--check-requirements]"
   printf '%s\n' "       $0 --check-requirements"
   printf '%s\n' "       $0 --help"
+  printf '%s\n' ''
+  printf '%s\n' 'options:'
+  printf '%s\n' '  --version <version>     Install a specific release tag instead of latest.'
+  printf '%s\n' '  --install-dir <dir>     Install into <dir> instead of the default install directory.'
+  printf '%s\n' '  --requirements          Print the runtime requirements for this installer.'
+  printf '%s\n' '  --check-requirements    Check whether runtime requirements are satisfied.'
+  printf '%s\n' '  --help                  Show this help message.'
+  printf '%s\n' ''
+  printf '%s\n' 'local execution examples:'
+  printf '%s\n' '  sh install.sh'
+  printf '%s\n' '  sh install.sh --version v0.1.2'
+  printf '%s\n' '  sh install.sh --install-dir "$HOME/bin"'
+  printf '%s\n' '  sh install.sh --version v0.1.2 --install-dir "$HOME/bin"'
 }
 
 print_requirements() {
