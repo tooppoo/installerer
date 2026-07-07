@@ -10,7 +10,7 @@ sudo apt install shellcheck -y
 # attribute. Pin a known-good version via the official installer instead.
 JUST_VERSION="1.40.0"
 curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \
-  | sudo bash -s -- --to "$HOME"/.local/bin --tag "$JUST_VERSION"
+  | bash -s -- --to "$HOME"/.local/bin --tag "$JUST_VERSION"
 
 just --version
 shellcheck --version
