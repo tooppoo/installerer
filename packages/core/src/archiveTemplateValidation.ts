@@ -82,17 +82,6 @@ export function validateArchiveTemplateForConfig(
   }));
   const graphValidator = createArchiveTemplateGraphValidator();
 
-  if (
-    config.versionResolver.type === "latest_asset" &&
-    templateUsesPlaceholder(segments, "version")
-  ) {
-    errors.push({
-      path: "$.archive.nameTemplate",
-      reason: "latest_asset archives must use versionless archive filename templates.",
-      expected: "omit {version} or use release_version_file",
-    });
-  }
-
   for (const segment of segments) {
     if (segment.type === "literal") {
       if (hasArchiveFilenameHardChars(segment.value)) {
@@ -220,6 +209,7 @@ export function buildInstallLatestGraph(
   config: InstallerConfig,
   segments: ArchiveTemplateSegment[],
 ): ModeGraph {
+  const hasVersion = templateUsesPlaceholder(segments, "version");
   const edges: GraphEdge[] = [
     { derived: "target", source: "os" },
     { derived: "target", source: "arch" },
@@ -235,24 +225,22 @@ export function buildInstallLatestGraph(
     { derived: "archive_path", source: "fixed local archive filename" },
   ];
 
-  if (config.versionResolver.type === "release_version_file") {
+  if (hasVersion) {
     edges.push(
-      { derived: "resolved_version", source: "versionResolver.fileName" },
+      { derived: "checksum_index_url", source: "owner" },
+      { derived: "checksum_index_url", source: "repo" },
+      { derived: "checksum_index_url", source: "checksum.fileName" },
+      { derived: "expected_release_tag", source: "checksum_index_url" },
+      { derived: "expected_release_tag", source: "checksum.fileName" },
+      { derived: "resolved_version", source: "expected_release_tag" },
       { derived: "archive_url", source: "resolved_version" },
       { derived: "checksum_url", source: "resolved_version" },
-      { derived: "version_file_url", source: "owner" },
-      { derived: "version_file_url", source: "repo" },
-      { derived: "version_file_url", source: "versionResolver.fileName" },
     );
   }
 
-  addArchiveTemplateEdges(
-    edges,
-    segments,
-    config.versionResolver.type === "release_version_file" ? "resolved_version" : undefined,
-  );
+  addArchiveTemplateEdges(edges, segments, hasVersion ? "resolved_version" : undefined);
 
-  return { mode: "install_latest", edges, directContexts: installDirectContexts(config) };
+  return { mode: "install_latest", edges, directContexts: installDirectContexts() };
 }
 
 export function buildInstallPinGraph(
@@ -282,7 +270,7 @@ export function buildInstallPinGraph(
     templateUsesPlaceholder(segments, "version") ? "pinned_version" : undefined,
   );
 
-  return { mode: "install_pin", edges, directContexts: installDirectContexts(config) };
+  return { mode: "install_pin", edges, directContexts: installDirectContexts() };
 }
 
 /**
@@ -328,7 +316,7 @@ function addArchiveTemplateEdges(
   }
 }
 
-function installDirectContexts(config: InstallerConfig): DirectContextsByVariable {
+function installDirectContexts(): DirectContextsByVariable {
   return {
     archive_asset_name: [
       "archive filename context",
@@ -346,15 +334,6 @@ function installDirectContexts(config: InstallerConfig): DirectContextsByVariabl
     archive_path: ["local filesystem context", "shell command argument context"],
     resolved_version: ["Git tag context", "Release URL path segment context"],
     pinned_version: ["Git tag context", "Release URL path segment context"],
-    ...(config.versionResolver.type === "release_version_file"
-      ? {
-          "versionResolver.fileName": [
-            "safe filename context",
-            "Release URL path segment context",
-            "shell literal context",
-          ],
-        }
-      : {}),
   };
 }
 
@@ -393,14 +372,6 @@ function graphSourceValuesForConfig(config: InstallerConfig): GraphSourceValuesB
       path: "$.architectureLabels.darwin.aarch64",
       value: config.architectureLabels.darwin.aarch64,
     },
-    ...(config.versionResolver.type === "release_version_file"
-      ? {
-          "versionResolver.fileName": {
-            path: "$.versionResolver.fileName",
-            value: config.versionResolver.fileName,
-          },
-        }
-      : {}),
   };
 }
 

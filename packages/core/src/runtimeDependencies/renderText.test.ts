@@ -11,10 +11,6 @@ const baseConfig: InstallerConfig = {
     name: "rellog",
     pathInArchive: "bin/rellog",
   },
-  versionResolver: {
-    type: "release_version_file",
-    fileName: "VERSION",
-  },
   archive: {
     format: "tar.gz",
     nameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",

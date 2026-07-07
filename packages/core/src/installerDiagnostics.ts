@@ -1,3 +1,4 @@
+import { parseArchiveNameTemplate, templateUsesPlaceholder } from "./archiveTemplate";
 import type { ArchiveNamePreview } from "./archiveTemplate";
 import { localInstallCommandExamples } from "./installCommandExamples";
 import type { InstallerConfig } from "./installerConfig";
@@ -12,7 +13,7 @@ export type InstallerDiagnostics = {
     latest: string[];
     pinned: string[];
   };
-  resolverNotes: string[];
+  latestInstallNotes: string[];
   installCommands: {
     valid: string[];
     invalid: string[];
@@ -42,25 +43,26 @@ export function buildInstallerDiagnostics(
     EXAMPLE_PINNED_VERSION,
   )}/${urlEncodePathSegment(config.checksum.fileName)}`;
 
-  if (config.versionResolver.type === "release_version_file") {
+  const templateResult = parseArchiveNameTemplate(config.archive.nameTemplate);
+  const hasVersion =
+    templateResult.ok && templateUsesPlaceholder(templateResult.segments, "version");
+
+  if (hasVersion) {
     const resolvedBase = `${base}/download/${urlEncodePathSegment(EXAMPLE_RESOLVED_VERSION)}`;
 
     return {
       typoCommands: [
         `curl -fsIL ${githubRepoUrl(config)} >/dev/null`,
         `curl -fsIL ${base}/latest >/dev/null`,
-        `curl -fsIL ${base}/latest/download/${urlEncodePathSegment(
-          config.versionResolver.fileName,
-        )} >/dev/null`,
+        `curl -fsIL ${latestChecksumUrl} >/dev/null`,
       ],
       expectedReleaseAssets: [
-        config.versionResolver.fileName,
         config.checksum.fileName,
         ...archivePreviews.map((preview) => preview.latestName),
       ],
       urls: {
         latest: [
-          `${base}/latest/download/${urlEncodePathSegment(config.versionResolver.fileName)}`,
+          latestChecksumUrl,
           `${resolvedBase}/${urlEncodePathSegment(config.checksum.fileName)}`,
           ...archivePreviews.map(
             (preview) => `${resolvedBase}/${urlEncodePathSegment(preview.latestName)}`,
@@ -68,9 +70,9 @@ export function buildInstallerDiagnostics(
         ],
         pinned: [pinnedChecksumUrl, ...pinnedArchiveUrls],
       },
-      resolverNotes: [
-        "Latest install first reads the version file from the latest release, then downloads assets from the resolved tag.",
-        "Pinned install skips the version file and downloads checksum and archive assets from the supplied tag.",
+      latestInstallNotes: [
+        "Latest install first fetches the checksum file from the latest release as a version-resolution index, extracts the release tag from the matching archive filename, then re-downloads the checksum file and archive from that resolved tag.",
+        "Pinned install skips index resolution and downloads checksum and archive assets from the supplied tag.",
       ],
       installCommands: localInstallCommandExamples(),
     };
@@ -90,7 +92,7 @@ export function buildInstallerDiagnostics(
       latest: [latestChecksumUrl, ...latestArchiveUrls],
       pinned: [pinnedChecksumUrl, ...pinnedArchiveUrls],
     },
-    resolverNotes: [
+    latestInstallNotes: [
       "Latest install downloads checksum and archive assets directly from the latest release.",
       "Pinned install downloads checksum and archive assets from the supplied tag.",
     ],

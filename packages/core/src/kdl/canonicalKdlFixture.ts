@@ -9,8 +9,6 @@ installerer {
 
   binary name="git-kura" path-in-archive="git-kura"
 
-  version-resolver "release_version_file" file-name="VERSION"
-
   archive format="tar.gz" name-template="{repo}_{version}_{os}_{arch}.tar.gz" os-case="lowercase"
 
   checksum file-name="checksums.txt" algorithm="sha256"

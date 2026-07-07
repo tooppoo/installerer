@@ -5,10 +5,6 @@
     "name": "git-kura",
     "pathInArchive": "git-kura"
   },
-  "versionResolver": {
-    "type": "release_version_file",
-    "fileName": "VERSION"
-  },
   "archive": {
     "format": "zip",
     "nameTemplate": "{bin}_{version}_{target}.zip"

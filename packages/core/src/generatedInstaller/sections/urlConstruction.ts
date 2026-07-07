@@ -8,9 +8,15 @@ export function renderOwnerRepoPathEncoding(): string {
 `;
 }
 
-export function renderVersionFileUrl(): string {
-  return `  version_file_path=$(url_encode_segment "$VERSION_FILE_NAME")
-  version_file_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$version_file_path"
+/**
+ * The single request a {version} archive template's latest install makes
+ * before it knows the release tag (issue #111): fetches the checksum file
+ * from the latest release as a version-resolution index, scanned by
+ * `resolve_expected_release_tag` for the current target's archive filename.
+ */
+export function renderChecksumIndexUrl(): string {
+  return `  checksum_index_path_segment=$(url_encode_segment "$CHECKSUM_FILE_NAME")
+  checksum_index_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$checksum_index_path_segment"
 `;
 }
 

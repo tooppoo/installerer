@@ -3,7 +3,7 @@ import type { ArchiveFormat } from "../../src/archiveTemplate";
 
 export type GeneratedInstallerExpectation = {
   archiveFormat: ArchiveFormat;
-  resolverType: "release_version_file" | "latest_asset";
+  hasVersionPlaceholder: boolean;
 };
 
 /**
@@ -22,7 +22,7 @@ export function assertGeneratedInstallerContract(
   assertChecksumVerification(script);
   assertRemoteLocalSeparation(script);
   assertArchiveFormat(script, expectation.archiveFormat);
-  assertResolver(script, expectation.resolverType);
+  assertVersionFlow(script, expectation.hasVersionPlaceholder);
 }
 
 function assertForbiddenConstructsAbsent(script: string): void {
@@ -150,28 +150,35 @@ function assertArchiveFormat(script: string, format: ArchiveFormat): void {
   expect(script).toContain('unzip -q "$archive_path" "$BINARY_PATH_IN_ARCHIVE" -d "$extract_dir"');
 }
 
-function assertResolver(
-  script: string,
-  resolverType: GeneratedInstallerExpectation["resolverType"],
-): void {
+function assertVersionFlow(script: string, hasVersionPlaceholder: boolean): void {
   // Pinned installs always download from the encoded release tag path.
   expect(script).toContain(
     'archive_url="https://github.com/$owner_path/$repo_path/releases/download/$version_path/$archive_path_segment"',
   );
 
-  if (resolverType === "release_version_file") {
-    expect(script).toContain("read_version_file() {");
-    expect(script).toContain("VERSION_FILE_NAME=");
+  // The VERSION asset concept is gone entirely (issue #111): no config or
+  // template shape emits a version file fetch anymore.
+  expect(script).not.toContain("read_version_file");
+  expect(script).not.toContain("VERSION_FILE_NAME");
+
+  if (hasVersionPlaceholder) {
+    expect(script).toContain("resolve_expected_release_tag() {");
+    expect(script).toContain("render_archive_asset_name_prefix() {");
+    expect(script).toContain("render_archive_asset_name_suffix() {");
     expect(script).toContain(
-      'version_file_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$version_file_path"',
+      'checksum_index_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$checksum_index_path_segment"',
     );
-    expect(script).toContain('resolved_version=$(read_version_file "$version_file_url")');
+    expect(script).toContain(
+      'resolved_version=$(resolve_expected_release_tag "$checksum_index_path" "$prefix" "$suffix")',
+    );
+    // The checksum-index scan and the final verification never merge into
+    // one shared local path — they can legitimately come from two different
+    // releases if the latest release changes mid-install.
+    expect(script).toContain('checksum_index_path="$tmpdir/checksums_index"');
     return;
   }
 
-  // latest_asset: no VERSION asset handling, latest downloads are versionless.
-  expect(script).not.toContain("read_version_file");
-  expect(script).not.toContain("VERSION_FILE_NAME");
+  expect(script).not.toContain("resolve_expected_release_tag");
   expect(script).toContain(
     'archive_url="https://github.com/$owner_path/$repo_path/releases/latest/download/$archive_path_segment"',
   );

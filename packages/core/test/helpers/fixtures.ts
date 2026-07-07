@@ -12,7 +12,6 @@ export const INVALID_FIXTURE_CATEGORIES = [
   "schema",
   "template",
   "contextual-validation",
-  "resolver",
   "archive-format",
   "path-filename-safety",
 ] as const;

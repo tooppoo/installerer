@@ -18,8 +18,13 @@ export {
   type TargetArch,
   type TargetOS,
   type ValidationError,
-  type VersionResolver,
 } from "./installerConfig";
+export {
+  checkExpectedReleaseTag,
+  type ExpectedReleaseTagCheckInput,
+  type ExpectedReleaseTagCheckResult,
+  type ExpectedReleaseTagCheckSource,
+} from "./expectedReleaseTag";
 export { buildInstallCommandExamples, type InstallCommandExamples } from "./installCommandExamples";
 export { buildInstallerDiagnostics, type InstallerDiagnostics } from "./installerDiagnostics";
 export { generateInstaller, previewArchiveNames } from "./installerGenerator";

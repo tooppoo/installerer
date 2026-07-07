@@ -10,12 +10,12 @@ const validFixtures = loadValidFixtures();
 const invalidFixtures = loadInvalidFixtures();
 
 describe("fixture-driven installer generation", () => {
-  test("covers all four representative resolver/format combinations", () => {
+  test("covers all four representative with-version/without-version x format combinations", () => {
     expect(validFixtures.map((fixture) => fixture.name)).toEqual([
-      "latest-asset-tar-gz",
-      "latest-asset-zip",
-      "release-version-file-tar-gz",
-      "release-version-file-zip",
+      "with-version-tar-gz",
+      "with-version-zip",
+      "without-version-tar-gz",
+      "without-version-zip",
     ]);
   });
 
@@ -44,7 +44,7 @@ describe("fixture-driven installer generation", () => {
       test("satisfies the generated installer static assertions", () => {
         assertGeneratedInstallerContract(normalized, {
           archiveFormat: result.config.archive.format,
-          resolverType: result.config.versionResolver.type,
+          hasVersionPlaceholder: result.config.archive.nameTemplate.includes("{version}"),
         });
       });
 
@@ -66,7 +66,6 @@ describe("fixture-driven rejection paths", () => {
       "archive-format",
       "contextual-validation",
       "path-filename-safety",
-      "resolver",
       "schema",
       "template",
     ]);

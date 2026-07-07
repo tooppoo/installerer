@@ -20,15 +20,6 @@ import {
 import { rejectUnknownFields, requireObject, requireString } from "./validation";
 import type { ValidationError } from "./validation";
 
-export type VersionResolver =
-  | {
-      type: "release_version_file";
-      fileName: string;
-    }
-  | {
-      type: "latest_asset";
-    };
-
 export type TargetOS = "linux" | "darwin";
 export type TargetArch = "x86_64" | "aarch64";
 export type OsCase = "lowercase" | "capitalized";
@@ -56,7 +47,6 @@ export type InstallerConfig = {
     name: string;
     pathInArchive: string;
   };
-  versionResolver: VersionResolver;
   archive: {
     format: "tar.gz" | "zip";
     nameTemplate: string;
@@ -126,17 +116,7 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
   rejectUnknownFields(
     root,
     "$",
-    [
-      "owner",
-      "repo",
-      "binary",
-      "versionResolver",
-      "archive",
-      "checksum",
-      "targets",
-      "architectureLabels",
-      "defaults",
-    ],
+    ["owner", "repo", "binary", "archive", "checksum", "targets", "architectureLabels", "defaults"],
     errors,
   );
 
@@ -171,41 +151,6 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     : undefined;
   if (binaryPathInArchive !== undefined) {
     validateArchiveRelativePath(binaryPathInArchive, "$.binary.pathInArchive", errors);
-  }
-
-  const versionResolver = requireObject(root.versionResolver, "$.versionResolver", errors);
-  let normalizedVersionResolver: VersionResolver | undefined;
-  if (versionResolver) {
-    rejectUnknownFields(versionResolver, "$.versionResolver", ["type", "fileName"], errors);
-    const resolverType = requireString(versionResolver.type, "$.versionResolver.type", errors);
-
-    if (resolverType === "release_version_file") {
-      const fileName = requireString(
-        versionResolver.fileName,
-        "$.versionResolver.fileName",
-        errors,
-      );
-      if (fileName !== undefined) {
-        validateSafeFilename(fileName, "$.versionResolver.fileName", errors);
-        normalizedVersionResolver = { type: "release_version_file", fileName };
-      }
-    } else if (resolverType === "latest_asset") {
-      if ("fileName" in versionResolver) {
-        errors.push({
-          path: "$.versionResolver.fileName",
-          reason: "fileName is not supported for latest_asset.",
-          expected: "omit this field",
-        });
-      } else {
-        normalizedVersionResolver = { type: "latest_asset" };
-      }
-    } else if (resolverType !== undefined) {
-      errors.push({
-        path: "$.versionResolver.type",
-        reason: "Unsupported version resolver.",
-        expected: "release_version_file | latest_asset",
-      });
-    }
   }
 
   const archive = requireObject(root.archive, "$.archive", errors);
@@ -281,7 +226,6 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
     repo === undefined ||
     binaryName === undefined ||
     binaryPathInArchive === undefined ||
-    normalizedVersionResolver === undefined ||
     (archiveFormat !== "tar.gz" && archiveFormat !== "zip") ||
     archiveNameTemplate === undefined ||
     archiveOsCase === undefined ||
@@ -301,7 +245,6 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
       name: binaryName,
       pathInArchive: binaryPathInArchive,
     },
-    versionResolver: normalizedVersionResolver,
     archive: {
       format: archiveFormat,
       nameTemplate: archiveNameTemplate,
@@ -335,9 +278,16 @@ export function validateInstallerConfig(value: unknown): ParseInstallerConfigRes
   };
 }
 
+/**
+ * Mirrors the generated installer's `is_valid_git_tag` shell function
+ * (sections/gitTag.ts) exactly, including its special-cased rejection of the
+ * literal string "latest" — callers such as `checkExpectedReleaseTag` rely on
+ * this to preview runtime validation accurately.
+ */
 export function isValidGitTagName(value: string) {
   if (
     value.length === 0 ||
+    value === "latest" ||
     value.startsWith("/") ||
     value.endsWith("/") ||
     value.endsWith(".") ||

@@ -8,7 +8,7 @@ This document defines the minimum contract assumed by `installerer` and by the i
 
 `installerer` targets projects that publish installable CLI archives as GitHub Release assets.
 
-The generated installer assumes that each supported release follows the resolver-specific asset layout described below.
+The generated installer assumes that each supported release follows the asset layout described below, keyed on whether `archive.nameTemplate` contains `{version}`.
 
 The browser app itself:
 
@@ -16,10 +16,10 @@ The browser app itself:
 - does not call a backend
 - does not require authentication or tokens
 - does not fetch Release assets
-- does not fetch, generate, place, or manage a version file asset (represented as `VERSION` below; the actual asset name is `versionResolver.fileName`)
+- does not fetch, generate, place, or manage any release asset — there is no `VERSION` asset in this contract
 - does not verify checksums at generation time
 
-The generated installer script performs runtime work such as target detection, version resolution, download, checksum verification, archive extraction, and binary placement.
+The generated installer script performs runtime work such as target detection, release-tag resolution, download, checksum verification, archive extraction, and binary placement.
 
 ## Generated Installer Boundary
 
@@ -85,43 +85,38 @@ See [`docs/runtime-dependencies.md`](./runtime-dependencies.md) for the generate
 
 If any required command is missing, the generated installer should stop with a clear error.
 
-## Supported Resolvers
+## Archive Filename Templates And Latest Install Behavior
 
-`installerer` supports two resolver types:
+`installerer` has no resolver concept to select. Latest install behavior is decided entirely by whether `archive.nameTemplate` contains `{version}` (zero or one occurrences only — two or more is rejected at generation time).
 
-- `release_version_file`
-- `latest_asset`
+Below, `checksums.txt` is a representative example name, not a fixed name. The actual asset name comes from the config: `checksum.fileName`. See [`docs/resolver-semantics.md`](https://github.com/tooppoo/installerer/blob/main/docs/resolver-semantics.md) for the full latest/pinned install semantics.
 
-Below, `VERSION` and `checksums.txt` are representative example names, not fixed names. The actual asset names come from the config: the version file asset is `versionResolver.fileName`, and the checksum file asset is `checksum.fileName`. See [`docs/resolver-semantics.md`](https://github.com/tooppoo/installerer/blob/main/docs/resolver-semantics.md) for the full distinction and resolver semantics.
+### With `{version}`
 
-### `release_version_file`
-
-Use `release_version_file` when latest installs should resolve to an actual release tag.
+Use a template containing `{version}` when latest installs should resolve to an actual release tag.
 
 Each release must provide:
 
 ```text
-VERSION
 checksums.txt
 <archive assets>
 ```
 
-The version file asset (`versionResolver.fileName`, represented above as `VERSION`) must contain the release tag name as a single line. The generated installer downloads this asset from the latest release URL, reads it as the resolved release tag, and then downloads the checksum file and archive assets from the resolved release tag URL.
+There is no separate version file asset. The generated installer downloads the checksum file from the latest release URL and uses it as a version-resolution index: it scans the filename column for the one entry matching this target's archive name pattern (literal prefix/suffix around `{version}`, never a regex or glob), extracts the substring in between as the candidate release tag, validates it as a Git tag that is also safe as a filename component (no `/`, `\`, whitespace, or control characters), then downloads the checksum file and archive assets again from the resolved release tag URL.
 
-Archive filename templates may include `{version}` for this resolver.
+Each release's asset names must be unique per target under this prefix/suffix scan — if two assets both match one target's pattern, the latest install fails as ambiguous.
 
 Example asset layout:
 
 ```text
-VERSION
 checksums.txt
 rellog_v0.1.2_linux_x86_64.tar.gz
 rellog_v0.1.2_darwin_aarch64.tar.gz
 ```
 
-### `latest_asset`
+### Without `{version}`
 
-Use `latest_asset` when releases provide versionless archive asset names and latest installs can download directly from GitHub's latest release asset URL.
+Use a versionless template when releases provide versionless archive asset names and latest installs can download directly from GitHub's latest release asset URL.
 
 Each release must provide:
 
@@ -131,8 +126,6 @@ checksums.txt
 ```
 
 The generated installer does not resolve the actual latest release tag for latest installs. It downloads the checksum file and archive asset directly from `/releases/latest/download/<asset>`.
-
-Archive filename templates must not include `{version}` for this resolver.
 
 Example asset layout:
 
@@ -156,20 +149,20 @@ Checksum verification is mandatory before installation.
 
 Checksum verification detects download corruption and inconsistencies among release assets. It does not prove maintainer identity, release asset authenticity, supply-chain provenance, or immutability of an already-published GitHub Release asset.
 
-### Archive format and version resolver
+### Archive format and archive filename template
 
-Archive format and version resolver are independent choices.
+Archive format and archive filename template shape are independent choices.
 
-Any supported resolver can use either `tar.gz` or `zip`.
+Either can use either `tar.gz` or `zip`, with or without `{version}`.
 
 The archive filename pattern must satisfy both selected options:
 
-Changing the archive format or resolver does not automatically rewrite the archive filename pattern. The pattern must be updated explicitly when its suffix or `{version}` usage no longer matches the selected options.
+Changing the archive format or `{version}` usage does not automatically rewrite the archive filename pattern. The pattern must be updated explicitly when its suffix or `{version}` usage no longer matches the selected options.
 
 ## Detailed Runtime Behavior
 
 This document intentionally describes the minimum contract.
 
-Resolver semantics, the network access boundary, latest/pinned install reproducibility, and the guarantees and limits of checksum verification are documented in [`resolver-semantics.md`](./resolver-semantics.md).
+Latest/pinned install semantics, the network access boundary, reproducibility, and the guarantees and limits of checksum verification are documented in [`resolver-semantics.md`](./resolver-semantics.md), including the offline "expected release tag check" the Web UI offers for `{version}` templates.
 
 Runtime mechanics such as argument parsing, URL encoding policy, extraction policy, and binary placement rules are documented in [`generated-installer-runtime.md`](./generated-installer-runtime.md).

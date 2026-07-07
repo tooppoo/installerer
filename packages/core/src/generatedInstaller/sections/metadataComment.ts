@@ -18,10 +18,6 @@ export function renderMetadataComment({ config }: RenderContext): string {
     ["repo", config.repo],
     ["binary.name", config.binary.name],
     ["binary.pathInArchive", config.binary.pathInArchive],
-    ["versionResolver.type", config.versionResolver.type],
-    ...(config.versionResolver.type === "release_version_file"
-      ? ([["versionResolver.fileName", config.versionResolver.fileName]] as Array<[string, string]>)
-      : []),
     ["archive.format", config.archive.format],
     ["archive.nameTemplate", config.archive.nameTemplate],
     ["archive.osCase", config.archive.osCase],

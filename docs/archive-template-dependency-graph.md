@@ -66,21 +66,33 @@ For example, in `install_pin`, `pinned_version` only gains `"archive filename co
 | `version_arg` | `shell command argument context`, `Git tag context` |
 | `dispatch`    | `argument parsing context`                          |
 
-`install_latest` and `install_pin` share the same direct-context table (`installDirectContexts`), plus `versionResolver.fileName` when `versionResolver.type === "release_version_file"`:
+`install_latest` and `install_pin` share the same direct-context table (`installDirectContexts`, which takes no config-specific parameters — there is no longer a resolver-conditional row):
 
-| Variable                                                     | Direct contexts                                                                      |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `archive_asset_name`                                         | `archive filename context`, `checksum lookup context`, `shell literal context`       |
-| `archive_url`                                                | `Release URL context`, `shell command argument context`                              |
-| `checksum_url`                                               | `Release URL context`, `shell command argument context`                              |
-| `checksum_lookup_key`                                        | `checksum lookup context`                                                            |
-| `checksum.fileName`                                          | `safe filename context`, `Release URL path segment context`, `shell literal context` |
-| `archive_path`                                               | `local filesystem context`, `shell command argument context`                         |
-| `resolved_version` (`install_latest` only)                   | `Git tag context`, `Release URL path segment context`                                |
-| `pinned_version` (`install_pin` only)                        | `Git tag context`, `Release URL path segment context`                                |
-| `versionResolver.fileName` (only for `release_version_file`) | `safe filename context`, `Release URL path segment context`, `shell literal context` |
+| Variable                                   | Direct contexts                                                                      |
+| ------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `archive_asset_name`                       | `archive filename context`, `checksum lookup context`, `shell literal context`       |
+| `archive_url`                              | `Release URL context`, `shell command argument context`                              |
+| `checksum_url`                             | `Release URL context`, `shell command argument context`                              |
+| `checksum_lookup_key`                      | `checksum lookup context`                                                            |
+| `checksum.fileName`                        | `safe filename context`, `Release URL path segment context`, `shell literal context` |
+| `archive_path`                             | `local filesystem context`, `shell command argument context`                         |
+| `resolved_version` (`install_latest` only) | `Git tag context`, `Release URL path segment context`                                |
+| `pinned_version` (`install_pin` only)      | `Git tag context`, `Release URL path segment context`                                |
 
-Edges then connect config-derived source variables (`owner`, `repo`, `bin`, `os`, `arch`, `target`, template literal segments, and — for `install_latest` with `release_version_file` — `versionResolver.fileName` → `resolved_version`) up into `archive_asset_name`, `archive_url`, `checksum_url`, `checksum_lookup_key`, and `archive_path`. `addArchiveTemplateEdges` adds one `archive_asset_name ← <placeholder>` edge per placeholder actually present in `archive.nameTemplate`, so unused placeholders never contribute contexts.
+For a `{version}` archive template, `buildInstallLatestGraph` adds a checksum-index resolution chain ahead of `resolved_version` instead of the old version-file chain:
+
+```text
+{ derived: "checksum_index_url", source: "owner" }
+{ derived: "checksum_index_url", source: "repo" }
+{ derived: "checksum_index_url", source: "checksum.fileName" }
+{ derived: "expected_release_tag", source: "checksum_index_url" }
+{ derived: "expected_release_tag", source: "checksum.fileName" }
+{ derived: "resolved_version", source: "expected_release_tag" }
+```
+
+`expected_release_tag` gets no direct contexts of its own — it inherits `Git tag context` and `Release URL path segment context` purely by backward propagation through the edge into `resolved_version`, exactly as `resolved_version`/`pinned_version` already did before this chain existed. Enforcing tag validity and archive-filename safety on the extracted candidate remains a runtime-only check in the generated shell (`is_valid_git_tag`, `is_filename_unsafe_tag`), not something this graph validates statically — `checksum.fileName` itself is unaffected, since it is validated as a safe filename independently of whatever the checksum-index scan later extracts from its contents.
+
+Edges then connect config-derived source variables (`owner`, `repo`, `bin`, `os`, `arch`, `target`, template literal segments, and — for a `{version}` template's `install_latest` — the checksum-index chain above, ending at `resolved_version`) up into `archive_asset_name`, `archive_url`, `checksum_url`, `checksum_lookup_key`, and `archive_path`. `addArchiveTemplateEdges` adds one `archive_asset_name ← <placeholder>` edge per placeholder actually present in `archive.nameTemplate`, so unused placeholders never contribute contexts.
 
 ### `asset_arch_label` (Issue #76)
 
@@ -155,7 +167,7 @@ classDiagram
     note for RemoteAssetMustNotFlowIntoLocalPathRule "Structural rule: reads archive_path and<br/>archive_asset_name context sets directly,<br/>not per-value via GraphSourceValuesByVariable."
 ```
 
-`graphSourceValuesForConfig` maps graph variable names back to the actual JSON config field and its path (`owner`, `repo`, `bin`, `checksum.fileName`, `archive.nameTemplate` literal segments, and conditionally `versionResolver.fileName`), so the three per-value rules can report a real `$.`-prefixed path when they reject a value.
+`graphSourceValuesForConfig` maps graph variable names back to the actual JSON config field and its path (`owner`, `repo`, `bin`, `checksum.fileName`, `archive.nameTemplate` literal segments, and the `architectureLabels.<os>.<arch>` entries), so the three per-value rules can report a real `$.`-prefixed path when they reject a value.
 
 ### Rules
 

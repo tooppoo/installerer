@@ -1,6 +1,6 @@
 import type { RenderContext } from "./renderContext";
 import { renderArchitectureLabel } from "./sections/architectureLabel";
-import { renderArchiveName } from "./sections/archiveName";
+import { renderArchiveName, renderArchiveNamePrefixSuffix } from "./sections/archiveName";
 import { renderVerifySha256 } from "./sections/checksum";
 import { renderMain, renderMainInvocation, renderUsage } from "./sections/cli";
 import { renderConstants } from "./sections/constants";
@@ -23,7 +23,7 @@ import { renderPrintRequirements } from "./sections/requirements";
 import { renderRuntimeValidation } from "./sections/runtimeValidation";
 import { renderTarget } from "./sections/target";
 import { renderUrlEncoding } from "./sections/urlEncoding";
-import { renderVersionResolver } from "./sections/versionResolver";
+import { renderVersionResolution } from "./sections/versionResolution";
 
 /**
  * Composes the generated installer from its section renderers. Each section
@@ -43,12 +43,13 @@ export function composeInstallerScript(context: RenderContext): string {
     renderDependencies(context),
     renderUrlEncoding(),
     renderGitTag(),
-    renderVersionResolver(context),
+    renderVersionResolution(context),
     renderRuntimeValidation(),
     renderInstallDir(),
     renderTarget(context),
     renderArchitectureLabel(context),
     renderArchiveName(context),
+    renderArchiveNamePrefixSuffix(context),
     renderCurlDownload(),
     renderVerifySha256(),
     renderExtractArchive(),

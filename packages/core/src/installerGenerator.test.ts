@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { generateInstaller, previewArchiveNames, shellLiteral } from "./installerGenerator";
 import { validateInstallerConfig } from "./installerConfig";
@@ -10,10 +13,6 @@ const configInput = {
   binary: {
     name: "rellog",
     pathInArchive: "bin/rellog",
-  },
-  versionResolver: {
-    type: "release_version_file",
-    fileName: "VERSION",
   },
   archive: {
     format: "tar.gz",
@@ -133,37 +132,40 @@ describe("installer generation", () => {
     );
   });
 
-  test("release_version_file latest install resolves and logs the version, latest_asset does not", () => {
+  test("with {version}, latest install emits checksum-index resolution and never a VERSION asset", () => {
     const result = validateInstallerConfig(configInput);
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
     }
     const script = generateInstaller(result.config);
-    expect(script).toContain("read_version_file()");
-    expect(script).toContain("VERSION file must contain a single line");
-    expect(script).toContain("VERSION file is empty");
-    expect(script).toContain('resolved_version=$(read_version_file "$version_file_url") || exit 1');
+    expect(script).toContain("resolve_expected_release_tag()");
+    expect(script).toContain("render_archive_asset_name_prefix()");
+    expect(script).toContain("render_archive_asset_name_suffix()");
+    expect(script).toContain(
+      'resolved_version=$(resolve_expected_release_tag "$checksum_index_path" "$prefix" "$suffix") || exit 1',
+    );
     expect(script).toContain("installerer: resolved latest version $resolved_version");
+    expect(script).not.toContain("read_version_file");
+    expect(script).not.toContain("VERSION_FILE_NAME");
 
-    const latestAssetResult = validateInstallerConfig({
+    const withoutVersionResult = validateInstallerConfig({
       ...configInput,
-      versionResolver: { type: "latest_asset" },
       archive: { format: "tar.gz", nameTemplate: "{repo}_{target}.tar.gz" },
     });
-    expect(latestAssetResult.ok).toBe(true);
-    if (!latestAssetResult.ok) {
+    expect(withoutVersionResult.ok).toBe(true);
+    if (!withoutVersionResult.ok) {
       return;
     }
-    const latestAssetScript = generateInstaller(latestAssetResult.config);
-    expect(latestAssetScript).not.toContain("read_version_file");
-    expect(latestAssetScript).not.toContain("VERSION_FILE_NAME");
+    const withoutVersionScript = generateInstaller(withoutVersionResult.config);
+    expect(withoutVersionScript).not.toContain("resolve_expected_release_tag");
+    expect(withoutVersionScript).not.toContain("read_version_file");
+    expect(withoutVersionScript).not.toContain("VERSION_FILE_NAME");
   });
 
-  test("latest_asset latest install uses versionless latest/download URLs and logs latest as the source", () => {
+  test("without {version}, latest install uses versionless latest/download URLs and logs latest as the source", () => {
     const result = validateInstallerConfig({
       ...configInput,
-      versionResolver: { type: "latest_asset" },
       archive: { format: "tar.gz", nameTemplate: "{repo}_{target}.tar.gz" },
     });
     expect(result.ok).toBe(true);
@@ -193,60 +195,115 @@ describe("installer generation", () => {
     expect(script).not.toContain("VERSION_FILE_NAME");
   });
 
-  const readVersionFile = (fixture: string) => {
+  const resolveExpectedReleaseTag = (
+    indexContent: string,
+    prefix: string,
+    suffix: string,
+    decoyFileNames: string[] = [],
+  ) => {
     const result = validateInstallerConfig(configInput);
     if (!result.ok) {
       throw new Error("config should be valid");
     }
     const harness = `
-curl() { printf '%s' "$VERSION_FIXTURE"; }
-if out=$(read_version_file "https://example.com/VERSION"); then
+if out=$(resolve_expected_release_tag "$1" "$2" "$3"); then
   printf 'OK:[%s]' "$out"
 else
   printf 'FAIL'
 fi
 `;
     const script = generateInstaller(result.config).replace('\nmain "$@"\n', `\n${harness}\n`);
-    return spawnSync("sh", ["-s"], {
-      input: script,
-      env: { ...process.env, VERSION_FIXTURE: fixture },
-      encoding: "utf8",
-    });
+    const dir = mkdtempSync(join(tmpdir(), "installerer-index-fixture-"));
+    const indexPath = join(dir, "checksums_index");
+    writeFileSync(indexPath, indexContent);
+    // Decoy files placed in the spawned shell's own cwd (not referenced by
+    // path anywhere): if the index-line split ever glob-expanded instead of
+    // treating the line as literal text, one of these would wrongly appear
+    // in place of the literal filename column.
+    for (const decoyFileName of decoyFileNames) {
+      writeFileSync(join(dir, decoyFileName), "");
+    }
+    try {
+      return spawnSync("sh", ["-s", "--", indexPath, prefix, suffix], {
+        input: script,
+        encoding: "utf8",
+        cwd: dir,
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   };
 
-  test("read_version_file strips all trailing whitespace, including multiple trailing blank lines", () => {
-    expect(readVersionFile("v0.1.2\n").stdout).toBe("OK:[v0.1.2]");
-    expect(readVersionFile("v0.1.2\r\n").stdout).toBe("OK:[v0.1.2]");
-    expect(readVersionFile("v0.1.2").stdout).toBe("OK:[v0.1.2]");
-    // Multiple trailing blank lines / trailing spaces and tabs are all ignored.
-    expect(readVersionFile("v0.1.2\n\n").stdout).toBe("OK:[v0.1.2]");
-    expect(readVersionFile("v0.1.2\r\n\r\n").stdout).toBe("OK:[v0.1.2]");
-    expect(readVersionFile("v0.1.2   \n").stdout).toBe("OK:[v0.1.2]");
-    expect(readVersionFile("v0.1.2\t\n").stdout).toBe("OK:[v0.1.2]");
-    // Leading whitespace is preserved, not auto-trimmed.
-    expect(readVersionFile(" v0.1.2 \n").stdout).toBe("OK:[ v0.1.2]");
+  test("resolve_expected_release_tag extracts the unique candidate matching prefix/suffix", () => {
+    const index =
+      "aaaa  rellog_v0.1.2_linux_x86_64.tar.gz\nbbbb  other_v9.9.9_linux_x86_64.tar.gz\n";
+    expect(resolveExpectedReleaseTag(index, "rellog_", "_linux_x86_64.tar.gz").stdout).toBe(
+      "OK:[v0.1.2]",
+    );
   });
 
-  test("read_version_file rejects empty and multiple-line VERSION content", () => {
-    const emptyRun = readVersionFile("");
-    expect(emptyRun.stdout).toBe("FAIL");
-    expect(emptyRun.stderr).toContain("VERSION file is empty");
+  test("resolve_expected_release_tag dedupes an identical filename repeated across lines", () => {
+    const index =
+      "aaaa  rellog_v0.1.2_linux_x86_64.tar.gz\naaaa  rellog_v0.1.2_linux_x86_64.tar.gz\n";
+    expect(resolveExpectedReleaseTag(index, "rellog_", "_linux_x86_64.tar.gz").stdout).toBe(
+      "OK:[v0.1.2]",
+    );
+  });
 
-    const onlyNewlineRun = readVersionFile("\n");
-    expect(onlyNewlineRun.stdout).toBe("FAIL");
-    expect(onlyNewlineRun.stderr).toContain("VERSION file is empty");
+  test("resolve_expected_release_tag fails when no candidate matches", () => {
+    const run = resolveExpectedReleaseTag(
+      "aaaa  other_linux_x86_64.tar.gz\n",
+      "rellog_",
+      ".tar.gz",
+    );
+    expect(run.stdout).toBe("FAIL");
+    expect(run.stderr).toContain("no release asset");
+  });
 
-    const onlyWhitespaceRun = readVersionFile("  \t \n");
-    expect(onlyWhitespaceRun.stdout).toBe("FAIL");
-    expect(onlyWhitespaceRun.stderr).toContain("VERSION file is empty");
+  test("resolve_expected_release_tag fails when two distinct candidates match", () => {
+    const index =
+      "aaaa  rellog_v0.1.2_linux_x86_64.tar.gz\nbbbb  rellog_v0.1.3_linux_x86_64.tar.gz\n";
+    const run = resolveExpectedReleaseTag(index, "rellog_", "_linux_x86_64.tar.gz");
+    expect(run.stdout).toBe("FAIL");
+    expect(run.stderr).toContain("ambiguous");
+  });
 
-    const multiLineRun = readVersionFile("v0.1.2\nextra\n");
-    expect(multiLineRun.stdout).toBe("FAIL");
-    expect(multiLineRun.stderr).toContain("VERSION file must contain a single line");
+  test("resolve_expected_release_tag rejects a candidate that is not a valid Git tag", () => {
+    const run = resolveExpectedReleaseTag(
+      "aaaa  rellog_..bad_linux_x86_64.tar.gz\n",
+      "rellog_",
+      "_linux_x86_64.tar.gz",
+    );
+    expect(run.stdout).toBe("FAIL");
+    expect(run.stderr).toContain("not a valid Git tag");
+  });
 
-    const embeddedCrRun = readVersionFile("v0.1.2\rextra\n");
-    expect(embeddedCrRun.stdout).toBe("FAIL");
-    expect(embeddedCrRun.stderr).toContain("VERSION file must contain a single line");
+  test("resolve_expected_release_tag rejects a candidate containing a slash as filename-unsafe", () => {
+    const run = resolveExpectedReleaseTag(
+      "aaaa  rellog_release/v0.1.2_linux_x86_64.tar.gz\n",
+      "rellog_",
+      "_linux_x86_64.tar.gz",
+    );
+    expect(run.stdout).toBe("FAIL");
+    expect(run.stderr).toContain("not safe as a filename");
+  });
+
+  test("resolve_expected_release_tag treats the index filename column as literal text, never a glob", () => {
+    // A decoy file that would satisfy the same prefix/suffix if the
+    // unquoted `set -- $line` split were ever allowed to glob-expand the
+    // literal "*" in the index line below against this shell's cwd.
+    const run = resolveExpectedReleaseTag(
+      "aaaa  rellog_*_linux_x86_64.tar.gz\n",
+      "rellog_",
+      "_linux_x86_64.tar.gz",
+      ["rellog_decoy-from-glob-expansion_linux_x86_64.tar.gz"],
+    );
+    // "*" is rejected by is_valid_git_tag (unsafe char), which still proves
+    // the point: a real bug here would instead succeed with the decoy's
+    // "decoy-from-glob-expansion", not fail on the literal "*".
+    expect(run.stdout).toBe("FAIL");
+    expect(run.stderr).toContain("not a valid Git tag");
+    expect(run.stderr).not.toContain("decoy-from-glob-expansion");
   });
 
   const urlEncodeSegment = (value: string) => {

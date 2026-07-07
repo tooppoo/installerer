@@ -5,9 +5,6 @@
     "name": "demo",
     "pathInArchive": "bin/demo"
   },
-  "versionResolver": {
-    "type": "latest_asset"
-  },
   "archive": {
     "format": "zip",
     "nameTemplate": "{bin}_{os}_{arch}.zip"

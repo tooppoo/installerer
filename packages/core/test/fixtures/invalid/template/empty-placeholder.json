@@ -7,10 +7,6 @@
       "name": "rellog",
       "pathInArchive": "bin/rellog"
     },
-    "versionResolver": {
-      "type": "release_version_file",
-      "fileName": "VERSION"
-    },
     "archive": {
       "format": "tar.gz",
       "nameTemplate": "{}_{version}_{target}.tar.gz"

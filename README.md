@@ -15,7 +15,7 @@ Fill in a form and the app generates a single POSIX `sh` `install.sh` for your p
 
 - The form input builds a JSON config that is handed to the generator core internally.
 - The generated `install.sh` installs the latest release when `--version` is omitted, or a pinned release with `--version <version>`.
-- Two version resolvers are supported: `release_version_file` (resolves the latest tag via a `VERSION` release asset) and `latest_asset` (downloads versionless assets directly from the latest release).
+- Whether a latest install resolves an actual release tag is decided by whether `archive.nameTemplate` contains `{version}`: with `{version}`, latest install scans the checksum file (fetched from the latest release) as a version-resolution index and re-downloads from the resolved tag; without `{version}`, latest install downloads versionless assets directly from the latest release. No release ever needs to publish a separate version file asset.
 
 Your releases must follow a small contract for asset naming and checksum files. See the documents below for details.
 
@@ -45,12 +45,12 @@ installerer --help
 
 ## Documentation
 
-- [Installer Contract](docs/installer-contract.md) — the release asset contract, resolver overview, and runtime dependencies. Also viewable from the browser UI.
-- [Resolver Semantics](docs/resolver-semantics.md) — detailed resolver semantics, network access boundary, latest/pinned reproducibility, checksum verification guarantees and limits, and per-resolver JSON config examples.
+- [Installer Contract](docs/installer-contract.md) — the release asset contract, latest/pinned install overview, and runtime dependencies. Also viewable from the browser UI.
+- [Resolver Semantics](docs/resolver-semantics.md) — detailed latest/pinned install semantics, network access boundary, reproducibility, checksum verification guarantees and limits, and JSON config examples for both `{version}` and versionless archive templates.
 - [Generated Installer Runtime](docs/generated-installer-runtime.md) — detailed runtime behavior of the generated installer.
 - [MVP Browser JS Installer Generator Policy](docs/adr/20260630T032548Z_mvp-browser-js-generator-policy.md)
 - [Generated Installer Runtime ADR](docs/adr/20260630T174038Z_generated-installer-runtime-single-posix-sh.md)
-- [latest_asset Resolver ADR](docs/adr/20260701T143939Z_latest-asset-resolver-versionless-direct-download.md)
+- [Template-Driven Latest Install Tag Resolution ADR](docs/adr/20260707T022251Z_template-driven-latest-install-tag-resolution.md) (supersedes the earlier [latest_asset Resolver ADR](docs/adr/20260701T143939Z_latest-asset-resolver-versionless-direct-download.md))
 - [CLI Distribution Policy](docs/adr/20260703T091000Z_cli-distribution-policy.md)
 - [npm Node.js CLI Package ADR](docs/adr/20260703T134302Z_npm-node-cli-package.md)
 

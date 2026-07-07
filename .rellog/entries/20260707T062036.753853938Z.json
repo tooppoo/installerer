@@ -1,0 +1,6 @@
+{
+  "kind": "changed",
+  "targets": ["core", "web", "docs"],
+  "links": ["https://github.com/tooppoo/installerer/issues/111"],
+  "body": "remove `versionResolver` config; latest-install behavior is now decided by whether `archive.nameTemplate` contains `{version}` (no more `VERSION` release asset needed)"
+}

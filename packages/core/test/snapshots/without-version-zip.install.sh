@@ -13,29 +13,27 @@ fi
 #   generator.name: installerer
 #   generator.sourceUrl: https://github.com/tooppoo/installerer
 #   owner: tooppoo
-#   repo: rellog
-#   binary.name: rellog
-#   binary.pathInArchive: rellog
-#   versionResolver.type: latest_asset
-#   archive.format: tar.gz
-#   archive.nameTemplate: {repo}_{target}.tar.gz
+#   repo: installerer-demo
+#   binary.name: demo
+#   binary.pathInArchive: bin/demo
+#   archive.format: zip
+#   archive.nameTemplate: {bin}_{os}_{arch}.zip
 #   archive.osCase: lowercase
-#   checksum.fileName: checksums.txt
+#   checksum.fileName: SHA256SUMS
 #   checksum.algorithm: sha256
-#   defaults.installDir: $HOME/.local/bin
-#   targets: linux/x86_64, linux/aarch64, darwin/x86_64, darwin/aarch64
+#   defaults.installDir: ~/bin
+#   targets: linux/x86_64, darwin/aarch64
 
 OWNER='tooppoo'
-REPO='rellog'
-BINARY_NAME='rellog'
-BINARY_PATH_IN_ARCHIVE='rellog'
-CHECKSUM_FILE_NAME='checksums.txt'
+REPO='installerer-demo'
+BINARY_NAME='demo'
+BINARY_PATH_IN_ARCHIVE='bin/demo'
+CHECKSUM_FILE_NAME='SHA256SUMS'
 # shellcheck disable=SC2088 # a leading '~' here is a literal default, expanded manually by resolve_install_dir, not by the shell
-DEFAULT_INSTALL_DIR='$HOME/.local/bin'
+DEFAULT_INSTALL_DIR='~/bin'
 INSTALL_DIR=
-ARCHIVE_FORMAT='tar.gz'
-ARCHIVE_SUFFIX='.tar.gz'
-
+ARCHIVE_FORMAT='zip'
+ARCHIVE_SUFFIX='.zip'
 LF='
 '
 CR=$(printf '\r')
@@ -152,7 +150,7 @@ print_requirements() {
   printf '%s\n' '- tr: Encodes URL path segments and canonicalizes OS names.'
   printf '%s\n' '- cut: Encodes URL path segments safely.'
   printf '%s\n' '- ls: Lists downloaded and extracted files for diagnostics.'
-  printf '%s\n' '- tar: Extracts tar.gz archives.'
+  printf '%s\n' '- unzip: Extracts zip archives.'
   printf '%s\n' '- sha256sum or shasum: Verifies SHA-256 checksums.'
   printf '%s\n' ''
   printf '%s\n' 'Network:'
@@ -253,10 +251,10 @@ check_requirements() {
     printf 'missing: %s\n' 'ls'
     status=1
   fi
-  if command -v 'tar' >/dev/null 2>&1; then
-    printf 'ok: %s\n' 'tar'
+  if command -v 'unzip' >/dev/null 2>&1; then
+    printf 'ok: %s\n' 'unzip'
   else
-    printf 'missing: %s\n' 'tar'
+    printf 'missing: %s\n' 'unzip'
     status=1
   fi
   if command -v 'sha256sum' >/dev/null 2>&1 || command -v 'shasum' >/dev/null 2>&1; then
@@ -414,6 +412,21 @@ is_valid_git_tag() {
   return 0
 }
 
+# A Git tag may legitimately contain '/' (e.g. "release/v1.2.3"), but a value
+# extracted from a checksum-index archive filename cannot: '/' would split it
+# across path segments. installerer treats such tags as unsupported for
+# {version} extraction (issue #111) even though --version pinning still
+# accepts them.
+is_filename_unsafe_tag() {
+  value=$1
+  case "$value" in
+    */*|*\\*) return 0 ;;
+  esac
+  if LC_ALL=C printf '%s' "$value" | grep -q '[[:cntrl:][:space:]]'; then
+    return 0
+  fi
+  return 1
+}
 validate_archive_asset_name() {
   name=$1
   [ -n "$name" ] || fail "archive filename is empty"
@@ -477,8 +490,6 @@ detect_target() {
 
   case "$os/$arch" in
     linux/x86_64) ;;
-    linux/aarch64) ;;
-    darwin/x86_64) ;;
     darwin/aarch64) ;;
     *) fail "unsupported target: $os/$arch" ;;
   esac
@@ -506,7 +517,7 @@ render_archive_asset_name() {
   os=$2
   asset_arch_label=$3
   target="${os}_${asset_arch_label}"
-  printf '%s' "$REPO" '_' "$target" '.tar.gz'
+  printf '%s' "$BINARY_NAME" '_' "$os" '_' "$asset_arch_label" '.zip'
   printf '\n'
 }
 
@@ -600,13 +611,6 @@ download_and_install() {
   archive_url=$1
   checksum_url=$2
   archive_asset_name=$3
-  trap cleanup EXIT
-  trap cleanup_on_signal HUP INT TERM
-  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
-  archive_path="$tmpdir/archive"
-  checksum_path="$tmpdir/checksums"
-  extract_dir="$tmpdir/extract"
-
   curl_download "$checksum_url" "$checksum_path" "checksum file"
   curl_download "$archive_url" "$archive_path" "archive"
   verify_sha256
@@ -621,6 +625,12 @@ install_latest() {
   os=$1
   arch=$2
   asset_arch_label=$(resolve_asset_arch_label "$os" "$arch") || exit 1
+  trap cleanup EXIT
+  trap cleanup_on_signal HUP INT TERM
+  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
+  archive_path="$tmpdir/archive"
+  checksum_path="$tmpdir/checksums"
+  extract_dir="$tmpdir/extract"
   printf '%s\n' "installerer: install source latest"
   archive_asset_name=$(render_archive_asset_name "" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
@@ -641,6 +651,12 @@ install_pin() {
   os=$1
   arch=$2
   asset_arch_label=$(resolve_asset_arch_label "$os" "$arch") || exit 1
+  trap cleanup EXIT
+  trap cleanup_on_signal HUP INT TERM
+  tmpdir=$(mktemp -d) || fail "failed to create temporary directory"
+  archive_path="$tmpdir/archive"
+  checksum_path="$tmpdir/checksums"
+  extract_dir="$tmpdir/extract"
   archive_asset_name=$(render_archive_asset_name "$pinned_version" "$os" "$asset_arch_label")
   validate_archive_asset_name "$archive_asset_name"
   owner_path=$(url_encode_segment "$OWNER")

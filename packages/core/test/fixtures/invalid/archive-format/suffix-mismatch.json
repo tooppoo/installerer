@@ -7,9 +7,6 @@
       "name": "rellog",
       "pathInArchive": "bin/rellog"
     },
-    "versionResolver": {
-      "type": "latest_asset"
-    },
     "archive": {
       "format": "zip",
       "nameTemplate": "{repo}_{target}.tar.gz"

@@ -12,10 +12,6 @@ const baseConfig: InstallerConfig = {
     name: "rellog",
     pathInArchive: "bin/rellog",
   },
-  versionResolver: {
-    type: "release_version_file",
-    fileName: "VERSION",
-  },
   archive: {
     format: "tar.gz",
     nameTemplate: "{repo}_{version}_{os}_{arch}.tar.gz",
@@ -44,7 +40,7 @@ describe("renderRuntimeRequirementsJson", () => {
   test("shape is pinned by a committed snapshot (internal use only, not an external contract)", () => {
     const json = renderRuntimeRequirementsJson(resolveRuntimeDependencies(baseConfig));
     matchTextSnapshot(
-      "runtime-requirements.release-version-file-tar-gz",
+      "runtime-requirements.with-version-tar-gz",
       "json",
       `${JSON.stringify(json, null, 2)}\n`,
     );
@@ -58,7 +54,7 @@ describe("renderRuntimeRequirementsJson", () => {
       }),
     );
     matchTextSnapshot(
-      "runtime-requirements.release-version-file-zip",
+      "runtime-requirements.with-version-zip",
       "json",
       `${JSON.stringify(json, null, 2)}\n`,
     );
