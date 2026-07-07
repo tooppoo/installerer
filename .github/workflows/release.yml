@@ -16,6 +16,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - uses: tooppoo/rellog/actions/ready@v0.1.2
+        with:
+          release-id: ${{ github.ref_name }}
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
@@ -27,17 +32,9 @@ jobs:
           INSTALLERER_RELEASE_TAG: ${{ github.ref_name }}
         run: just binary-release-artifacts
 
-      - name: Upload release assets without overwrite
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          RELEASE_VERSION="${RELEASE_TAG#v}"
-          gh release create "$RELEASE_TAG" \
-            "dist/binary/installerer_${RELEASE_VERSION}_Darwin_arm64.tar.gz" \
-            "dist/binary/installerer_${RELEASE_VERSION}_Darwin_x86_64.tar.gz" \
-            "dist/binary/installerer_${RELEASE_VERSION}_Linux_arm64.tar.gz" \
-            "dist/binary/installerer_${RELEASE_VERSION}_Linux_x86_64.tar.gz" \
-            dist/binary/checksums.txt \
-            dist/binary/VERSION \
-            --verify-tag
+      - name: create release note
+        uses: tooppoo/rellog/actions/create-release-note@v0.1.2
+        with:
+          release-id: ${{ github.ref_name }}
+          files: |
+            dist/binary/*
