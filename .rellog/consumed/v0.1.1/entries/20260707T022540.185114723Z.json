@@ -1,0 +1,10 @@
+{
+  "kind": "added",
+  "targets": [
+    "web",
+    "cli",
+    "core"
+  ],
+  "links": [],
+  "body": "add `standard install example` for installer to `installerer --help` and web ui "
+}
