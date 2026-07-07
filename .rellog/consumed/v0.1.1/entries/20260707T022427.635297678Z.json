@@ -1,8 +1,0 @@
-{
-  "kind": "fixed",
-  "targets": [
-    "core"
-  ],
-  "links": [],
-  "body": "fix `chmod` not work on BSD"
-}
