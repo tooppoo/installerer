@@ -33,6 +33,7 @@ binary-release-artifacts:
   bun run release:binary
 
 [group('release')]
-release:
+release version:
+  rellog ready {{ version }}
   bun install --frozen-lockfile
   bun scripts/release.ts
