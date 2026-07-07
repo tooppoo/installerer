@@ -1,11 +1,18 @@
-import { urlEncodePathSegment } from "./urlPathSegment";
-
 /**
  * Single source of truth for standard curl install command text (issue
- * #110). Both the generated installer's `usage()` (see
- * `generatedInstaller/sections/cli.ts`) and the Web UI (`apps/web`) derive
- * their command text from this module so the two surfaces cannot drift
- * into separate wordings for the same command.
+ * #110). The `installerer` generator CLI's own `--help` (`packages/cli`)
+ * and the Web UI (`apps/web`) both derive their command text from this
+ * module so the two surfaces cannot drift into separate wordings for the
+ * same command. The generated `install.sh`'s own `--help` intentionally
+ * does not use this module for a remote curl command — see the comment on
+ * `renderUsage` in `generatedInstaller/sections/cli.ts` — but still reuses
+ * `localInstallCommandExamples` below for its local execution examples.
+ *
+ * `owner`/`repo` are interpolated as given, not percent-encoded: real
+ * `InstallerConfig` values are already constrained to safe GitHub
+ * owner/repo characters by `installerConfigValidators.ts`, and the CLI's
+ * top-level `--help` (no config loaded yet) passes literal placeholder
+ * tokens like `<owner>`/`<repo>` that must render unencoded.
  *
  * The standard curl command assumes `install.sh` is committed at
  * `/install.sh` on the `main` branch (issue #110 scopes configurable
@@ -39,7 +46,7 @@ export function buildInstallCommandExamples(config: {
   owner: string;
   repo: string;
 }): InstallCommandExamples {
-  const rawInstallerUrl = `https://raw.githubusercontent.com/${urlEncodePathSegment(config.owner)}/${urlEncodePathSegment(config.repo)}/refs/heads/${INSTALLER_BRANCH}${INSTALLER_PATH}`;
+  const rawInstallerUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/refs/heads/${INSTALLER_BRANCH}${INSTALLER_PATH}`;
 
   return {
     rawInstallerUrl,

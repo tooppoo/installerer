@@ -25,8 +25,12 @@ const REPO_ROOT = join(import.meta.dir, "..", "..", "..", "..");
  * it is the single shared source of the standard curl install command text,
  * which by design names `raw.githubusercontent.com` as the URL a user's shell
  * downloads/pipes `install.sh` from. Nothing in this module ever calls that
- * URL itself — it only builds display/copy text that `usage()` and the Web UI
- * print — so every other scanned file must still stay free of that domain.
+ * URL itself — it only builds display/copy text that the `installerer`
+ * generator CLI's own `--help` (`packages/cli`) and the Web UI print, so
+ * every other scanned file must still stay free of that domain. The
+ * generated `install.sh`'s own `--help` deliberately does not use this
+ * text (see `generatedInstaller/sections/cli.ts`), so it is held to the
+ * same strict rule as everything else here.
  */
 const SCAN_ROOTS = [
   join(REPO_ROOT, "packages", "core", "src"),

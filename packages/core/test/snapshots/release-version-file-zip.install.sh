@@ -130,19 +130,6 @@ usage() {
   printf '%s\n' '  sh install.sh --version v0.1.2'
   printf '%s\n' '  sh install.sh --install-dir "$HOME/bin"'
   printf '%s\n' '  sh install.sh --version v0.1.2 --install-dir "$HOME/bin"'
-  printf '%s\n' ''
-  printf '%s\n' 'standard curl install:'
-  printf '%s\n' '  curl -fsSL https://raw.githubusercontent.com/tooppoo/git-kura/refs/heads/main/install.sh | sh'
-  printf '%s\n' '  Assumes install.sh is committed at /install.sh on the main branch.'
-  printf '%s\n' ''
-  printf '%s\n' 'curl examples passing installer arguments (use sh -s --):'
-  printf '%s\n' '  curl -fsSL https://raw.githubusercontent.com/tooppoo/git-kura/refs/heads/main/install.sh | sh -s -- --version v0.1.2'
-  printf '%s\n' '  curl -fsSL https://raw.githubusercontent.com/tooppoo/git-kura/refs/heads/main/install.sh | sh -s -- --install-dir "$HOME/bin"'
-  printf '%s\n' ''
-  printf '%s\n' 'review-first alternative:'
-  printf '%s\n' '  curl -fsSLO https://raw.githubusercontent.com/tooppoo/git-kura/refs/heads/main/install.sh'
-  printf '%s\n' '  sh ./install.sh --help'
-  printf '%s\n' '  sh ./install.sh'
 }
 
 print_requirements() {

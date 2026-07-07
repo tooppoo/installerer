@@ -1,5 +1,4 @@
-import { buildInstallCommandExamples } from "../../installCommandExamples";
-import type { RenderContext } from "../renderContext";
+import { localInstallCommandExamples } from "../../installCommandExamples";
 import { shellLiteral } from "../shell";
 
 export function renderMain(): string {
@@ -73,19 +72,22 @@ export function renderMain(): string {
 }
 
 /**
- * `usage()` documents the CLI surface plus how to invoke this installer
- * remotely. The curl commands and the branch/path assumption they rely on
- * come from `buildInstallCommandExamples` (issue #110) so this help text and
- * the Web UI's "Standard curl install" section cannot drift into separate
- * wordings for the same commands.
+ * `usage()` documents the CLI surface: option descriptions and local
+ * execution examples. It deliberately does not document a remote curl
+ * install command — that lives in the `installerer` generator CLI's own
+ * `--help` and the Web UI instead (issue #110), both built from the same
+ * `buildInstallCommandExamples` core helper this module's local examples
+ * also come from (`localInstallCommandExamples`), so a generated
+ * `install.sh` stays focused on how to run the script you already have in
+ * hand.
  *
  * The `$0`-bearing lines are intentionally double-quoted so the shell
  * expands `$0` to the real invocation name at runtime; every other line is a
  * static example and is single-quoted via `shellLiteral` so literal example
  * text like `$HOME/bin` is never expanded by the running shell.
  */
-export function renderUsage({ config }: RenderContext): string {
-  const examples = buildInstallCommandExamples(config);
+export function renderUsage(): string {
+  const localCommands = localInstallCommandExamples();
 
   const staticLines = [
     "",
@@ -97,18 +99,7 @@ export function renderUsage({ config }: RenderContext): string {
     "  --help                  Show this help message.",
     "",
     "local execution examples:",
-    ...examples.localCommands.valid.map((command) => `  ${command}`),
-    "",
-    "standard curl install:",
-    `  ${examples.standardCurlCommand}`,
-    `  ${examples.standardCurlAssumption}`,
-    "",
-    "curl examples passing installer arguments (use sh -s --):",
-    `  ${examples.pinnedVersionCurlCommand}`,
-    `  ${examples.installDirCurlCommand}`,
-    "",
-    "review-first alternative:",
-    ...examples.reviewFirstCommands.map((command) => `  ${command}`),
+    ...localCommands.valid.map((command) => `  ${command}`),
   ];
   const staticBody = staticLines.map((line) => `  printf '%s\\n' ${shellLiteral(line)}`).join("\n");
 

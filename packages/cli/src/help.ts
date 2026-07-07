@@ -8,6 +8,7 @@ export type CliHelpFrame = {
   usage: string[];
   commands?: string[];
   options?: string[];
+  examples?: string[];
 };
 
 export function renderHelpText(frame: CliHelpFrame): string {
@@ -19,6 +20,10 @@ export function renderHelpText(frame: CliHelpFrame): string {
 
   if (frame.options && frame.options.length > 0) {
     sections.push(["Options:", ...indent(frame.options)]);
+  }
+
+  if (frame.examples && frame.examples.length > 0) {
+    sections.push(["Examples:", ...indent(frame.examples)]);
   }
 
   return `${sections.map((section) => section.join("\n")).join("\n\n")}\n`;
