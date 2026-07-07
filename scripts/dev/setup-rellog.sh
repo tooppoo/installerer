@@ -2,3 +2,5 @@
 set -eu
 
 curl -fsSL https://raw.githubusercontent.com/tooppoo/rellog/refs/heads/main/install.sh | sh
+
+rellog --version
