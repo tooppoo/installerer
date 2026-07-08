@@ -9,6 +9,8 @@ export const CliExitCode = {
   success: 0,
   unknownCommand: 1,
   unknownOption: 2,
+  configFileAlreadyExists: 3,
+  configFileWriteFailed: 4,
 } as const;
 
 export type CliExitCode = (typeof CliExitCode)[keyof typeof CliExitCode];

@@ -1,0 +1,38 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`INIT_CONFIG_TEMPLATE matches the committed snapshot (pins node order, property order, indentation, trailing newline) 1`] = `
+"installerer {
+  source owner="your-owner" repo="your-repo"
+
+  binary name="your-binary" path-in-archive="your-binary"
+
+  archive format="tar.gz" name-template="{repo}_{version}_{os}_{arch}.tar.gz" os-case="lowercase"
+
+  checksum file-name="checksums.txt" algorithm="sha256"
+
+  targets {
+    target os="linux" arch="x86_64"
+    target os="linux" arch="aarch64"
+    target os="darwin" arch="x86_64"
+    target os="darwin" arch="aarch64"
+  }
+
+  architecture-labels x86_64="x86_64" aarch64="aarch64"
+
+  defaults install-dir="$HOME/.local/bin"
+}
+"
+`;
+
+exports[`initCommand.run does not overwrite an existing installerer.kdl, and reports the cause plus next steps on stderr 1`] = `
+"installerer: installerer.kdl already exists in the current directory.
+installerer: check the existing file, move it aside, delete it, or pass it to 'installerer validate' or 'installerer generate' instead.
+"
+`;
+
+exports[`initCommand.run reports a write failure on stderr with the system error message and exits with the write-failed code 1`] = `
+"installerer: failed to write installerer.kdl.
+installerer: EACCES: permission denied, open '<dir>/installerer.kdl'
+installerer: check write permission, the path, and disk space for the current directory.
+"
+`;

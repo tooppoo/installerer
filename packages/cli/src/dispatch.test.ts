@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
+import { CONFIG_FILE_NAME, INIT_CONFIG_TEMPLATE } from "./commands/init";
 import { dispatchCli } from "./dispatch";
 import { CliExitCode } from "./exitCodes";
 import { topLevelHelpText } from "./topLevelHelp";
@@ -96,5 +100,70 @@ describe("dispatchCli", () => {
     expect(result.stdout).toBe("");
     expect(result.stderr).toContain("generate");
     expect(result.exitCode).toBe(CliExitCode.unknownCommand);
+  });
+
+  test("init routes to the init command module and writes installerer.kdl under the given cwd", () => {
+    const dir = mkdtempSync(join(tmpdir(), "installerer-dispatch-init-test-"));
+
+    try {
+      const result = dispatchCli(["init"], dir);
+
+      expect(result).toEqual({
+        stdout: `created ${CONFIG_FILE_NAME}\n`,
+        stderr: "",
+        exitCode: CliExitCode.success,
+      });
+      expect(readFileSync(join(dir, CONFIG_FILE_NAME), "utf8")).toBe(INIT_CONFIG_TEMPLATE);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("init with an unrecognized option reports an error on stderr and exits with the unknown-option code", () => {
+    const dir = mkdtempSync(join(tmpdir(), "installerer-dispatch-init-test-"));
+
+    try {
+      const result = dispatchCli(["init", "--force"], dir);
+
+      expect(result.stdout).toBe("");
+      expect(result.stderr.length).toBeGreaterThan(0);
+      expect(result.exitCode).toBe(CliExitCode.unknownOption);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("init --help prints help text instead of running init, and does not create installerer.kdl", () => {
+    const dir = mkdtempSync(join(tmpdir(), "installerer-dispatch-init-test-"));
+
+    try {
+      const result = dispatchCli(["init", "--help"], dir);
+
+      expect(result).toEqual({
+        stdout: topLevelHelpText,
+        stderr: "",
+        exitCode: CliExitCode.success,
+      });
+      expect(existsSync(join(dir, CONFIG_FILE_NAME))).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("init -v prints the version instead of running init, and does not create installerer.kdl", () => {
+    const dir = mkdtempSync(join(tmpdir(), "installerer-dispatch-init-test-"));
+
+    try {
+      const result = dispatchCli(["init", "-v"], dir);
+
+      expect(result).toEqual({
+        stdout: `${cliVersion}\n`,
+        stderr: "",
+        exitCode: CliExitCode.success,
+      });
+      expect(existsSync(join(dir, CONFIG_FILE_NAME))).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

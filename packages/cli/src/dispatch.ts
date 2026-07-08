@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 
+import { initCommand } from "./commands/init";
 import { CliExitCode } from "./exitCodes";
 import { topLevelHelpText } from "./topLevelHelp";
 import { cliVersion } from "./version";
@@ -14,18 +15,28 @@ export type CliDispatchResult = {
  * Runtime-independent CLI dispatch. It only decides what a command should
  * print and exit with; writing to stdout/stderr and calling process.exit is
  * the responsibility of the runtime entrypoints (npm CLI, standalone
- * executable), which are out of scope for this issue.
+ * executable).
  *
- * Only `--help` / `-h` and `--version` / `-v` are recognized here, plus the
- * no-argument case, which is treated the same as `--help`. Actual
- * subcommands (`init`, `generate`, `validate`, `doctor`) are not implemented
- * yet, so any positional argument is reported as an unknown command, even if
- * `--help` / `-h` or `--version` / `-v` also appear on the same command
- * line: `--help` / `--version` are only a top-level result when there is no
- * positional at all. Their own issues will extend this dispatch with real
- * handling and their own exit codes (see docs/exit-code.md).
+ * `--help` / `-h` and `--version` / `-v` are recognized when there is no
+ * positional at all, and are also honored ahead of a *recognized* command
+ * name (currently only `init`) so `installerer init --help` reports help
+ * instead of silently running `init`'s file-writing side effect. A
+ * positional that is not a recognized command name still ignores
+ * `--help`/`--version` and is reported as an unknown command, matching the
+ * existing contract for not-yet-implemented commands. `init` (#88) is the
+ * first real subcommand: it is routed to `CliCommandModule.run`, which may
+ * perform its own file IO (see `commands/init.ts`) — that does not
+ * reintroduce IO into this function itself, which still only builds the
+ * result value. `cwd` defaults to the real process working directory so
+ * production callers don't need to pass it, while tests can pass an
+ * explicit directory instead. `generate` / `validate` / `doctor` (#89-#91)
+ * replace the remaining unknown-command fallback the same way, and should
+ * get the same help/version guard before their own file IO.
  */
-export function dispatchCli(argv: readonly string[]): CliDispatchResult {
+export function dispatchCli(
+  argv: readonly string[],
+  cwd: string = process.cwd(),
+): CliDispatchResult {
   if (argv.length === 0) {
     return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
   }
@@ -50,7 +61,20 @@ export function dispatchCli(argv: readonly string[]): CliDispatchResult {
       }
     }
 
-    const [command] = positionals;
+    const [command, ...rest] = positionals;
+
+    if (command === initCommand.name) {
+      if (values.help) {
+        return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
+      }
+
+      if (values.version) {
+        return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
+      }
+
+      return initCommand.run(rest, cwd);
+    }
+
     return {
       stdout: "",
       stderr: `installerer: unknown command '${command}'\n`,
