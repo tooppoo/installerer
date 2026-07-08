@@ -87,18 +87,18 @@ describe("dispatchCli", () => {
   });
 
   test("a positional followed by -v still reports the positional as an unknown command", () => {
-    const result = dispatchCli(["doctor", "-v"]);
+    const result = dispatchCli(["bogus-command", "-v"]);
 
     expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("doctor");
+    expect(result.stderr).toContain("bogus-command");
     expect(result.exitCode).toBe(CliExitCode.unknownCommand);
   });
 
   test("a positional followed by --help still reports the positional as an unknown command", () => {
-    const result = dispatchCli(["doctor", "--help"]);
+    const result = dispatchCli(["bogus-command", "--help"]);
 
     expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("doctor");
+    expect(result.stderr).toContain("bogus-command");
     expect(result.exitCode).toBe(CliExitCode.unknownCommand);
   });
 

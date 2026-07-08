@@ -297,11 +297,8 @@ function outputWriteFailure(outArg: string, error: unknown): CliDispatchResult {
 }
 
 /**
- * Backs the `generateInstaller` catch in `run` above. See the `installerGenerationFailed`
- * doc comment in `exitCodes.ts` for why a config that already passed `validateInstallerConfigKdl`
- * has no known way to reach this function; that also means no test constructs a config which
- * drives execution here, so this formatter's output shape is intentionally exercised only by
- * reading, not by a passing test.
+ * Backs the `generateInstaller` catch in `run` above.
+ * See the `installerGenerationFailed` doc comment in `exitCodes.ts` for why a config that already passed `validateInstallerConfigKdl` has no known way to reach this function; that also means no test constructs a config which drives execution here, so this formatter's output shape is intentionally exercised only by reading, not by a passing test.
  */
 function installerGenerationFailure(error: unknown): CliDispatchResult {
   const systemMessage = error instanceof Error ? error.message : String(error);
