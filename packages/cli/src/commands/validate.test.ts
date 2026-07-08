@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { CliExitCode } from "../exitCodes";
+import { topLevelHelpText } from "../topLevelHelp";
+import { cliVersion } from "../version";
 import { validateCommand } from "./validate";
 
 const VALID_KDL = `installerer {
@@ -227,6 +229,50 @@ describe("validateCommand.run", () => {
 
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(CliExitCode.invalidValidateArguments);
-    expect(result.stderr).toContain("unsupported option");
+    expect(result.stderr).toContain("Unknown option");
+    expect(result.stderr).toContain("--bogus");
+  });
+
+  test("a --config with no value reports a command error on stderr and exits with the invalid-validate-arguments code", () => {
+    const result = validateCommand.run(["--config"], "/irrelevant");
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(CliExitCode.invalidValidateArguments);
+    expect(result.stderr).not.toContain("is valid");
+  });
+
+  test("--config immediately followed by --help is rejected as an ambiguous argument, not silently treated as help", () => {
+    const result = validateCommand.run(["--config", "--help"], "/irrelevant");
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(CliExitCode.invalidValidateArguments);
+  });
+
+  test("--help after a --config value still shows help, since --config only consumes the one value token that follows it", () => {
+    withTempDir((dir) => {
+      writeConfig(dir, "installerer.kdl", VALID_KDL);
+
+      const result = validateCommand.run(["--config", "installerer.kdl", "--help"], dir);
+
+      expect(result).toEqual({
+        stdout: topLevelHelpText,
+        stderr: "",
+        exitCode: CliExitCode.success,
+      });
+    });
+  });
+
+  test("--version after a --config value still shows the version, since --config only consumes the one value token that follows it", () => {
+    withTempDir((dir) => {
+      writeConfig(dir, "installerer.kdl", VALID_KDL);
+
+      const result = validateCommand.run(["--config", "installerer.kdl", "-v"], dir);
+
+      expect(result).toEqual({
+        stdout: `${cliVersion}\n`,
+        stderr: "",
+        exitCode: CliExitCode.success,
+      });
+    });
   });
 });

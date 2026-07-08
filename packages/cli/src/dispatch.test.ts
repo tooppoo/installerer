@@ -216,4 +216,20 @@ describe("dispatchCli", () => {
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(CliExitCode.invalidValidateArguments);
   });
+
+  test("validate --config immediately followed by --help is rejected as an ambiguous argument, not misread as a bare --help flag", () => {
+    const result = dispatchCli(["validate", "--config", "--help"], "/irrelevant");
+
+    expect(result.exitCode).toBe(CliExitCode.invalidValidateArguments);
+    expect(result.stdout).toBe("");
+  });
+
+  test("validate --help placed after a --config value still shows help, since dispatch delegates argv parsing entirely to validate", () => {
+    const result = dispatchCli(
+      ["validate", "--config", "installerer.kdl", "--help"],
+      "/irrelevant",
+    );
+
+    expect(result).toEqual({ stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success });
+  });
 });

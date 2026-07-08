@@ -12,6 +12,8 @@ import { parseArgs } from "node:util";
 import type { CliCommandModule } from "../command";
 import type { CliDispatchResult } from "../dispatch";
 import { CliExitCode } from "../exitCodes";
+import { topLevelHelpText } from "../topLevelHelp";
+import { cliVersion } from "../version";
 
 const USAGE = "installerer: usage: installerer validate --config <path>\n";
 
@@ -21,20 +23,38 @@ const USAGE = "installerer: usage: installerer validate --config <path>\n";
  * pipeline, and reports the result via the `configDiagnostics` formatter
  * (#107) that `generate` (#89) will reuse.
  *
- * `validate` parses its own `args` (just `--config`) instead of relying on
- * `dispatchCli`'s top-level `parseArgs`, so an argument problem specific to
- * `validate` (missing/duplicated `--config`, an unexpected positional, an
- * option `validate` doesn't support) is its own `invalidValidateArguments`
- * cause (exit 8) rather than the CLI-wide `unknownOption` (exit 2) — see
+ * `validate` parses its own `args` instead of relying on `dispatchCli`'s
+ * top-level `parseArgs`, so an argument problem specific to `validate`
+ * (missing/duplicated `--config`, an unexpected positional, an option
+ * `validate` doesn't support) is its own `invalidValidateArguments` cause
+ * (exit 8) rather than the CLI-wide `unknownOption` (exit 2) — see
  * `dispatchCli`'s doc comment for why command-owned argument parsing
- * replaced a single shared schema.
+ * replaced a single shared schema. `--help`/`-h`/`--version`/`-v` are
+ * declared in the *same* `parseArgs` call as `--config` (see
+ * `parseValidateArgs`), rather than checked with a plain
+ * `args.includes("--help")` the way `init` does: `--config` takes a value,
+ * so a naive substring/array-includes check could misfire on
+ * `--config --help` (forgotten value, next token happens to look like a
+ * flag) and silently print help instead of a real argument error. Node's
+ * `parseArgs` itself disambiguates that case correctly (it rejects it as an
+ * ambiguous option argument), so routing `help`/`version` through the same
+ * call gets that disambiguation for free.
  */
 export const validateCommand: CliCommandModule = {
   name: "validate",
 
   run(args: readonly string[], cwd: string): CliDispatchResult {
     const parsedArgs = parseValidateArgs(args);
-    if (!parsedArgs.ok) {
+
+    if (parsedArgs.kind === "help") {
+      return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
+    }
+
+    if (parsedArgs.kind === "version") {
+      return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
+    }
+
+    if (parsedArgs.kind === "error") {
       return parsedArgs.result;
     }
 
@@ -80,29 +100,40 @@ export const validateCommand: CliCommandModule = {
 };
 
 type ParseValidateArgsResult =
-  | { ok: true; configArg: string }
-  | { ok: false; result: CliDispatchResult };
+  | { kind: "help" }
+  | { kind: "version" }
+  | { kind: "config"; configArg: string }
+  | { kind: "error"; result: CliDispatchResult };
 
 function parseValidateArgs(args: readonly string[]): ParseValidateArgsResult {
-  let values: { config?: string[] };
+  let values: { config?: string[]; help?: boolean; version?: boolean };
   let positionals: string[];
 
   try {
     ({ values, positionals } = parseArgs({
       args: args as string[],
-      options: { config: { type: "string", multiple: true } },
+      options: {
+        config: { type: "string", multiple: true },
+        help: { type: "boolean", short: "h" },
+        version: { type: "boolean", short: "v" },
+      },
       allowPositionals: true,
     }));
   } catch (error) {
-    return {
-      ok: false,
-      result: invalidArguments(`unsupported option: ${(error as Error).message}`),
-    };
+    return { kind: "error", result: invalidArguments((error as Error).message) };
+  }
+
+  if (values.help) {
+    return { kind: "help" };
+  }
+
+  if (values.version) {
+    return { kind: "version" };
   }
 
   if (positionals.length > 0) {
     return {
-      ok: false,
+      kind: "error",
       result: invalidArguments(`unexpected positional argument '${positionals[0]}'`),
     };
   }
@@ -110,14 +141,14 @@ function parseValidateArgs(args: readonly string[]): ParseValidateArgsResult {
   const configValues = values.config ?? [];
 
   if (configValues.length === 0) {
-    return { ok: false, result: invalidArguments("missing required option '--config <path>'") };
+    return { kind: "error", result: invalidArguments("missing required option '--config <path>'") };
   }
 
   if (configValues.length > 1) {
-    return { ok: false, result: invalidArguments("duplicated option '--config'") };
+    return { kind: "error", result: invalidArguments("duplicated option '--config'") };
   }
 
-  return { ok: true, configArg: configValues[0]! };
+  return { kind: "config", configArg: configValues[0]! };
 }
 
 function invalidArguments(reason: string): CliDispatchResult {

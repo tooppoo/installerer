@@ -4,6 +4,8 @@ import { join } from "node:path";
 import type { CliCommandModule } from "../command";
 import type { CliDispatchResult } from "../dispatch";
 import { CliExitCode } from "../exitCodes";
+import { topLevelHelpText } from "../topLevelHelp";
+import { cliVersion } from "../version";
 
 export const CONFIG_FILE_NAME = "installerer.kdl";
 
@@ -45,9 +47,14 @@ export const INIT_CONFIG_TEMPLATE = `installerer {
 /**
  * Writes `installerer.kdl` to `cwd`, never overwriting an existing file (v0
  * has no `--force`/`--out`; see #88). `init` has no options of its own, so
- * `dispatchCli` (#90) hands it `rest` unfiltered; any leftover argument (a
- * stray `--force`, an unexpected positional, ...) is rejected here and
- * reuses the plain `unknownOption` exit code, since `init` has no
+ * `dispatchCli` (#90) hands it `rest` unfiltered. `init` checks for
+ * `--help`/`-h`/`--version`/`-v` itself via a plain `Array.includes` (safe
+ * here specifically because `init` has no value-taking option whose value
+ * could collide with one of those spellings — unlike `validate`'s
+ * `--config`, which parses `--help`/`--version` through its own `parseArgs`
+ * call instead; see `dispatchCli`'s doc comment). Any other leftover
+ * argument (a stray `--force`, an unexpected positional, ...) is rejected
+ * here and reuses the plain `unknownOption` exit code, since `init` has no
  * command-specific argument-error cause of its own to introduce.
  *
  * Uses the `wx` flag (create-only, fails if the path exists) instead of a
@@ -60,6 +67,14 @@ export const initCommand: CliCommandModule = {
   name: "init",
 
   run(args: readonly string[], cwd: string): CliDispatchResult {
+    if (args.includes("--help") || args.includes("-h")) {
+      return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
+    }
+
+    if (args.includes("--version") || args.includes("-v")) {
+      return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
+    }
+
     if (args.length > 0) {
       return {
         stdout: "",

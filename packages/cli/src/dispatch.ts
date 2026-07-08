@@ -39,15 +39,21 @@ function findCommand(name: string): CliCommandModule | undefined {
  * would mean every command's flags leak into every other command's argv, and
  * an unrecognized flag for one command would either have to be pre-declared
  * globally or fail before routing ever decided which command was even being
- * invoked. Instead, once a known command is found, `--help`/`-h` and
- * `--version`/`-v` are honored ahead of it (so `installerer validate --help`
- * reports help instead of running `validate`'s file IO) and everything else
- * about `rest` is that command's own business: `CliCommandModule.run` parses
- * its own args and returns its own result, including its own exit code for
- * its own argument errors (`validate`'s `invalidValidateArguments`, #90) —
- * `init` (#88) has no options of its own, so it rejects any leftover `rest`
- * itself and reuses the plain `unknownOption` exit code for that (see
- * `commands/init.ts`).
+ * invoked. Once a known command is found, `rest` is that command's own
+ * business end to end, including `--help`/`-h`/`--version`/`-v`:
+ * `CliCommandModule.run` parses its own args (via its own `parseArgs` call)
+ * and returns its own result. This dispatch function deliberately does not
+ * pre-scan `rest` for `--help`/`--version` itself, e.g. via a plain
+ * `rest.includes("--help")` check: a command with a value-taking option
+ * (`validate`'s `--config <path>`) could have that value collide with a flag
+ * spelling (`--config --help`), and only the command's own `parseArgs` call
+ * knows which token is consumed as an option's value versus a bare flag. So
+ * `validate` (#90) declares `help`/`version` alongside `config` in its own
+ * `parseArgs` schema; `init` (#88) has no value-taking options, so it can
+ * safely check `args.includes(...)` directly. Each command also picks its
+ * own exit code for its own argument errors (`validate`'s
+ * `invalidValidateArguments`; `init` has none of its own, so it reuses the
+ * plain `unknownOption`) — see `commands/init.ts` and `commands/validate.ts`.
  *
  * When `argv[0]` is not a known command name (including no positional at
  * all, or a not-yet-implemented command like `generate`/`doctor`), the
@@ -67,14 +73,6 @@ export function dispatchCli(
   const command = first !== undefined ? findCommand(first) : undefined;
 
   if (command !== undefined) {
-    if (rest.includes("--help") || rest.includes("-h")) {
-      return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
-    }
-
-    if (rest.includes("--version") || rest.includes("-v")) {
-      return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
-    }
-
     return command.run(rest, cwd);
   }
 
