@@ -7,3 +7,4 @@
   - Do not treat snapshot updates as ready until the `shell-script-reviewer` review has completed.
 - When updating documentation, always use the `semantic-line-breaks` skill.
 - When writing or modifying code comments, always use both the `semantic-line-breaks` skill and the `code-comment` skill.
+- Use `just change` to check change. not call `bun test`, `oxlint` or `oxfmt` directly.
