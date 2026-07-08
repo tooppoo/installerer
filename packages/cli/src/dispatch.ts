@@ -1,6 +1,8 @@
 import { parseArgs } from "node:util";
 
+import type { CliCommandModule } from "./command";
 import { initCommand } from "./commands/init";
+import { validateCommand } from "./commands/validate";
 import { CliExitCode } from "./exitCodes";
 import { topLevelHelpText } from "./topLevelHelp";
 import { cliVersion } from "./version";
@@ -12,26 +14,29 @@ export type CliDispatchResult = {
 };
 
 /**
- * Runtime-independent CLI dispatch. It only decides what a command should
- * print and exit with; writing to stdout/stderr and calling process.exit is
- * the responsibility of the runtime entrypoints (npm CLI, standalone
- * executable).
+ * Implemented generator-only commands, keyed by name.
+ * `generate`/`doctor` (#89/#91) extend this list the same way `validate` (#90) does.
+ */
+const COMMANDS: readonly CliCommandModule[] = [initCommand, validateCommand];
+
+function findCommand(name: string): CliCommandModule | undefined {
+  return COMMANDS.find((command) => command.name === name);
+}
+
+/**
+ * Runtime-independent CLI dispatch.
+ * It only decides what a command should print and exit with; writing to stdout/stderr and calling process.exit is the responsibility of the runtime entrypoints (npm CLI, standalone executable).
+ * `cwd` defaults to the real process working directory so production callers don't need to pass it, while tests can pass an explicit directory instead.
  *
- * `--help` / `-h` and `--version` / `-v` are recognized when there is no
- * positional at all, and are also honored ahead of a *recognized* command
- * name (currently only `init`) so `installerer init --help` reports help
- * instead of silently running `init`'s file-writing side effect. A
- * positional that is not a recognized command name still ignores
- * `--help`/`--version` and is reported as an unknown command, matching the
- * existing contract for not-yet-implemented commands. `init` (#88) is the
- * first real subcommand: it is routed to `CliCommandModule.run`, which may
- * perform its own file IO (see `commands/init.ts`) — that does not
- * reintroduce IO into this function itself, which still only builds the
- * result value. `cwd` defaults to the real process working directory so
- * production callers don't need to pass it, while tests can pass an
- * explicit directory instead. `generate` / `validate` / `doctor` (#89-#91)
- * replace the remaining unknown-command fallback the same way, and should
- * get the same help/version guard before their own file IO.
+ * A recognized command name (`init`, `validate`, ...) is looked up directly off `argv[0]`, without first running it through the top-level `parseArgs` call below.
+ * This is deliberate: `validate` (#90) needs its own `--config` option, and each future command (`generate`'s `--out`, ...) will need its own option set.
+ * Folding all of those into one shared top-level schema would mean every command's flags leak into every other command's argv, and an unrecognized flag for one command would either have to be pre-declared globally or fail before routing ever decided which command was even being invoked.
+ * Once a known command is found, `rest` is that command's own business end to end, including `--help`/`-h`/`--version`/`-v`: `CliCommandModule.run` parses its own args (via its own `parseArgs` call) and returns its own result.
+ * This dispatch function deliberately does not pre-scan `rest` for `--help`/`--version` itself, e.g. via a plain `rest.includes("--help")` check: a command with a value-taking option (`validate`'s `--config <path>`) could have that value collide with a flag spelling (`--config --help`), and only the command's own `parseArgs` call knows which token is consumed as an option's value versus a bare flag.
+ * So `validate` (#90) declares `help`/`version` alongside `config` in its own `parseArgs` schema; `init` (#88) has no value-taking options, so it can safely check `args.includes(...)` directly.
+ * Each command also picks its own exit code for its own argument errors (`validate`'s `invalidValidateArguments`; `init` has none of its own, so it reuses the plain `unknownOption`) — see `commands/init.ts` and `commands/validate.ts`.
+ *
+ * When `argv[0]` is not a known command name (including no positional at all, or a not-yet-implemented command like `generate`/`doctor`), the original single-`parseArgs` fallback below still owns `--help`/`-h`/`--version`/`-v` and the `unknownCommand`/`unknownOption` exit codes, unchanged from before this command existed.
  */
 export function dispatchCli(
   argv: readonly string[],
@@ -39,6 +44,13 @@ export function dispatchCli(
 ): CliDispatchResult {
   if (argv.length === 0) {
     return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
+  }
+
+  const [first, ...rest] = argv;
+  const command = first !== undefined ? findCommand(first) : undefined;
+
+  if (command !== undefined) {
+    return command.run(rest, cwd);
   }
 
   try {
@@ -61,23 +73,11 @@ export function dispatchCli(
       }
     }
 
-    const [command, ...rest] = positionals;
-
-    if (command === initCommand.name) {
-      if (values.help) {
-        return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
-      }
-
-      if (values.version) {
-        return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
-      }
-
-      return initCommand.run(rest, cwd);
-    }
+    const [unknownCommand] = positionals;
 
     return {
       stdout: "",
-      stderr: `installerer: unknown command '${command}'\n`,
+      stderr: `installerer: unknown command '${unknownCommand}'\n`,
       exitCode: CliExitCode.unknownCommand,
     };
   } catch (error) {

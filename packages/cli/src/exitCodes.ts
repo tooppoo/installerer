@@ -11,6 +11,10 @@ export const CliExitCode = {
   unknownOption: 2,
   configFileAlreadyExists: 3,
   configFileWriteFailed: 4,
+  configValidationFailed: 5,
+  invalidConfigSyntax: 6,
+  configFileReadFailed: 7,
+  invalidValidateArguments: 8,
 } as const;
 
 export type CliExitCode = (typeof CliExitCode)[keyof typeof CliExitCode];

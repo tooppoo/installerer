@@ -1,3 +1,4 @@
+import type { ArchiveTemplateWarning } from "./archiveTemplate";
 import type { KdlSourceLocation, KdlSyntaxError } from "./kdl/parseKdlText";
 import type { ValidationError } from "./validation";
 
@@ -30,6 +31,8 @@ export type ConfigDiagnostic = {
   reason: string;
   /** What the value should have been; omitted when there is no expectation to state. */
   expected?: string;
+  /** A non-mandatory suggestion for a warning-severity diagnostic; omitted for errors, which use `expected` instead. */
+  recommended?: string;
 };
 
 export function configDiagnosticFromKdlSyntaxError(error: KdlSyntaxError): ConfigDiagnostic {
@@ -69,6 +72,23 @@ export function configDiagnosticFromValidationError(
 }
 
 /**
+ * Wraps an `ArchiveTemplateWarning` (`path` / `reason` / `recommended`) as a warning-severity `semantic` config diagnostic.
+ *
+ * Like `configDiagnosticFromValidationError`, this passes `path` through unchanged: `ArchiveTemplateWarning`s come from `validateInstallerConfig`, which only knows domain paths (e.g. `$.archive.nameTemplate`), so callers that have a KDL AST are expected to translate to a KDL-facing path before (or instead of) using this helper, the same boundary split #108 established for errors.
+ */
+export function configDiagnosticFromArchiveTemplateWarning(
+  warning: ArchiveTemplateWarning,
+): ConfigDiagnostic {
+  return {
+    severity: "warning",
+    phase: "semantic",
+    path: warning.path,
+    reason: warning.reason,
+    recommended: warning.recommended,
+  };
+}
+
+/**
  * Formats config diagnostics for CLI stderr.
  *
  * Pure string formatter: writing to stderr is the command layer's job, and this function must stay free of `process`/`console`/Node-specific APIs so it fits the runtime-neutral `packages/core` boundary.
@@ -76,7 +96,7 @@ export function configDiagnosticFromValidationError(
  *
  * Output contract (pinned by snapshot tests):
  * - diagnostics are emitted in input order
- * - each block is `severity[phase] <path | line:column | nothing>` followed by an indented `reason:` line and, only when present, an `expected:` line
+ * - each block is `severity[phase] <path | line:column | nothing>` followed by an indented `reason:` line and, only when present, an `expected:` line and/or a `recommended:` line
  * - blocks are separated by one blank line
  * - LF newlines, exactly one final newline
  * - an empty input formats to an empty string (the command writes nothing)
@@ -97,6 +117,10 @@ function formatConfigDiagnostic(diagnostic: ConfigDiagnostic): string {
 
   if (diagnostic.expected !== undefined) {
     lines.push(`  expected: ${diagnostic.expected}`);
+  }
+
+  if (diagnostic.recommended !== undefined) {
+    lines.push(`  recommended: ${diagnostic.recommended}`);
   }
 
   return lines.join("\n");

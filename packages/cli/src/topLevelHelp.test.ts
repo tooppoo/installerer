@@ -6,16 +6,16 @@ describe("topLevelHelpText", () => {
   test("matches the committed help text snapshot", () => {
     expect(topLevelHelpText).toBe(
       [
-        "installerer generates a self-contained install.sh from a JSON config.",
+        "installerer generates a self-contained install.sh from a KDL config.",
         "",
         "Usage:",
         "  installerer <command> [options]",
         "",
         "Commands:",
         "  installerer init",
-        "  installerer validate --config installerer.json",
-        "  installerer generate --config installerer.json --out install.sh",
-        "  installerer doctor --config installerer.json",
+        "  installerer validate --config installerer.kdl",
+        "  installerer generate --config installerer.kdl --out install.sh",
+        "  installerer doctor --config installerer.kdl",
         "  installerer --version",
         "  installerer --help",
         "",

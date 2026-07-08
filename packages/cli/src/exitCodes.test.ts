@@ -15,6 +15,22 @@ describe("CliExitCode", () => {
     expect(CliExitCode.configFileWriteFailed).toBe(4);
   });
 
+  test("configValidationFailed is 5", () => {
+    expect(CliExitCode.configValidationFailed).toBe(5);
+  });
+
+  test("invalidConfigSyntax is 6", () => {
+    expect(CliExitCode.invalidConfigSyntax).toBe(6);
+  });
+
+  test("configFileReadFailed is 7", () => {
+    expect(CliExitCode.configFileReadFailed).toBe(7);
+  });
+
+  test("invalidValidateArguments is 8", () => {
+    expect(CliExitCode.invalidValidateArguments).toBe(8);
+  });
+
   test("every cause has a distinct value", () => {
     const values = Object.values(CliExitCode);
 
