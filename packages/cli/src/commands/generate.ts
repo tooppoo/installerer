@@ -201,9 +201,13 @@ function isSameConfigAndOutPath(configPath: string, outPath: string): boolean {
 type WriteOutputResult = { ok: true } | { ok: false; error: unknown };
 
 /**
- * Atomic replace (#89 "overwrite policy"): the output parent directory must already exist and be a directory (no auto-`mkdir`), the output path itself must not be a directory, and the generated installer is written to an exclusively-created (`wx`) temporary file in that same directory before being renamed onto `outPath`. Any failure before the rename leaves an existing `outPath` untouched; a temporary file left behind by a failed write is best-effort cleaned up.
+ * `renameSync` is the one step of `writeOutputAtomically` that a unit test cannot force to fail through real filesystem state alone: every other failure (missing parent, non-directory parent, `outPath` itself a directory, an unwritable directory) is already caught by an earlier check or by `writeFileSync`'s own `wx` flag, before a temporary file exists to rename. Accepting `renameSync` as an injectable dependency (defaulting to the real one) lets `generate.test.ts` exercise the post-write rename-failure/cleanup branch directly, without mocking the `node:fs` module globally for the whole test process.
  */
-function writeOutputAtomically(outPath: string, content: string): WriteOutputResult {
+export function writeOutputAtomically(
+  outPath: string,
+  content: string,
+  renameFn: typeof renameSync = renameSync,
+): WriteOutputResult {
   const parentDir = dirname(outPath);
 
   let parentStat: ReturnType<typeof statSync>;
@@ -235,7 +239,7 @@ function writeOutputAtomically(outPath: string, content: string): WriteOutputRes
   }
 
   try {
-    renameSync(tempPath, outPath);
+    renameFn(tempPath, outPath);
   } catch (error) {
     tryUnlink(tempPath);
     return { ok: false, error };
@@ -292,6 +296,13 @@ function outputWriteFailure(outArg: string, error: unknown): CliDispatchResult {
   };
 }
 
+/**
+ * Backs the `generateInstaller` catch in `run` above. See the `installerGenerationFailed`
+ * doc comment in `exitCodes.ts` for why a config that already passed `validateInstallerConfigKdl`
+ * has no known way to reach this function; that also means no test constructs a config which
+ * drives execution here, so this formatter's output shape is intentionally exercised only by
+ * reading, not by a passing test.
+ */
 function installerGenerationFailure(error: unknown): CliDispatchResult {
   const systemMessage = error instanceof Error ? error.message : String(error);
 

@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { CliExitCode } from "../exitCodes";
 import { topLevelHelpText } from "../topLevelHelp";
 import { cliVersion } from "../version";
-import { generateCommand } from "./generate";
+import { generateCommand, writeOutputAtomically } from "./generate";
 
 const VALID_KDL = `installerer {
   source owner="tooppoo" repo="git-kura"
@@ -476,6 +476,37 @@ describe("generateCommand.run", () => {
         exitCode: CliExitCode.success,
       });
       expect(existsSync(join(dir, "install.sh"))).toBe(false);
+    });
+  });
+});
+
+describe("writeOutputAtomically", () => {
+  test("cleans up the temporary file and leaves an existing --out untouched when the rename step fails", () => {
+    withTempDir((dir) => {
+      const outPath = join(dir, "install.sh");
+      writeFileSync(outPath, "#!/bin/sh\necho old\n");
+
+      const failingRename = () => {
+        throw new Error("simulated rename failure");
+      };
+
+      const result = writeOutputAtomically(outPath, "new content", failingRename);
+
+      expect(result.ok).toBe(false);
+      expect(readFileSync(outPath, "utf8")).toBe("#!/bin/sh\necho old\n");
+      expect(readdirSync(dir)).toEqual(["install.sh"]);
+    });
+  });
+
+  test("succeeds and leaves no temporary file behind when rename succeeds", () => {
+    withTempDir((dir) => {
+      const outPath = join(dir, "install.sh");
+
+      const result = writeOutputAtomically(outPath, "new content");
+
+      expect(result.ok).toBe(true);
+      expect(readFileSync(outPath, "utf8")).toBe("new content");
+      expect(readdirSync(dir)).toEqual(["install.sh"]);
     });
   });
 });
