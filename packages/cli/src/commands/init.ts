@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { CliCommandModule } from "../command";
@@ -49,6 +49,12 @@ export const INIT_CONFIG_TEMPLATE = `installerer {
  * already recognize (e.g. a stray `--force`) surfaces as an unknown-option
  * error before dispatch ever reaches this module, so there is nothing left
  * for `init` itself to parse.
+ *
+ * Uses the `wx` flag (create-only, fails if the path exists) instead of a
+ * separate `existsSync` check followed by a plain write: two separate
+ * syscalls would leave a check-then-act race where a file created between
+ * the check and the write gets silently clobbered instead of reported as
+ * "already exists".
  */
 export const initCommand: CliCommandModule = {
   name: "init",
@@ -56,19 +62,21 @@ export const initCommand: CliCommandModule = {
   run(_args: readonly string[], cwd: string): CliDispatchResult {
     const configPath = join(cwd, CONFIG_FILE_NAME);
 
-    if (existsSync(configPath)) {
-      return {
-        stdout: "",
-        stderr:
-          `installerer: ${CONFIG_FILE_NAME} already exists in the current directory.\n` +
-          `installerer: check the existing file, move it aside, delete it, or pass it to 'installerer validate' or 'installerer generate' instead.\n`,
-        exitCode: CliExitCode.configFileAlreadyExists,
-      };
-    }
-
     try {
-      writeFileSync(configPath, INIT_CONFIG_TEMPLATE);
+      writeFileSync(configPath, INIT_CONFIG_TEMPLATE, { flag: "wx" });
     } catch (error) {
+      const errno = error as NodeJS.ErrnoException;
+
+      if (errno.code === "EEXIST") {
+        return {
+          stdout: "",
+          stderr:
+            `installerer: ${CONFIG_FILE_NAME} already exists in the current directory.\n` +
+            `installerer: check the existing file, move it aside, delete it, or pass it to 'installerer validate' or 'installerer generate' instead.\n`,
+          exitCode: CliExitCode.configFileAlreadyExists,
+        };
+      }
+
       const systemMessage = error instanceof Error ? error.message : String(error);
       return {
         stdout: "",

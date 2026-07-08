@@ -70,17 +70,24 @@ describe("initCommand.run", () => {
     });
   });
 
-  test("reports a write failure on stderr with the system error message and exits with the write-failed code", () => {
-    withTempDir((dir) => {
-      chmodSync(dir, 0o500);
+  // Relies on the OS enforcing directory permissions against the
+  // test-runner's own UID; a root process bypasses permission bits entirely,
+  // so this would spuriously fail (write would succeed) under a root-by-
+  // default container.
+  test.skipIf(process.getuid?.() === 0)(
+    "reports a write failure on stderr with the system error message and exits with the write-failed code",
+    () => {
+      withTempDir((dir) => {
+        chmodSync(dir, 0o500);
 
-      const result = initCommand.run([], dir);
+        const result = initCommand.run([], dir);
 
-      expect(result.stdout).toBe("");
-      expect(result.exitCode).toBe(CliExitCode.configFileWriteFailed);
+        expect(result.stdout).toBe("");
+        expect(result.exitCode).toBe(CliExitCode.configFileWriteFailed);
 
-      const normalized = result.stderr.split(dir).join("<dir>");
-      expect(normalized).toMatchSnapshot();
-    });
-  });
+        const normalized = result.stderr.split(dir).join("<dir>");
+        expect(normalized).toMatchSnapshot();
+      });
+    },
+  );
 });
