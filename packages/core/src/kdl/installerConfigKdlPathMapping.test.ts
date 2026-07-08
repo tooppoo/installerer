@@ -3,6 +3,11 @@ import { describe, expect, test } from "bun:test";
 import { domainPathToKdlFacingPath } from "./installerConfigKdlPathMapping";
 
 describe("domainPathToKdlFacingPath", () => {
+  // Left-hand values are the literal `ValidationError.path` strings
+  // `validateInstallerConfig` emits, not KDL-mirrored paths: `owner`/`repo`
+  // sit at the root of the `InstallerConfig` JSON input object, so their
+  // domain path is the flat `$.owner`/`$.repo`, not `$.source.owner`/
+  // `$.source.repo` (only the KDL side nests them under a `source` node).
   test.each([
     ["$.owner", "installerer.source.owner"],
     ["$.repo", "installerer.source.repo"],

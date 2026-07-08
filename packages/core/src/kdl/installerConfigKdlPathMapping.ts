@@ -29,6 +29,15 @@ export function domainPathToKdlFacingPath(path: string): string {
   return path;
 }
 
+/**
+ * Keys are literal `ValidationError.path` values `validateInstallerConfig`
+ * emits (installerConfig.ts:123,132: `requireString(root.owner, "$.owner",
+ * ...)` / `requireString(root.repo, "$.repo", ...)`). `owner`/`repo` sit at
+ * the root of the `InstallerConfig` JSON input object, so their domain path
+ * is the flat `$.owner`/`$.repo` — NOT the nested `$.source.owner`/
+ * `$.source.repo`. Only the KDL side groups them under a `source` node; the
+ * JSON/domain model has no `source` field to nest under.
+ */
 const STATIC_PATH_MAP: Record<string, string> = {
   "$.owner": "installerer.source.owner",
   "$.repo": "installerer.source.repo",
