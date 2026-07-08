@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { CliExitCode } from "../exitCodes";
 import { topLevelHelpText } from "../topLevelHelp";
 import { cliVersion } from "../version";
-import { generateCommand, writeOutputAtomically } from "./generate";
+import { generateCommand, runGenerate, writeOutputAtomically } from "./generate";
 
 const VALID_KDL = `installerer {
   source owner="tooppoo" repo="git-kura"
@@ -193,6 +193,47 @@ describe("generateCommand.run", () => {
       expect(result.exitCode).toBe(CliExitCode.success);
       const written = readFileSync(join(dir, "install.sh"), "utf8");
       expect(written).not.toContain("echo old");
+    });
+  });
+
+  test("a generateInstaller throw does not create the output file and exits with the installer-generation-failed code", () => {
+    withTempDir((dir) => {
+      writeConfig(dir, "installerer.kdl", VALID_KDL);
+
+      const throwingGenerateFn = () => {
+        throw new Error("simulated generator failure");
+      };
+
+      const result = runGenerate(
+        ["--config", "installerer.kdl", "--out", "install.sh"],
+        dir,
+        throwingGenerateFn,
+      );
+
+      expect(result.stdout).toBe("");
+      expect(result.exitCode).toBe(CliExitCode.installerGenerationFailed);
+      expect(result.stderr).toContain("simulated generator failure");
+      expect(existsSync(join(dir, "install.sh"))).toBe(false);
+    });
+  });
+
+  test("a generateInstaller throw does not overwrite an existing output file", () => {
+    withTempDir((dir) => {
+      writeConfig(dir, "installerer.kdl", VALID_KDL);
+      writeConfig(dir, "install.sh", "#!/bin/sh\necho old\n");
+
+      const throwingGenerateFn = () => {
+        throw new Error("simulated generator failure");
+      };
+
+      const result = runGenerate(
+        ["--config", "installerer.kdl", "--out", "install.sh"],
+        dir,
+        throwingGenerateFn,
+      );
+
+      expect(result.exitCode).toBe(CliExitCode.installerGenerationFailed);
+      expect(readFileSync(join(dir, "install.sh"), "utf8")).toContain("echo old");
     });
   });
 

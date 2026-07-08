@@ -35,81 +35,89 @@ const USAGE = "installerer: usage: installerer generate --config <path> --out <p
  */
 export const generateCommand: CliCommandModule = {
   name: "generate",
-
-  run(args: readonly string[], cwd: string): CliDispatchResult {
-    const parsedArgs = parseGenerateArgs(args);
-
-    if (parsedArgs.kind === "help") {
-      return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
-    }
-
-    if (parsedArgs.kind === "version") {
-      return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
-    }
-
-    if (parsedArgs.kind === "error") {
-      return parsedArgs.result;
-    }
-
-    const { configArg, outArg } = parsedArgs;
-    const configPath = resolve(cwd, configArg);
-    const outPath = resolve(cwd, outArg);
-
-    if (isSameConfigAndOutPath(configPath, outPath)) {
-      return invalidArguments(
-        `--config and --out must not point to the same path ('${configArg}' and '${outArg}')`,
-      );
-    }
-
-    let text: string;
-    try {
-      text = readFileSync(configPath, "utf8");
-    } catch (error) {
-      return configReadFailure(configArg, error);
-    }
-
-    const parsed = parseKdlText(text);
-    if (!parsed.ok) {
-      return {
-        stdout: "",
-        stderr: formatConfigDiagnostics(parsed.errors.map(configDiagnosticFromKdlSyntaxError)),
-        exitCode: CliExitCode.invalidConfigSyntax,
-      };
-    }
-
-    const validated = validateInstallerConfigKdl(parsed.document);
-    if (!validated.ok) {
-      return {
-        stdout: "",
-        stderr: formatConfigDiagnostics(validated.diagnostics),
-        exitCode: CliExitCode.configValidationFailed,
-      };
-    }
-
-    let installerScript: string;
-    try {
-      installerScript = generateInstaller(validated.config, cliVersion);
-    } catch (error) {
-      return installerGenerationFailure(error);
-    }
-
-    const writeResult = writeOutputAtomically(outPath, installerScript);
-    if (!writeResult.ok) {
-      return outputWriteFailure(outArg, writeResult.error);
-    }
-
-    const warningDiagnostics = validated.warnings.map(configDiagnosticFromArchiveTemplateWarning);
-
-    return {
-      stdout:
-        `installerer: wrote ${outArg} from ${configArg}.\n` +
-        `installerer: ${validated.config.owner}/${validated.config.repo}, ` +
-        `${validated.config.targets.length} target(s).\n`,
-      stderr: formatConfigDiagnostics(warningDiagnostics),
-      exitCode: CliExitCode.success,
-    };
-  },
+  run: runGenerate,
 };
+
+/**
+ * `generateFn` defaults to the real `generateInstaller` and exists purely as a test seam, the same role `writeOutputAtomically`'s `renameFn` plays: a validated config has no known way to make the real `generateInstaller` throw (see the `installerGenerationFailed` doc comment in `exitCodes.ts`), so `generate.test.ts` injects a throwing stand-in here to exercise the `installerGenerationFailure` catch branch instead of leaving it unreachable by any test.
+ */
+export function runGenerate(
+  args: readonly string[],
+  cwd: string,
+  generateFn: typeof generateInstaller = generateInstaller,
+): CliDispatchResult {
+  const parsedArgs = parseGenerateArgs(args);
+
+  if (parsedArgs.kind === "help") {
+    return { stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success };
+  }
+
+  if (parsedArgs.kind === "version") {
+    return { stdout: `${cliVersion}\n`, stderr: "", exitCode: CliExitCode.success };
+  }
+
+  if (parsedArgs.kind === "error") {
+    return parsedArgs.result;
+  }
+
+  const { configArg, outArg } = parsedArgs;
+  const configPath = resolve(cwd, configArg);
+  const outPath = resolve(cwd, outArg);
+
+  if (isSameConfigAndOutPath(configPath, outPath)) {
+    return invalidArguments(
+      `--config and --out must not point to the same path ('${configArg}' and '${outArg}')`,
+    );
+  }
+
+  let text: string;
+  try {
+    text = readFileSync(configPath, "utf8");
+  } catch (error) {
+    return configReadFailure(configArg, error);
+  }
+
+  const parsed = parseKdlText(text);
+  if (!parsed.ok) {
+    return {
+      stdout: "",
+      stderr: formatConfigDiagnostics(parsed.errors.map(configDiagnosticFromKdlSyntaxError)),
+      exitCode: CliExitCode.invalidConfigSyntax,
+    };
+  }
+
+  const validated = validateInstallerConfigKdl(parsed.document);
+  if (!validated.ok) {
+    return {
+      stdout: "",
+      stderr: formatConfigDiagnostics(validated.diagnostics),
+      exitCode: CliExitCode.configValidationFailed,
+    };
+  }
+
+  let installerScript: string;
+  try {
+    installerScript = generateFn(validated.config, cliVersion);
+  } catch (error) {
+    return installerGenerationFailure(error);
+  }
+
+  const writeResult = writeOutputAtomically(outPath, installerScript);
+  if (!writeResult.ok) {
+    return outputWriteFailure(outArg, writeResult.error);
+  }
+
+  const warningDiagnostics = validated.warnings.map(configDiagnosticFromArchiveTemplateWarning);
+
+  return {
+    stdout:
+      `installerer: wrote ${outArg} from ${configArg}.\n` +
+      `installerer: ${validated.config.owner}/${validated.config.repo}, ` +
+      `${validated.config.targets.length} target(s).\n`,
+    stderr: formatConfigDiagnostics(warningDiagnostics),
+    exitCode: CliExitCode.success,
+  };
+}
 
 type ParseGenerateArgsResult =
   | { kind: "help" }
@@ -297,8 +305,8 @@ function outputWriteFailure(outArg: string, error: unknown): CliDispatchResult {
 }
 
 /**
- * Backs the `generateInstaller` catch in `run` above.
- * See the `installerGenerationFailed` doc comment in `exitCodes.ts` for why a config that already passed `validateInstallerConfigKdl` has no known way to reach this function; that also means no test constructs a config which drives execution here, so this formatter's output shape is intentionally exercised only by reading, not by a passing test.
+ * Backs the `generateInstaller` catch in `runGenerate` above.
+ * See the `installerGenerationFailed` doc comment in `exitCodes.ts` for why a validated config has no known way to make the real `generateInstaller` throw; `generate.test.ts` reaches this function anyway by injecting a throwing `generateFn` through `runGenerate`'s test seam.
  */
 function installerGenerationFailure(error: unknown): CliDispatchResult {
   const systemMessage = error instanceof Error ? error.message : String(error);
