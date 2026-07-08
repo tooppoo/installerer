@@ -46,3 +46,12 @@ export {
   type KdlSyntaxError,
   type ParseKdlTextResult,
 } from "./kdl/parseKdlText";
+export {
+  decodeInstallerConfigKdl,
+  type DecodeInstallerConfigKdlResult,
+} from "./kdl/installerConfigKdlCodec";
+export {
+  validateInstallerConfigKdl,
+  type ValidateInstallerConfigKdlResult,
+} from "./kdl/installerConfigKdlValidation";
+export { domainPathToKdlFacingPath } from "./kdl/installerConfigKdlPathMapping";
