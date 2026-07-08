@@ -95,6 +95,34 @@ describe("validateInstallerConfigKdl", () => {
     expect(diagnostic?.reason).toBe("Duplicate target entry.");
   });
 
+  test("returns warnings with a KDL-facing path, not the domain path validateInstallerConfig reports", () => {
+    const result = validate(`
+      installerer {
+        source owner="tooppoo" repo="git-kura"
+        binary name="git-kura" path-in-archive="git-kura"
+        archive format="tar.gz" name-template="-{repo}_{version}_{os}_{arch}.tar.gz"
+        checksum file-name="checksums.txt" algorithm="sha256"
+        targets {
+          target os="linux" arch="x86_64"
+        }
+      }
+    `);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    expect(result.warnings.length).toBeGreaterThan(0);
+    for (const warning of result.warnings) {
+      expect(warning.path).toStartWith("installerer.");
+      expect(warning.path).not.toStartWith("$.");
+    }
+    expect(result.warnings).toContainEqual({
+      path: "installerer.archive.name-template",
+      reason:
+        "Archive filename starts with '-'. The generated installer uses fixed local paths, but external tools may interpret this as an option.",
+      recommended: "Prefix the filename with the repository or binary name.",
+    });
+  });
+
   test("reports semantic-phase diagnostics with a KDL-facing flat architecture-labels path", () => {
     const result = validate(`
       installerer {

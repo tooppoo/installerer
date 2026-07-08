@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -165,5 +165,55 @@ describe("dispatchCli", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  test("validate routes to the validate command module and reads the config from the given cwd", () => {
+    const dir = mkdtempSync(join(tmpdir(), "installerer-dispatch-validate-test-"));
+
+    try {
+      writeFileSync(join(dir, CONFIG_FILE_NAME), INIT_CONFIG_TEMPLATE);
+
+      const result = dispatchCli(["validate", "--config", CONFIG_FILE_NAME], dir);
+
+      expect(result.stderr).toBe("");
+      expect(result.exitCode).toBe(CliExitCode.success);
+      expect(result.stdout).toContain("is valid");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("validate --help prints help text instead of running validate", () => {
+    const result = dispatchCli(["validate", "--help"], "/irrelevant");
+
+    expect(result).toEqual({ stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success });
+  });
+
+  test("validate -v prints the version instead of running validate", () => {
+    const result = dispatchCli(["validate", "-v"], "/irrelevant");
+
+    expect(result).toEqual({
+      stdout: `${cliVersion}\n`,
+      stderr: "",
+      exitCode: CliExitCode.success,
+    });
+  });
+
+  test("validate with no arguments reports validate's own invalid-arguments error, not the top-level unknown-option code", () => {
+    const result = dispatchCli(["validate"], "/irrelevant");
+
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("missing required option");
+    expect(result.exitCode).toBe(CliExitCode.invalidValidateArguments);
+  });
+
+  test("validate with an option it doesn't support reports validate's own invalid-arguments error, not the top-level unknown-option code", () => {
+    const result = dispatchCli(
+      ["validate", "--config", "installerer.kdl", "--bogus"],
+      "/irrelevant",
+    );
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(CliExitCode.invalidValidateArguments);
   });
 });

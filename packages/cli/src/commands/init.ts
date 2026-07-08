@@ -44,11 +44,11 @@ export const INIT_CONFIG_TEMPLATE = `installerer {
 
 /**
  * Writes `installerer.kdl` to `cwd`, never overwriting an existing file (v0
- * has no `--force`/`--out`; see #88). `args` only exists to satisfy
- * `CliCommandModule.run`: any option `dispatchCli`'s `parseArgs` doesn't
- * already recognize (e.g. a stray `--force`) surfaces as an unknown-option
- * error before dispatch ever reaches this module, so there is nothing left
- * for `init` itself to parse.
+ * has no `--force`/`--out`; see #88). `init` has no options of its own, so
+ * `dispatchCli` (#90) hands it `rest` unfiltered; any leftover argument (a
+ * stray `--force`, an unexpected positional, ...) is rejected here and
+ * reuses the plain `unknownOption` exit code, since `init` has no
+ * command-specific argument-error cause of its own to introduce.
  *
  * Uses the `wx` flag (create-only, fails if the path exists) instead of a
  * separate `existsSync` check followed by a plain write: two separate
@@ -59,7 +59,15 @@ export const INIT_CONFIG_TEMPLATE = `installerer {
 export const initCommand: CliCommandModule = {
   name: "init",
 
-  run(_args: readonly string[], cwd: string): CliDispatchResult {
+  run(args: readonly string[], cwd: string): CliDispatchResult {
+    if (args.length > 0) {
+      return {
+        stdout: "",
+        stderr: `installerer: unknown option '${args[0]}' for 'init'\n`,
+        exitCode: CliExitCode.unknownOption,
+      };
+    }
+
     const configPath = join(cwd, CONFIG_FILE_NAME);
 
     try {

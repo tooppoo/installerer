@@ -44,3 +44,10 @@ exports[`formatConfigDiagnostics prefers path over location when a diagnostic ca
   expected: string
 "
 `;
+
+exports[`formatConfigDiagnostics formats a warning's recommended line alongside its reason 1`] = `
+"warning[semantic] installerer.archive.name-template
+  reason: Archive filename contains a character some shells treat specially.
+  recommended: Use only ASCII letters, digits, '.', '_', and '-' in the archive name template.
+"
+`;

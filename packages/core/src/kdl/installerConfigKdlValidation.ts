@@ -64,7 +64,7 @@ export function validateInstallerConfigKdl(
     ok: true,
     config: validated.config,
     archivePreviews: validated.archivePreviews,
-    warnings: validated.warnings,
+    warnings: validated.warnings.map(toKdlFacingWarning),
     dependencyGraphs: validated.dependencyGraphs,
     contextPropagations: validated.contextPropagations,
   };
@@ -72,4 +72,8 @@ export function validateInstallerConfigKdl(
 
 function toKdlFacingError(error: ValidationError): ValidationError {
   return { ...error, path: domainPathToKdlFacingPath(error.path) };
+}
+
+function toKdlFacingWarning(warning: ArchiveTemplateWarning): ArchiveTemplateWarning {
+  return { ...warning, path: domainPathToKdlFacingPath(warning.path) };
 }

@@ -20,6 +20,7 @@ export {
   type ValidationError,
 } from "./installerConfig";
 export {
+  configDiagnosticFromArchiveTemplateWarning,
   configDiagnosticFromKdlSyntaxError,
   configDiagnosticFromValidationError,
   formatConfigDiagnostics,

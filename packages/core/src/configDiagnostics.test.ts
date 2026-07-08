@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  configDiagnosticFromArchiveTemplateWarning,
   configDiagnosticFromKdlSyntaxError,
   configDiagnosticFromValidationError,
   formatConfigDiagnostics,
@@ -92,6 +93,19 @@ describe("formatConfigDiagnostics", () => {
   test("formats zero diagnostics as an empty string, so the command writes nothing", () => {
     expect(formatConfigDiagnostics([])).toBe("");
   });
+
+  test("formats a warning's recommended line alongside its reason", () => {
+    const recommendedWarning: ConfigDiagnostic = {
+      severity: "warning",
+      phase: "semantic",
+      path: "installerer.archive.name-template",
+      reason: "Archive filename contains a character some shells treat specially.",
+      recommended:
+        "Use only ASCII letters, digits, '.', '_', and '-' in the archive name template.",
+    };
+
+    expect(formatConfigDiagnostics([recommendedWarning])).toMatchSnapshot();
+  });
 });
 
 describe("configDiagnosticFromKdlSyntaxError", () => {
@@ -165,5 +179,23 @@ describe("configDiagnosticFromValidationError", () => {
 
     expect(diagnostic.severity).toBe("warning");
     expect("expected" in diagnostic).toBe(false);
+  });
+});
+
+describe("configDiagnosticFromArchiveTemplateWarning", () => {
+  test("wraps an ArchiveTemplateWarning as a warning-severity semantic diagnostic, passing the path through unchanged", () => {
+    const diagnostic = configDiagnosticFromArchiveTemplateWarning({
+      path: "$.archive.nameTemplate",
+      reason: "Archive filename contains a character some shells treat specially.",
+      recommended: "Use only ASCII letters, digits, '.', '_', and '-'.",
+    });
+
+    expect(diagnostic).toEqual({
+      severity: "warning",
+      phase: "semantic",
+      path: "$.archive.nameTemplate",
+      reason: "Archive filename contains a character some shells treat specially.",
+      recommended: "Use only ASCII letters, digits, '.', '_', and '-'.",
+    });
   });
 });
