@@ -87,18 +87,18 @@ describe("dispatchCli", () => {
   });
 
   test("a positional followed by -v still reports the positional as an unknown command", () => {
-    const result = dispatchCli(["generate", "-v"]);
+    const result = dispatchCli(["doctor", "-v"]);
 
     expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("generate");
+    expect(result.stderr).toContain("doctor");
     expect(result.exitCode).toBe(CliExitCode.unknownCommand);
   });
 
   test("a positional followed by --help still reports the positional as an unknown command", () => {
-    const result = dispatchCli(["generate", "--help"]);
+    const result = dispatchCli(["doctor", "--help"]);
 
     expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("generate");
+    expect(result.stderr).toContain("doctor");
     expect(result.exitCode).toBe(CliExitCode.unknownCommand);
   });
 
@@ -231,5 +231,58 @@ describe("dispatchCli", () => {
     );
 
     expect(result).toEqual({ stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success });
+  });
+
+  test("generate routes to the generate command module and reads the config / writes the output under the given cwd", () => {
+    const dir = mkdtempSync(join(tmpdir(), "installerer-dispatch-generate-test-"));
+
+    try {
+      writeFileSync(join(dir, CONFIG_FILE_NAME), INIT_CONFIG_TEMPLATE);
+
+      const result = dispatchCli(
+        ["generate", "--config", CONFIG_FILE_NAME, "--out", "install.sh"],
+        dir,
+      );
+
+      expect(result.stderr).toBe("");
+      expect(result.exitCode).toBe(CliExitCode.success);
+      expect(existsSync(join(dir, "install.sh"))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("generate --help prints help text instead of running generate", () => {
+    const result = dispatchCli(["generate", "--help"], "/irrelevant");
+
+    expect(result).toEqual({ stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success });
+  });
+
+  test("generate -v prints the version instead of running generate", () => {
+    const result = dispatchCli(["generate", "-v"], "/irrelevant");
+
+    expect(result).toEqual({
+      stdout: `${cliVersion}\n`,
+      stderr: "",
+      exitCode: CliExitCode.success,
+    });
+  });
+
+  test("generate with no arguments reports generate's own invalid-arguments error, not the top-level unknown-option code", () => {
+    const result = dispatchCli(["generate"], "/irrelevant");
+
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("missing required option");
+    expect(result.exitCode).toBe(CliExitCode.invalidGenerateArguments);
+  });
+
+  test("generate with an option it doesn't support reports generate's own invalid-arguments error, not the top-level unknown-option code", () => {
+    const result = dispatchCli(
+      ["generate", "--config", "installerer.kdl", "--out", "install.sh", "--bogus"],
+      "/irrelevant",
+    );
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(CliExitCode.invalidGenerateArguments);
   });
 });

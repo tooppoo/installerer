@@ -15,6 +15,19 @@ export const CliExitCode = {
   invalidConfigSyntax: 6,
   configFileReadFailed: 7,
   invalidValidateArguments: 8,
+  invalidGenerateArguments: 9,
+  outputFileWriteFailed: 10,
+  /**
+   * `generate` (#89) reserves this for a `generateInstaller` throw after
+   * `validateInstallerConfigKdl` already reported `ok: true`. As of #89,
+   * `validateInstallerConfig` rejects any `archive.nameTemplate` that
+   * `parseArchiveNameTemplate` cannot parse (see `installerConfig.ts`), the
+   * only input `createRenderContext` is known to throw on, so a validated
+   * config has no known path to this code today; it exists as a named,
+   * stable cause for `generate`'s own catch block rather than folding an
+   * unexpected generator throw into an unrelated exit code.
+   */
+  installerGenerationFailed: 11,
 } as const;
 
 export type CliExitCode = (typeof CliExitCode)[keyof typeof CliExitCode];
