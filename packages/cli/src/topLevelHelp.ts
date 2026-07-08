@@ -4,12 +4,8 @@ import type { CliHelpFrame } from "./help";
 import { renderHelpText } from "./help";
 
 /**
- * The top-level `--help` has no loaded config (it runs before any
- * subcommand parses `--config`), so these curl install examples use literal
- * `<owner>`/`<repo>` placeholders rather than a real repository. This stays
- * true even after `validate` (#90) starts loading a real `InstallerConfig`,
- * since that config is scoped to the `validate` invocation, not to
- * top-level `--help`.
+ * The top-level `--help` has no loaded config (it runs before any subcommand parses `--config`), so these curl install examples use literal `<owner>`/`<repo>` placeholders rather than a real repository.
+ * This stays true even after `validate` (#90) starts loading a real `InstallerConfig`, since that config is scoped to the `validate` invocation, not to top-level `--help`.
  */
 const PLACEHOLDER_OWNER = "<owner>";
 const PLACEHOLDER_REPO = "<repo>";

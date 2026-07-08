@@ -179,10 +179,7 @@ describe("validateCommand.run", () => {
     });
   });
 
-  // Relies on the OS enforcing file permissions against the test-runner's
-  // own UID; a root process bypasses permission bits entirely, so this
-  // would spuriously fail (read would succeed) under a root-by-default
-  // container.
+  // Relies on the OS enforcing file permissions against the test-runner's own UID; a root process bypasses permission bits entirely, so this would spuriously fail (read would succeed) under a root-by-default container.
   test.skipIf(process.getuid?.() === 0)(
     "an unreadable config file reports the system error on stderr and exits with the config-file-read-failed code",
     () => {

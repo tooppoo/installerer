@@ -18,27 +18,11 @@ import { cliVersion } from "../version";
 const USAGE = "installerer: usage: installerer validate --config <path>\n";
 
 /**
- * `installerer validate --config <path>` (#90): reads a KDL config file,
- * runs it through the shared `parseKdlText` -> `validateInstallerConfigKdl`
- * pipeline, and reports the result via the `configDiagnostics` formatter
- * (#107) that `generate` (#89) will reuse.
+ * `installerer validate --config <path>` (#90): reads a KDL config file, runs it through the shared `parseKdlText` -> `validateInstallerConfigKdl` pipeline, and reports the result via the `configDiagnostics` formatter (#107) that `generate` (#89) will reuse.
  *
- * `validate` parses its own `args` instead of relying on `dispatchCli`'s
- * top-level `parseArgs`, so an argument problem specific to `validate`
- * (missing/duplicated `--config`, an unexpected positional, an option
- * `validate` doesn't support) is its own `invalidValidateArguments` cause
- * (exit 8) rather than the CLI-wide `unknownOption` (exit 2) — see
- * `dispatchCli`'s doc comment for why command-owned argument parsing
- * replaced a single shared schema. `--help`/`-h`/`--version`/`-v` are
- * declared in the *same* `parseArgs` call as `--config` (see
- * `parseValidateArgs`), rather than checked with a plain
- * `args.includes("--help")` the way `init` does: `--config` takes a value,
- * so a naive substring/array-includes check could misfire on
- * `--config --help` (forgotten value, next token happens to look like a
- * flag) and silently print help instead of a real argument error. Node's
- * `parseArgs` itself disambiguates that case correctly (it rejects it as an
- * ambiguous option argument), so routing `help`/`version` through the same
- * call gets that disambiguation for free.
+ * `validate` parses its own `args` instead of relying on `dispatchCli`'s top-level `parseArgs`, so an argument problem specific to `validate` (missing/duplicated `--config`, an unexpected positional, an option `validate` doesn't support) is its own `invalidValidateArguments` cause (exit 8) rather than the CLI-wide `unknownOption` (exit 2) — see `dispatchCli`'s doc comment for why command-owned argument parsing replaced a single shared schema.
+ * `--help`/`-h`/`--version`/`-v` are declared in the *same* `parseArgs` call as `--config` (see `parseValidateArgs`), rather than checked with a plain `args.includes("--help")` the way `init` does: `--config` takes a value, so a naive substring/array-includes check could misfire on `--config --help` (forgotten value, next token happens to look like a flag) and silently print help instead of a real argument error.
+ * Node's `parseArgs` itself disambiguates that case correctly (it rejects it as an ambiguous option argument), so routing `help`/`version` through the same call gets that disambiguation for free.
  */
 export const validateCommand: CliCommandModule = {
   name: "validate",

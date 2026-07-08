@@ -72,15 +72,9 @@ export function configDiagnosticFromValidationError(
 }
 
 /**
- * Wraps an `ArchiveTemplateWarning` (`path` / `reason` / `recommended`) as a
- * warning-severity `semantic` config diagnostic.
+ * Wraps an `ArchiveTemplateWarning` (`path` / `reason` / `recommended`) as a warning-severity `semantic` config diagnostic.
  *
- * Like `configDiagnosticFromValidationError`, this passes `path` through
- * unchanged: `ArchiveTemplateWarning`s come from `validateInstallerConfig`,
- * which only knows domain paths (e.g. `$.archive.nameTemplate`), so callers
- * that have a KDL AST are expected to translate to a KDL-facing path before
- * (or instead of) using this helper, the same boundary split #108 established
- * for errors.
+ * Like `configDiagnosticFromValidationError`, this passes `path` through unchanged: `ArchiveTemplateWarning`s come from `validateInstallerConfig`, which only knows domain paths (e.g. `$.archive.nameTemplate`), so callers that have a KDL AST are expected to translate to a KDL-facing path before (or instead of) using this helper, the same boundary split #108 established for errors.
  */
 export function configDiagnosticFromArchiveTemplateWarning(
   warning: ArchiveTemplateWarning,
