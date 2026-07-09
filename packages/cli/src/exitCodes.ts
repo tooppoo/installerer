@@ -24,6 +24,7 @@ export const CliExitCode = {
    * So a validated config has no known path to this code today; it exists as a named, stable cause for `generate`'s own catch block rather than folding an unexpected generator throw into an unrelated exit code.
    */
   installerGenerationFailed: 11,
+  invalidDoctorArguments: 12,
 } as const;
 
 export type CliExitCode = (typeof CliExitCode)[keyof typeof CliExitCode];
