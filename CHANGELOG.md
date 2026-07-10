@@ -8,7 +8,9 @@
 
 <!-- rellog:entry:start -->
 <!-- rellog:body:start -->
+
 release archives are now built via the wf-cross-platform-build reusable workflow on native per-target runners instead of a single-runner cross-compile job, and the GitHub Release no longer publishes a `VERSION` asset (it was not read by the generated installer)
+
 <!-- rellog:body:end -->
 <!-- rellog:entry:end -->
 
@@ -18,7 +20,9 @@ release archives are now built via the wf-cross-platform-build reusable workflow
 
 <!-- rellog:entry:start -->
 <!-- rellog:body:start -->
+
 Implements CLI version installerer
+
 <!-- rellog:body:end -->
 <!-- rellog:entry:end -->
 
