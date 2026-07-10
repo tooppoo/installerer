@@ -3,7 +3,7 @@
   "artifact_name": "binary-archives",
   "version_command": "",
   "build_script": "scripts/release/build-target.sh",
-  "build_dist": "dist/binary/raw",
+  "build_dist": "build/bin",
   "archive_prefix": "installerer",
   "targets": [
     {
@@ -13,7 +13,7 @@
       "arch": "x86_64",
       "target": "bun-linux-x64-baseline",
       "archive": "tar.gz",
-      "archive_files": [{ "path": "dist/binary/raw/installerer", "dest": "installerer" }]
+      "archive_files": [{ "path": "build/bin/installerer", "dest": "installerer" }]
     },
     {
       "id": "linux-arm64",
@@ -22,7 +22,7 @@
       "arch": "arm64",
       "target": "bun-linux-arm64",
       "archive": "tar.gz",
-      "archive_files": [{ "path": "dist/binary/raw/installerer", "dest": "installerer" }]
+      "archive_files": [{ "path": "build/bin/installerer", "dest": "installerer" }]
     },
     {
       "id": "darwin-x86_64",
@@ -31,7 +31,7 @@
       "arch": "x86_64",
       "target": "bun-darwin-x64",
       "archive": "tar.gz",
-      "archive_files": [{ "path": "dist/binary/raw/installerer", "dest": "installerer" }]
+      "archive_files": [{ "path": "build/bin/installerer", "dest": "installerer" }]
     },
     {
       "id": "darwin-arm64",
@@ -40,7 +40,7 @@
       "arch": "arm64",
       "target": "bun-darwin-arm64",
       "archive": "tar.gz",
-      "archive_files": [{ "path": "dist/binary/raw/installerer", "dest": "installerer" }]
+      "archive_files": [{ "path": "build/bin/installerer", "dest": "installerer" }]
     }
   ]
 }
