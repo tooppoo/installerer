@@ -1,6 +1,0 @@
-{
-  "kind": "changed",
-  "targets": ["cli", "docs"],
-  "links": [],
-  "body": "release archives are now built via the wf-cross-platform-build reusable workflow on native per-target runners instead of a single-runner cross-compile job, and the GitHub Release no longer publishes a `VERSION` asset (it was not read by the generated installer)"
-}
