@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "artifact_name": "binary-archives",
-  "version_command": "",
+  "version_command": "scripts/release/print-version.sh",
   "build_script": "scripts/release/build-target.sh",
   "build_dist": "build/bin",
   "archive_prefix": "installerer",

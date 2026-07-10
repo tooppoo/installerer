@@ -11,6 +11,7 @@ type ReleaseArtifactsManifestTarget = {
 type ReleaseArtifactsManifest = {
   readonly archive_prefix: string;
   readonly build_dist: string;
+  readonly version_command: string;
   readonly targets: readonly ReleaseArtifactsManifestTarget[];
 };
 
@@ -40,5 +41,16 @@ describe("release-artifacts manifest", () => {
         { path: `${manifest.build_dist}/installerer`, dest: "installerer" },
       ]);
     }
+  });
+
+  // wf-cross-platform-build's "Package archive" step runs `rm -rf dist` as its own scratch-directory setup, so build_dist must not live under dist/ or the freshly built binary is deleted before it can be archived.
+  test("keeps build output outside the reusable workflow's dist/ scratch directory", () => {
+    expect(manifest.build_dist).not.toMatch(/^dist(\/|$)/);
+  });
+
+  // wf-cross-platform-build's own fallback (stripping "v" off $GITHUB_REF_NAME) breaks on non-tag refs, such as the "<pr>/merge" ref ci.yml's build-only run uses, so version_command must always be set.
+  test("resolves the version from package.json rather than the git ref", async () => {
+    expect(manifest.version_command).toBe("scripts/release/print-version.sh");
+    expect(await Bun.file(path.join(repoRoot, manifest.version_command)).exists()).toBe(true);
   });
 });
