@@ -27,12 +27,6 @@ _check:
   bun run shellcheck:generated
 
 [group('release')]
-binary-release-artifacts:
-  bun install --frozen-lockfile
-  bun run build:binary
-  bun run release:binary
-
-[group('release')]
 release version:
   rellog ready {{ version }}
   bun install --frozen-lockfile

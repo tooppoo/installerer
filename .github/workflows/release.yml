@@ -9,29 +9,50 @@ permissions:
   contents: write
 
 jobs:
-  binary-release:
-    name: Binary release
+  release-ready:
+    name: Release readiness
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
+      - name: Verify tag matches root package.json version
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(node -p "require('./package.json').version")"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "release tag ${GITHUB_REF_NAME} does not match package.json version ${pkg_version}" >&2
+            exit 1
+          fi
+
       - uses: tooppoo/rellog-actions/setup@v0.1.0
 
       - name: check release ready
         run: rellog ready ${{ github.ref_name }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version-file: ".bun-version"
-      - run: sh scripts/setup-dev.sh
+  cross-platform-build:
+    name: Cross platform build
+    needs: release-ready
+    uses: tooppoo/github-release-workflows/.github/workflows/wf-cross-platform-build.yml@3ccc9e4ff86db06cfeb3ced53126e4f61f73031d # 0.0.1
+    with:
+      config_path: .github/release-artifacts.json
 
-      - name: Build and verify release assets
-        env:
-          INSTALLERER_RELEASE_TAG: ${{ github.ref_name }}
-        run: just binary-release-artifacts
+  publish:
+    name: Publish GitHub release
+    needs: cross-platform-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Download release archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.cross-platform-build.outputs.artifact_name }}
+          path: dist/binary
 
       - name: create release note
         uses: tooppoo/rellog-actions/create-gh-release@v0.1.0

@@ -34,7 +34,7 @@ GitHub Releases publish the canonical standalone executable as archives named:
 
 Each archive contains the executable at archive-root path `installerer`. The v0 Linux archives target glibc-based systems; musl / Alpine Linux support is tracked separately in issue #92.
 
-GitHub Release tags use `v{version}`. The archive filenames and uploaded `VERSION` asset use the repository root package version without the `v` prefix.
+GitHub Release tags use `v{version}`. The archive filenames use the repository root package version without the `v` prefix.
 
 Install from npm:
 
