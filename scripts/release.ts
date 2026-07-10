@@ -9,7 +9,7 @@ try {
     strict: true,
     allowPositionals: true,
   });
-  const [expectedVersion] = args.positionals;
+  const [, , expectedVersion] = args.positionals;
 
   if (expectedVersion && expectedVersion !== cliVersion) {
     console.error(
