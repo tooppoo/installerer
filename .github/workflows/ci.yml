@@ -80,19 +80,9 @@ jobs:
 
   binary-release-artifacts:
     name: Binary release artifacts
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version-file: ".bun-version"
-      - run: sh scripts/setup-dev.sh
-
-      - name: Build and verify release archives
-        run: just binary-release-artifacts
+    uses: tooppoo/github-release-workflows/.github/workflows/wf-cross-platform-build.yml@3ccc9e4ff86db06cfeb3ced53126e4f61f73031d # 0.0.1
+    with:
+      config_path: .github/release-artifacts.json
 
   installer-runtime-e2e:
     name: Installer runtime e2e (${{ matrix.name }})
