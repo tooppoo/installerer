@@ -1,0 +1,90 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`doctorCommand.run a valid config's full stdout matches the pinned doctor summary snapshot 1`] = `
+"Config summary:
+- config file: installerer.kdl
+- repository: tooppoo/git-kura
+- binary: git-kura
+- archive format: tar.gz
+- targets: 4
+
+Archive preview:
+- linux/x86_64 latest: git-kura_v1.2.3_linux_x86_64.tar.gz
+- linux/x86_64 pinned: git-kura_release/v1.2.3_linux_x86_64.tar.gz
+- linux/aarch64 latest: git-kura_v1.2.3_linux_aarch64.tar.gz
+- linux/aarch64 pinned: git-kura_release/v1.2.3_linux_aarch64.tar.gz
+- darwin/x86_64 latest: git-kura_v1.2.3_darwin_x86_64.tar.gz
+- darwin/x86_64 pinned: git-kura_release/v1.2.3_darwin_x86_64.tar.gz
+- darwin/aarch64 latest: git-kura_v1.2.3_darwin_aarch64.tar.gz
+- darwin/aarch64 pinned: git-kura_release/v1.2.3_darwin_aarch64.tar.gz
+
+Runtime requirements for this installer:
+
+Runtime premise:
+- POSIX-compatible sh: this installer is executed under a POSIX-compatible sh runtime
+
+Required commands:
+- uname: Detects the host OS and architecture.
+- mktemp: Creates a private temporary workspace for download and extraction.
+- rm: Cleans up temporary files.
+- mkdir: Creates the install directory and the archive extraction directory.
+- cp: Copies the extracted binary into the install directory.
+- mv: Installs the binary atomically.
+- chmod: Makes the installed binary executable.
+- curl: Downloads release files from GitHub release assets.
+- awk: Encodes URL path segments and looks up checksum entries.
+- grep: Validates archive filenames.
+- od: Encodes URL path segments safely.
+- tr: Encodes URL path segments and canonicalizes OS names.
+- cut: Encodes URL path segments safely.
+- ls: Lists downloaded and extracted files for diagnostics.
+- tar: Extracts tar.gz archives.
+- sha256sum or shasum: Verifies SHA-256 checksums.
+
+Network:
+- HTTPS access to GitHub release assets: downloads the archive and checksum file from GitHub Releases
+
+Filesystem:
+- Write permission to the install directory: the installer writes the binary into the install directory
+
+Helper diagnostics:
+
+Typo check commands (display only; doctor does not run these):
+- curl -fsIL https://github.com/tooppoo/git-kura >/dev/null
+- curl -fsIL https://github.com/tooppoo/git-kura/releases/latest >/dev/null
+- curl -fsIL https://github.com/tooppoo/git-kura/releases/latest/download/checksums.txt >/dev/null
+
+Expected release assets:
+- checksums.txt
+- git-kura_v1.2.3_linux_x86_64.tar.gz
+- git-kura_v1.2.3_linux_aarch64.tar.gz
+- git-kura_v1.2.3_darwin_x86_64.tar.gz
+- git-kura_v1.2.3_darwin_aarch64.tar.gz
+
+Latest URL preview:
+- https://github.com/tooppoo/git-kura/releases/latest/download/checksums.txt
+- https://github.com/tooppoo/git-kura/releases/download/v1.2.3/checksums.txt
+- https://github.com/tooppoo/git-kura/releases/download/v1.2.3/git-kura_v1.2.3_linux_x86_64.tar.gz
+- https://github.com/tooppoo/git-kura/releases/download/v1.2.3/git-kura_v1.2.3_linux_aarch64.tar.gz
+- https://github.com/tooppoo/git-kura/releases/download/v1.2.3/git-kura_v1.2.3_darwin_x86_64.tar.gz
+- https://github.com/tooppoo/git-kura/releases/download/v1.2.3/git-kura_v1.2.3_darwin_aarch64.tar.gz
+
+Pinned URL preview:
+- https://github.com/tooppoo/git-kura/releases/download/v0.1.2/checksums.txt
+- https://github.com/tooppoo/git-kura/releases/download/v0.1.2/git-kura_release%2Fv1.2.3_linux_x86_64.tar.gz
+- https://github.com/tooppoo/git-kura/releases/download/v0.1.2/git-kura_release%2Fv1.2.3_linux_aarch64.tar.gz
+- https://github.com/tooppoo/git-kura/releases/download/v0.1.2/git-kura_release%2Fv1.2.3_darwin_x86_64.tar.gz
+- https://github.com/tooppoo/git-kura/releases/download/v0.1.2/git-kura_release%2Fv1.2.3_darwin_aarch64.tar.gz
+
+Latest install notes:
+- Latest install first fetches the checksum file from the latest release as a version-resolution index, extracts the release tag from the matching archive filename, then re-downloads the checksum file and archive from that resolved tag.
+- Pinned install skips index resolution and downloads checksum and archive assets from the supplied tag.
+
+Install command examples:
+- sh install.sh
+- sh install.sh --version v0.1.2
+- sh install.sh --install-dir "$HOME/bin"
+- sh install.sh --version v0.1.2 --install-dir "$HOME/bin"
+- sh install.sh --version latest (rejected)
+"
+`;

@@ -285,4 +285,64 @@ describe("dispatchCli", () => {
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(CliExitCode.invalidGenerateArguments);
   });
+
+  test("doctor routes to the doctor command module and reads the config from the given cwd", () => {
+    const dir = mkdtempSync(join(tmpdir(), "installerer-dispatch-doctor-test-"));
+
+    try {
+      writeFileSync(join(dir, CONFIG_FILE_NAME), INIT_CONFIG_TEMPLATE);
+
+      const result = dispatchCli(["doctor", "--config", CONFIG_FILE_NAME], dir);
+
+      expect(result.stderr).toBe("");
+      expect(result.exitCode).toBe(CliExitCode.success);
+      expect(result.stdout).toContain("Config summary:");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("doctor --help prints help text instead of running doctor", () => {
+    const result = dispatchCli(["doctor", "--help"], "/irrelevant");
+
+    expect(result).toEqual({ stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success });
+  });
+
+  test("doctor -v prints the version instead of running doctor", () => {
+    const result = dispatchCli(["doctor", "-v"], "/irrelevant");
+
+    expect(result).toEqual({
+      stdout: `${cliVersion}\n`,
+      stderr: "",
+      exitCode: CliExitCode.success,
+    });
+  });
+
+  test("doctor with no arguments reports doctor's own invalid-arguments error, not the top-level unknown-option code", () => {
+    const result = dispatchCli(["doctor"], "/irrelevant");
+
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("missing required option");
+    expect(result.exitCode).toBe(CliExitCode.invalidDoctorArguments);
+  });
+
+  test("doctor with an option it doesn't support reports doctor's own invalid-arguments error, not the top-level unknown-option code", () => {
+    const result = dispatchCli(["doctor", "--config", "installerer.kdl", "--bogus"], "/irrelevant");
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(CliExitCode.invalidDoctorArguments);
+  });
+
+  test("doctor --config immediately followed by --help is rejected as an ambiguous argument, not misread as a bare --help flag", () => {
+    const result = dispatchCli(["doctor", "--config", "--help"], "/irrelevant");
+
+    expect(result.exitCode).toBe(CliExitCode.invalidDoctorArguments);
+    expect(result.stdout).toBe("");
+  });
+
+  test("doctor --help placed after a --config value still shows help, since dispatch delegates argv parsing entirely to doctor", () => {
+    const result = dispatchCli(["doctor", "--config", "installerer.kdl", "--help"], "/irrelevant");
+
+    expect(result).toEqual({ stdout: topLevelHelpText, stderr: "", exitCode: CliExitCode.success });
+  });
 });

@@ -16,3 +16,4 @@ See [docs/adr/20260703T132416Z_cli-exit-code-contract.md](adr/20260703T132416Z_c
 | 9         | invalid generate arguments  |
 | 10        | output file write failed    |
 | 11        | installer generation failed |
+| 12        | invalid doctor arguments    |
