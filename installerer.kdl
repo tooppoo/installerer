@@ -1,0 +1,20 @@
+installerer {
+  source owner="tooppoo" repo="installerer"
+
+  binary name="installerer" path-in-archive="installerer"
+
+  archive format="tar.gz" name-template="{repo}_{version}_{os}_{arch}.tar.gz" os-case="capitalized"
+
+  checksum file-name="checksums.txt" algorithm="sha256"
+
+  targets {
+    target os="linux" arch="x86_64"
+    target os="linux" arch="aarch64"
+    target os="darwin" arch="x86_64"
+    target os="darwin" arch="aarch64"
+  }
+
+  architecture-labels x86_64="x86_64" aarch64="arm64"
+
+  defaults install-dir="$HOME/.local/bin"
+}
