@@ -26,13 +26,14 @@ _check:
   bun run typecheck
   bun run shellcheck:generated
 
+# release-prepare's rellog readiness check and version bumps are safety-critical, not just convenience: never run this with `--no-deps` / `JUST_NO_DEPS`, which would skip them.
 [group('release')]
 release version: (release-prepare version)
   bun install --frozen-lockfile
-  bun scripts/release.ts {{ version }}
+  bun scripts/release.ts "{{ version }}"
 
 [group('release')]
 release-prepare version:
-  rellog ready v{{ version }}
-  bun pm version {{ version }} --no-git-tag-version
-  for dir in packages/* apps/*; do (cd "$dir" && bun pm version {{ version }} --no-git-tag-version); done
+  rellog ready "v{{ version }}"
+  bun pm version "{{ version }}" --no-git-tag-version
+  for dir in packages/* apps/*; do (cd "$dir" && bun pm version "{{ version }}" --no-git-tag-version) || exit 1; done
