@@ -30,7 +30,6 @@ _check:
 [group('release')]
 release version:
   rellog ready "v{{ version }}"
-  git tag -a "v{{ version }}" -m "Release v{{ version }}"
   bun install --frozen-lockfile
   bun scripts/release.ts "{{ version }}"
 
