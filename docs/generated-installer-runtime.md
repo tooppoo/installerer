@@ -209,16 +209,18 @@ After extraction, the runtime rejects the install target if it is a symlink befo
 
 The runtime places the binary as `binary.name` inside the selected install directory.
 
-Placement uses a temporary file in the install directory:
+Placement uses a temporary file in the install directory, created with `mktemp` so its name is unpredictable rather than derived from `$$`:
 
 ```sh
-install_tmp="$INSTALL_DIR/.$BINARY_NAME.tmp.$$"
-cp "$extracted_binary" "$install_tmp"
-chmod +x "$install_tmp"
-mv "$install_tmp" "$INSTALL_DIR/$BINARY_NAME"
+install_tmp=$(mktemp -- "$INSTALL_DIR/.$BINARY_NAME.tmp.XXXXXX")
+cp -- "$extracted_binary" "$install_tmp"
+chmod -- 755 "$install_tmp"
+mv -- "$install_tmp" "$INSTALL_DIR/$BINARY_NAME"
 ```
 
-This avoids directly overwriting the destination before the copy and executable permission setup have succeeded.
+This avoids directly overwriting the destination before the copy and permission setup have succeeded.
+
+The installed binary's mode is always `0755`, set explicitly rather than derived from `+x`, the extracted archive entry's stored mode, or `cp`'s mode-preservation behavior. `mktemp` creates `install_tmp` with mode `0600`; `chmod -- 755` then fixes the mode to an exact value, so the final mode never depends on the invoking shell's `umask`, the platform's `cp` implementation, or excess permission bits (setuid/setgid/sticky, group/world-write) an archive entry might carry. See [`20260710T175612Z_installed-binary-permission-mode.md`](./adr/20260710T175612Z_installed-binary-permission-mode.md) for the rationale.
 
 ## Non-Goals
 
