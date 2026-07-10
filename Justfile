@@ -27,7 +27,12 @@ _check:
   bun run shellcheck:generated
 
 [group('release')]
-release version:
-  rellog ready {{ version }}
+release version: (release-prepare version)
   bun install --frozen-lockfile
   bun scripts/release.ts {{ version }}
+
+[group('release')]
+release-prepare version:
+  rellog ready v{{ version }}
+  bun pm version {{ version }} --no-git-tag-version
+  for dir in packages/* apps/*; do (cd "$dir" && bun pm version {{ version }} --no-git-tag-version); done
