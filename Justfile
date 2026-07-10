@@ -28,7 +28,9 @@ _check:
 
 # release-prepare's rellog readiness check and version bumps are safety-critical, not just convenience: never run this with `--no-deps` / `JUST_NO_DEPS`, which would skip them.
 [group('release')]
-release version: (release-prepare version)
+release version:
+  rellog ready "v{{ version }}"
+  git tag -a "v{{ version }}" -m "Release v{{ version }}"
   bun install --frozen-lockfile
   bun scripts/release.ts "{{ version }}"
 
