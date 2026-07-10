@@ -13,7 +13,10 @@ bun install --frozen-lockfile
 
 mkdir -p "$out_dir"
 bun build --compile --target="$target" --outfile="$out_dir/installerer" packages/cli/src/node/main.ts
-chmod +x "$out_dir/installerer"
+
+# An explicit mode is used instead of `chmod +x`, which only adds bits on top of whatever mode already exists and would make the archived mode depend on umask.
+# See docs/adr/20260710T175612Z_installed-binary-permission-mode.md.
+chmod 755 "$out_dir/installerer"
 
 # Each matrix target runs on a runner matching its OS/arch, so the binary can be smoke-tested by executing it here; bun build --compile does not itself verify the binary runs.
 "$out_dir/installerer" --version
