@@ -122,7 +122,8 @@ function expectInstalledBinary(installDir: string, name: string, content: string
   const installedPath = join(installDir, name);
   expect(existsSync(installedPath)).toBe(true);
   expect(readFileSync(installedPath, "utf8")).toBe(content);
-  expect(statSync(installedPath).mode & 0o111).not.toBe(0);
+  // Exact match, not just "some execute bit": install_binary() sets the mode via `chmod -- 755`, an absolute mode rather than `+x`, so it must always land on 0755 regardless of the invoking shell's umask (issue #38).
+  expect(statSync(installedPath).mode & 0o777).toBe(0o755);
 }
 
 function placeExistingBinary(installDir: string, name: string, content: string): string {
@@ -488,5 +489,26 @@ describe("unsupported target simulation via uname shim", () => {
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("unsupported target: darwin/aarch64");
     expectRequests([]);
+  });
+});
+
+describe("installed binary permission mode e2e (issue #38)", () => {
+  const archive = buildArchive("zip", [{ path: "demo", content: LATEST_BINARY }]);
+  const assetName = "demo_linux_x86_64.zip";
+
+  test("installed binary mode is 0755 even under a restrictive umask", async () => {
+    server.setLatestRelease(OWNER, REPO, {
+      [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
+      [assetName]: archive,
+    });
+
+    const env = createInstallerRunEnv();
+    // A restrictive umask (0077) would strip group/world read+execute from anything relying on `cp`'s mode-preservation behavior or `chmod +x`.
+    // Prepending `umask 0077` to the piped script (the shebang line that follows becomes a no-op comment) proves the explicit `chmod -- 755` in install_binary() fixes the final mode independent of umask.
+    const run = await env.run(`umask 0077\n${testScript(WITHOUT_VERSION_CONFIG)}`);
+
+    expect(run.stderr).toBe("");
+    expect(run.status).toBe(0);
+    expectInstalledBinary(env.defaultInstallDir, "demo", LATEST_BINARY);
   });
 });

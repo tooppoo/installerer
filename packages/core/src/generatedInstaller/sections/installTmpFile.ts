@@ -34,12 +34,11 @@ export function renderCleanupTrap(): string {
 }
 
 /**
- * Places $extracted_binary into $INSTALL_DIR via a temporary file created
- * with an unpredictable name, so a failed copy/chmod/mv never clobbers an
- * existing binary and never leaves a guessably-named file behind. mktemp
- * creates the file mode-0600, so mode is fixed to 755 explicitly rather than
- * relying on the source file's mode. install_tmp is cleared once mv
- * succeeds, so cleanup() no longer targets the installed binary.
+ * Places $extracted_binary into $INSTALL_DIR via a temporary file created with an unpredictable name, so a failed copy/chmod/mv never clobbers an existing binary and never leaves a guessably-named file behind.
+ *
+ * mktemp creates the file mode-0600, so mode is fixed to 755 explicitly rather than relying on the source file's mode, cp's mode-preservation behavior, or the invoking shell's umask. See docs/adr/20260710T175612Z_installed-binary-permission-mode.md for why 0755 (not +x, not 0750) was chosen.
+ *
+ * install_tmp is cleared once mv succeeds, so cleanup() no longer targets the installed binary.
  */
 export function renderInstallBinary(): string {
   return `install_binary() {
