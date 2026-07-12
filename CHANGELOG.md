@@ -8,7 +8,9 @@
 
 <!-- rellog:entry:start -->
 <!-- rellog:body:start -->
+
 add installer and change release tag name rule
+
 <!-- rellog:body:end -->
 <!-- rellog:entry:end -->
 
