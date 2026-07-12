@@ -35,6 +35,7 @@ release version:
 
 [group('release')]
 release-prepare version:
-  rellog ready "v{{ version }}"
+  rellog ready "{{ version }}"
   bun pm version "{{ version }}" --no-git-tag-version
   for dir in packages/* apps/*; do (cd "$dir" && bun pm version "{{ version }}" --no-git-tag-version) || exit 1; done
+  git tag -a "{{ version }}" -m "Release {{ version }}"

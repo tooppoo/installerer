@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 0.4.0
+
+### added
+
+#### cli
+
+<!-- rellog:entry:start -->
+<!-- rellog:body:start -->
+
+add installer and change release tag name rule
+
+<!-- rellog:body:end -->
+<!-- rellog:entry:end -->
+
 ## v0.3.0
 
 ### changed
