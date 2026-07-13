@@ -1,32 +1,14 @@
-# Latest/Pinned Install Semantics And Release Contract
+# Latest/Pinned Install Semantics
 
-This document is the detailed companion to [`docs/installer-contract.md`](./installer-contract.md). It describes latest/pinned install semantics, the network access boundary, reproducibility differences between latest and pinned installs, and the guarantees and limits of checksum verification.
+This document is the detailed companion to [the installer contract](./installer-contract.md). It is the authoritative description of latest/pinned install semantics, the network access boundary, reproducibility differences between latest and pinned installs, and the guarantees and limits of checksum verification.
 
-`docs/installer-contract.md` states the minimum contract: project scope, the responsibility boundary between the SPA and the generated installer, the minimal release asset layout, and a minimal description of the checksum contract, with a reference to generated installer runtime docs.
-
-This document does not restate that minimum contract. It focuses on the parts that matter for operational decisions: which URLs a generated installer can reach, how reproducible a latest install actually is, and what checksum verification does and does not prove.
+It does not restate the minimum contract (project scope, SPA responsibility boundary, release asset layout, checksum file format). It focuses on the parts that matter for operational decisions: which URLs a generated installer can reach, how reproducible a latest install actually is, and what checksum verification does and does not prove.
 
 ## Relationship To Other Documents
 
-- [`docs/installer-contract.md`](./installer-contract.md) is the minimal, user-facing contract. Read it first.
-- `docs/resolver-semantics.md` (this document) is the detailed explanation of latest/pinned install semantics and release contract referenced from the installer contract.
-- [`docs/generated-installer-runtime.md`](./generated-installer-runtime.md) describes runtime mechanics of the generated `install.sh`: argument parsing, URL encoding, checksum lookup implementation, archive extraction, and binary placement. This document references that runtime detail where relevant but does not redefine command policy or extraction mechanics.
-
-## installerer's Position
-
-`installerer` is a browser SPA that generates an `install.sh` script.
-
-- The SPA does not depend on the GitHub API, a backend, or credentials.
-- The SPA does not perform external communication. It does not call `fetch()` or `XMLHttpRequest` against any external endpoint, does not live-validate the target repository or its release assets, and does not fetch, generate, place, or manage any release asset — including no `VERSION` asset.
-- POSIX `sh` generation, downloading, checksum verification, and release-tag resolution are all responsibilities of the **generated installer**, not the SPA.
-
-The generated installer is a single `install.sh` script. Its internals are organized as:
-
-- `main` — parses arguments and dispatches
-- `install_latest` — runs when `--version` is omitted
-- `install_pin` — runs when `--version <version>` is provided
-
-`--version latest` is rejected as invalid input; it is not treated as a latest install. There is no `defaults.version` field in the JSON config — version selection is a runtime argument, not a generation-time default.
+- [The installer contract](./installer-contract.md) is the minimal, user-facing contract. Read it first.
+- This document is the detailed explanation of latest/pinned install semantics referenced from the installer contract.
+- [The generated installer runtime document](./generated-installer-runtime.md) describes runtime mechanics of the generated `install.sh`: argument parsing, URL encoding, checksum lookup implementation, archive extraction, and binary placement. This document references that runtime detail where relevant but does not redefine command policy or extraction mechanics.
 
 ## Representative Names vs. Configured Values
 
@@ -48,7 +30,7 @@ Whether a latest install resolves an actual release tag is decided entirely by w
 - The substring between the prefix and suffix becomes the candidate release tag. It must be a valid Git tag, and it must not contain `/`, `\`, whitespace, or control characters — a tag containing `/` can be a valid Git tag but is rejected here, since it cannot round-trip safely as an archive filename component. (`--version` pinning still accepts such tags directly, since pinning percent-encodes the tag into a URL path segment instead of embedding it in a filename.)
 - Once resolved, the checksum file and archive asset are re-downloaded from the resolved tag's tag-specific URL, and it is this tag-specific checksum file — not the index copy — that verification runs against.
 - On pinned install (`--version <version>`), the given value is used directly as the release tag. The checksum-index scan never runs for a pinned install.
-- The SPA itself never fetches the checksum file or scans it. Only the generated installer does, at install time. A separate offline, pure function (`checkExpectedReleaseTag`, exported from `@installerer/core/expectedReleaseTag`) mirrors the same prefix/suffix algorithm so the Web UI can check a pasted checksum file or archive filename against the configured template — this never fetches GitHub and never confirms the release actually exists.
+- The SPA itself never fetches the checksum file or scans it. Only the generated installer does, at install time. See [the offline expected release tag check](#expected-release-tag-check-offline) for the Web UI's offline counterpart.
 
 ### Archive templates without `{version}`
 
@@ -57,15 +39,8 @@ Whether a latest install resolves an actual release tag is decided entirely by w
 
 ## Checksum Contract
 
-The checksum file has the form:
+The checksum file format and the exact-filename-equality lookup rule are defined in [the installer contract's checksum contract](./installer-contract.md#checksum-contract). This section defines what verification runs against and what it proves.
 
-```text
-<sha256>  <filename>
-```
-
-`checksums.txt` above is a representative name; the actual asset name is `checksum.fileName`.
-
-- The filename field must exactly match the archive asset filename. There is no partial match, glob match, or "first line" fallback.
 - Checksum verification is mandatory and always runs before archive extraction, against the tag-specific checksum file (for a `{version}` template) or the directly-fetched checksum file (for a versionless template) — never against the checksum-index copy used only for tag resolution.
 - On checksum mismatch, the generated installer does not perform archive extraction or binary placement.
 
@@ -73,7 +48,7 @@ MVP checksum verification confirms that the downloaded archive matches the check
 
 For a versionless template's latest install, the checksum file and archive asset are fetched as two separate requests to `/releases/latest/download/...`. If the latest release changes between those two requests, the two files can come from different releases, which the installer detects as a checksum mismatch (or, less commonly, a download failure), not as a distinct "race" error class of its own.
 
-Checksum verification detects download corruption and inconsistency between the fetched archive and the fetched checksum file. It does not prove maintainer identity, release asset authenticity, or supply-chain provenance. See [Non-Goals](./generated-installer-runtime.md#non-goals) in the generated installer runtime doc for related items the MVP intentionally does not cover (cosign, SBOM, provenance).
+Checksum verification detects download corruption and inconsistency between the fetched archive and the fetched checksum file. It does not prove maintainer identity, release asset authenticity, or supply-chain provenance. See [Non-Goals](./generated-installer-runtime.md#non-goals) in the generated installer runtime document for related items the MVP intentionally does not cover (cosign, SBOM, provenance).
 
 ## Latest / Pinned Reproducibility
 
@@ -103,7 +78,7 @@ For a `{version}` archive template, the Web UI offers an "Expected release tag c
 
 ## Network Access Boundary
 
-Every URL path segment (`owner`, `repo`, resolved or pinned version, and asset filenames) is percent-encoded as its own path segment; a complete URL is never encoded as one opaque string. See [`docs/generated-installer-runtime.md`](./generated-installer-runtime.md#url-generation-and-encoding) for the encoding mechanics.
+Every URL path segment (`owner`, `repo`, resolved or pinned version, and asset filenames) is percent-encoded as its own path segment; a complete URL is never encoded as one opaque string. See [the URL generation and encoding mechanics](./generated-installer-runtime.md#url-generation-and-encoding) for the encoding detail.
 
 ### `{version}` template latest install
 
@@ -214,6 +189,6 @@ This document does not cover:
 - signature verification setup
 - cosign verification setup
 - SBOM or provenance setup
-- runtime dependency or command policy detail (see [`docs/generated-installer-runtime.md`](./generated-installer-runtime.md))
+- runtime dependency or command policy detail (see [the generated installer runtime document](./generated-installer-runtime.md))
 - GitHub or backend fetches performed at UI runtime (there are none)
 - live validation of a repository or its release assets

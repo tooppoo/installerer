@@ -29,7 +29,7 @@ export type OsCase = "lowercase" | "capitalized";
  * `asset_arch_label` is the value embedded in Release asset names via the
  * `{arch}`/`{target}` archive.nameTemplate placeholders; it is independent of
  * `TargetArch`, the runtime-detected canonical architecture (see
- * docs/generated-installer-runtime.md).
+ * docs/guide/generated-installer-runtime.md).
  */
 export type ArchitectureLabels = Record<TargetArch, string>;
 

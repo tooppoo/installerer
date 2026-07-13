@@ -605,7 +605,7 @@ export function App() {
               </section>
             ) : null}
 
-            {/* Bundled at build time from docs/installer-contract.md — no runtime fetch. */}
+            {/* Bundled at build time from docs/guide/installer-contract.md — no runtime fetch. */}
             <details className="group border border-[#aeb8a8] bg-white">
               <summary className="flex cursor-pointer select-none items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-[#4a4037]">
                 <span className="flex items-center gap-2">

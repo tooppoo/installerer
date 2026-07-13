@@ -5,7 +5,7 @@ import type { ValidationError } from "./validation";
  * Canonical CPU architectures the generator core knows about at runtime.
  * These are the values `detect_target()` resolves `uname -m` output to; they
  * are distinct from `asset_arch_label`, the value embedded in Release asset
- * names (see docs/generated-installer-runtime.md).
+ * names (see docs/guide/generated-installer-runtime.md).
  */
 export const CANONICAL_ARCHITECTURES: readonly TargetArch[] = ["x86_64", "aarch64"];
 
