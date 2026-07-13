@@ -6,6 +6,8 @@
  * The human-readable cause column is derived mechanically from each
  * `CliExitCode` key by splitting its camelCase name into lowercase words
  * (for example `configFileAlreadyExists` -> `config file already exists`).
+ * Renaming a key therefore rewrites the published cause wording; treat key
+ * names as part of the documented contract, not as free-to-rename internals.
  *
  * Usage:
  *   bun scripts/generate-exit-code-docs.ts          # (re)generate the doc
@@ -19,7 +21,11 @@ const root = path.dirname(import.meta.dir);
 const outputPath = path.join(root, "docs", "reference", "exit-codes.md");
 
 function causeOf(key: string): string {
-  return key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  // The second replace splits trailing acronyms (`invalidKDLSyntax` -> `invalid KDL syntax`) so consecutive capitals do not collapse into the following word.
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase();
 }
 
 // The table is emitted with padded columns so the output is already
