@@ -12,7 +12,7 @@ import {
 
 /**
  * Fast, in-process checks on the npm publish boundary from issue #81:
- * `bun run build:npm` must produce a self-contained, Node.js-runnable
+ * `bun run build` must produce a self-contained, Node.js-runnable
  * `packages/cli/dist/npm/` directory that excludes the browser SPA build,
  * tests, and dev-only files.
  *
@@ -49,11 +49,11 @@ function listFilesRecursive(dir: string, base = dir): string[] {
   return files;
 }
 
-describe("npm CLI publish directory (build:npm)", () => {
+describe("npm CLI publish directory (build)", () => {
   beforeAll(() => {
-    const build = run("bun", ["run", "build:npm"]);
+    const build = run("bun", ["run", "build"]);
     if (build.status !== 0) {
-      throw new Error(`bun run build:npm failed:\n${build.stdout}\n${build.stderr}`);
+      throw new Error(`bun run build failed:\n${build.stdout}\n${build.stderr}`);
     }
   }, 60_000);
 

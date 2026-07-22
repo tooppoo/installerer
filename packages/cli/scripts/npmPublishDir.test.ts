@@ -77,7 +77,7 @@ describe("preparePublishManifest", () => {
         version: "0.0.0-package",
         bin: { installerer: "./bin/installerer.js" },
         engines: { node: ">=22.0.0" },
-        scripts: { "build:npm": "bun run scripts/build-npm.ts" },
+        scripts: { build: "bun run scripts/build-npm.ts" },
         devDependencies: { "@installerer/core": "workspace:*" },
       },
       "1.2.3",

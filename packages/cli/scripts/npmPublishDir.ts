@@ -58,7 +58,7 @@ const BUN_MODULE_SPECIFIER_PATTERN = /["']bun:[^"']*["']/;
  * Detects `Bun.*` global usage and `bun:*` module specifiers in a built npm
  * CLI runtime artifact. The Node.js runtime boundary (docs/adr/20260703T091000Z)
  * requires the built artifact and its import graph to avoid both, even
- * though `build:npm` itself may run under Bun.
+ * though `build` itself may run under Bun.
  */
 export function findBunRuntimeReferences(source: string): string[] {
   const findings: string[] = [];

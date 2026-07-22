@@ -12,7 +12,7 @@
  * `Bun.*` / `bun:*` at runtime; see
  * docs/adr/20260703T091000Z_cli-distribution-policy.md.
  *
- * Usage: bun run build:npm (from packages/cli or the repository root)
+ * Usage: bun run build (from packages/cli or the repository root)
  */
 import { chmod, copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -46,7 +46,7 @@ async function main() {
   });
   if (!result.success) {
     for (const log of result.logs) console.error(log);
-    throw new Error("build:npm: bundling src/node/main.ts failed");
+    throw new Error("build: bundling src/node/main.ts failed");
   }
 
   await enforceNodeRuntimeBoundary(bundlePath);
@@ -60,7 +60,7 @@ async function main() {
   ).json();
   const canonicalVersion = rootManifest.version;
   if (typeof canonicalVersion !== "string" || canonicalVersion.length === 0) {
-    throw new Error("build:npm: root package.json must define a non-empty version string");
+    throw new Error("build: root package.json must define a non-empty version string");
   }
   await writeFile(
     path.join(outDir, "package.json"),
@@ -78,14 +78,14 @@ async function enforceNodeRuntimeBoundary(jsPath: string): Promise<void> {
   const bunReferences = findBunRuntimeReferences(source);
   if (bunReferences.length > 0) {
     throw new Error(
-      `build:npm: npm CLI runtime artifact must not reference Bun runtime APIs, found: ${bunReferences.join(", ")}`,
+      `build: npm CLI runtime artifact must not reference Bun runtime APIs, found: ${bunReferences.join(", ")}`,
     );
   }
 
   const browserUiReferences = findBrowserUiReferences(source);
   if (browserUiReferences.length > 0) {
     throw new Error(
-      `build:npm: npm CLI runtime artifact must not import React / browser UI modules, found: ${browserUiReferences.join(", ")}`,
+      `build: npm CLI runtime artifact must not import React / browser UI modules, found: ${browserUiReferences.join(", ")}`,
     );
   }
 }

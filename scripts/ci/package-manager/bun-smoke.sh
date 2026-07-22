@@ -4,7 +4,7 @@
 # Installs the packed npm CLI tarball with `bun add` into a fresh project
 # and runs the installed `installerer` command. This is JavaScript-ecosystem
 # package manager compatibility coverage, distinct from the Bun runtime
-# boundary enforced on the built artifact itself by build:npm.
+# boundary enforced on the built artifact itself by build.
 set -eu
 
 tarball="$1"
