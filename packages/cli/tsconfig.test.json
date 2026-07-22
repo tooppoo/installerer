@@ -1,4 +1,4 @@
-{
+t {
   "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/tsconfig.json",
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {

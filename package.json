@@ -28,7 +28,7 @@
     "typecheck": "run-s typecheck:base typecheck:core typecheck:cli typecheck:web",
     "typecheck:base": "tsc --noEmit ",
     "typecheck:core": "tsc --noEmit && bun run --cwd packages/core typecheck",
-    "typecheck:cli": "bun run --cwd packages/cli typecheck && bun run --cwd apps/web typecheck",
+    "typecheck:cli": "bun run --cwd packages/cli typecheck",
     "typecheck:web": "bun run --cwd apps/web typecheck"
   },
   "devDependencies": {
