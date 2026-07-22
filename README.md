@@ -12,15 +12,24 @@ Your releases must follow a small contract for asset naming and checksum files. 
 
 ## CLI
 
-`installerer` also ships as a generator-only CLI (`init`, `validate`, `generate`, `doctor`, `--version`, `--help`) for scripting and CI use, in addition to the browser UI. Command implementations are landing incrementally; today only `installerer --help` / `-h` is implemented.
+`installerer` also ships as a generator-only CLI, in addition to the browser UI.
 
-The canonical distribution is a Bun-compiled standalone executable published as OS/architecture archives on GitHub Releases; npm is an auxiliary distribution channel for the JavaScript ecosystem (a Node.js CLI package that does not download a GitHub Releases binary). See [the CLI distribution policy ADR](docs/adr/20260703T091000Z_cli-distribution-policy.md) for the archive naming and the full decision. GitHub Release tags use `v{version}`, while the archive filenames embed the version without the `v` prefix. The v0 Linux executables target glibc-based systems; musl / Alpine Linux support is tracked separately in issue #92.
+The canonical distribution is a Bun-compiled standalone executable published as OS/architecture archives on GitHub Releases;
 
-Install from npm:
+npm is an auxiliary distribution channel for the JavaScript ecosystem (a Node.js CLI package that does not download a GitHub Releases binary).
 
-```bash
+See [the CLI distribution policy ADR](docs/adr/20260703T091000Z_cli-distribution-policy.md) for the archive naming and the full decision.
+
+### Install from installer
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tooppoo/installerer/refs/heads/main/install.sh | sh
+```
+
+### Install from npm
+
+```sh
 npm install -g @philomagi/installerer
-installerer --help
 ```
 
 ## Documentation

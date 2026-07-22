@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 0.5.0
+
+### added
+
+#### cli
+
+<!-- rellog:entry:start -->
+<!-- rellog:body:start -->
+support npm install
+<!-- rellog:body:end -->
+<!-- rellog:entry:end -->
+
 ## 0.4.0
 
 ### added
