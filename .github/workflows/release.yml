@@ -81,6 +81,8 @@ jobs:
         with:
           node-version: "24"
 
+      - run: bun install
+
       - name: Build npm package
         run: bun run build:npm
 
