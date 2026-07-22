@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import packageJson from "../../../package.json" with { type: "json" };
+import packageJson from "../package.json" with { type: "json" };
 import { cliVersion } from "./version";
 
 describe("cliVersion", () => {

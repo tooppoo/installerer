@@ -68,19 +68,18 @@ describe("npm CLI publish directory (build)", () => {
     expect(pkg.private).toBeUndefined();
     expect(pkg.scripts).toBeUndefined();
     expect(pkg.devDependencies).toBeUndefined();
-    expect(pkg.bin).toEqual({ installerer: "./bin/installerer.js" });
+    expect(pkg.bin).toEqual({ installerer: "bin/installerer.js" });
     expect(pkg.files).toEqual([...PUBLISH_DIR_FILES]);
     expect(pkg.engines?.node).toBeTruthy();
   });
 
   test("publish manifest metadata comes from static package metadata and root version", () => {
     const staticPkg = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
-    const rootPkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
     const publishedPkg = JSON.parse(readFileSync(join(outDir, "package.json"), "utf8"));
     for (const field of ["name", "bin", "files", "engines", "description"]) {
       expect(publishedPkg[field]).toEqual(staticPkg[field]);
     }
-    expect(publishedPkg.version).toBe(rootPkg.version);
+    expect(publishedPkg.version).toBe(staticPkg.version);
     // `files` in the static manifest is the same single source of truth the
     // pack-file-set check uses.
     expect(staticPkg.files).toEqual([...PUBLISH_DIR_FILES]);

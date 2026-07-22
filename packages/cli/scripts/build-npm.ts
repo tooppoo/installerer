@@ -55,10 +55,7 @@ async function main() {
   const staticManifest: Record<string, unknown> = await Bun.file(
     path.join(packageRoot, "package.json"),
   ).json();
-  const rootManifest: Record<string, unknown> = await Bun.file(
-    path.join(repoRoot, "package.json"),
-  ).json();
-  const canonicalVersion = rootManifest.version;
+  const canonicalVersion = staticManifest.version;
   if (typeof canonicalVersion !== "string" || canonicalVersion.length === 0) {
     throw new Error("build: root package.json must define a non-empty version string");
   }
@@ -66,7 +63,7 @@ async function main() {
     path.join(outDir, "package.json"),
     `${JSON.stringify(preparePublishManifest(staticManifest, canonicalVersion), null, 2)}\n`,
   );
-  await copyFile(path.join(repoRoot, "README.md"), path.join(outDir, "README.md"));
+  await copyFile(path.join(packageRoot, "README.md"), path.join(outDir, "README.md"));
   await copyFile(path.join(repoRoot, "LICENSE"), path.join(outDir, "LICENSE"));
 
   console.log(`npm publish directory generated at ${path.relative(repoRoot, outDir)}/`);
