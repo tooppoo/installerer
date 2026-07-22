@@ -19,7 +19,7 @@
     "url": "git+https://github.com/tooppoo/installerer.git"
   },
   "bin": {
-    "installerer": "./dist/bin/installerer.js"
+    "installerer": "dist/bin/installerer.js"
   },
   "files": [
     "package.json",
