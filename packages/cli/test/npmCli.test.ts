@@ -26,7 +26,6 @@ import {
  */
 
 const packageRoot = join(import.meta.dir, "..");
-const repoRoot = join(packageRoot, "..", "..");
 const outDir = join(packageRoot, "dist", "npm");
 const binPath = join(outDir, "bin", "installerer.js");
 
