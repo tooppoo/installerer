@@ -16,7 +16,7 @@ The installerer CLI assigns one exit code per distinct error cause instead of on
 - Exit codes are defined once, in `src/cli/exitCodes.ts` (`CliExitCode`), and reused by `dispatchCli` and, later, by subcommand dispatch (`init` / `generate` / `validate` / `doctor`, Issues #88-#91).
 - Once a cause ships with an assigned exit code, that value must not be reused for a different cause or renumbered. New causes get a new, previously-unused value.
 - `0` is reserved for success and must not be reassigned.
-- The full, current cause-to-exit-code table is recorded in [docs/exit-code.md](../exit-code.md), not duplicated elsewhere. `docs/exit-code.md` is intentionally a bare table (plus a link back to this ADR) so it stays cheap to extend as later issues add causes, and so it can be folded into `installerer --help` output later without needing a rewrite.
+- The full, current cause-to-exit-code table is recorded in [docs/reference/exit-codes.md](../reference/exit-codes.md) (the successor to the `docs/exit-code.md` path this ADR originally named), not duplicated elsewhere. `docs/exit-code.md` is intentionally a bare table (plus a link back to this ADR) so it stays cheap to extend as later issues add causes, and so it can be folded into `installerer --help` output later without needing a rewrite.
 - Top-level `--help` does not embed the exit code table today. The causes available at this stage (`unknown command`, `unknown option`) are a small, incomplete subset of what `validate` / `generate` / `doctor` will need once implemented; embedding a table now risks churn in the help text and its snapshot test every time a later issue adds a cause.
 
 The initial table, defined by this decision:

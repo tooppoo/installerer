@@ -1,9 +1,9 @@
 /**
- * Converts `docs/installer-contract.md` (the source of truth) into a browser
+ * Converts `docs/guide/installer-contract.md` (the source of truth) into a browser
  * module so the UI can display the contract without fetching anything at
  * runtime (see issue #9).
  *
- * The source Markdown keeps relative links (e.g. `./resolver-semantics.md`)
+ * The source Markdown keeps relative links (e.g. `./install-semantics.md`)
  * so it renders correctly on GitHub. Since the UI has no repository file
  * structure to resolve those against, relative links are rewritten to
  * absolute GitHub blob URLs on `main` during generation. The Markdown is
@@ -24,7 +24,7 @@ import path from "node:path";
 // source Markdown stays in the repository-level docs/ directory.
 const packageRoot = path.dirname(import.meta.dir);
 const repoRoot = path.join(packageRoot, "..", "..");
-const sourcePath = path.join(repoRoot, "docs", "installer-contract.md");
+const sourcePath = path.join(repoRoot, "docs", "guide", "installer-contract.md");
 const outputPath = path.join(packageRoot, "src", "generated", "installerContract.ts");
 
 const repoBlobBase = "https://github.com/tooppoo/installerer/blob/main";
@@ -96,7 +96,7 @@ if (checkMode) {
   console.log(`${path.relative(repoRoot, outputPath)} is in sync.`);
 } else {
   const module = `// AUTO-GENERATED FILE — DO NOT EDIT.
-// Source of truth: docs/installer-contract.md
+// Source of truth: docs/guide/installer-contract.md
 // Regenerate with: bun run docs:generate
 
 export type InstallerContractSegment =

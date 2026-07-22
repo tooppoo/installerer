@@ -2,7 +2,7 @@
 
 `installerer` validates `archive.nameTemplate` and the config fields that feed it by building a small variable dependency graph per runtime mode and propagating the _contexts_ each variable's value is used in. A fixed set of context-specific rules then checks only the config values that actually reach a dangerous context. This design was introduced to answer [issue #4](https://github.com/tooppoo/installerer/issues/4): the same value (for example a release tag) is safe in one context (a Git ref name) and unsafe in another (an archive filename), so validation must be aware of _where a value flows_, not just what type it declares.
 
-Implementation lives in [`packages/core/src/archiveTemplateValidation.ts`](../packages/core/src/archiveTemplateValidation.ts).
+Implementation lives in [`packages/core/src/archiveTemplateValidation.ts`](../../packages/core/src/archiveTemplateValidation.ts).
 
 ## Modes Are Graphed Independently
 
@@ -174,7 +174,7 @@ classDiagram
 - **`archive-filename-context`** — for any source whose reachable contexts include `"archive filename context"`, rejects the value if it contains a path separator, whitespace, or control character (`hasArchiveFilenameHardChars`). For the template's literal segments, only the literal characters are checked (placeholder braces are skipped).
 - **`release-url-path-segment-context`** — for any source reaching `"Release URL path segment context"`, rejects control characters, since each path segment is percent-encoded independently and must be encodable as one UTF-8 segment.
 - **`shell-literal-context`** — for any source reaching `"shell literal context"`, rejects NUL, since NUL cannot be represented in a POSIX shell literal or argument.
-- **`remote-archive-asset-must-not-flow-into-local-archive-path`** — a structural (not per-value) rule: it fails if `archive_path` ever reaches `"archive filename context"` or `archive_asset_name` ever reaches `"local filesystem context"`. This is the enforcement of the design principle from issue #4: remote asset names and local temporary paths must stay separated. The generated runtime always builds `archive_path` from `tmpdir` and a fixed local filename, never from the remote asset name (see [Remote Asset Names And Local Paths](generated-installer-runtime.md#remote-asset-names-and-local-paths)).
+- **`remote-archive-asset-must-not-flow-into-local-archive-path`** — a structural (not per-value) rule: it fails if `archive_path` ever reaches `"archive filename context"` or `archive_asset_name` ever reaches `"local filesystem context"`. This is the enforcement of the design principle from issue #4: remote asset names and local temporary paths must stay separated. The generated runtime always builds `archive_path` from `tmpdir` and a fixed local filename, never from the remote asset name (see [Remote Asset Names And Local Paths](../guide/generated-installer-runtime.md#remote-asset-names-and-local-paths)).
 
 Contexts declared in `directContexts` but not read by any rule today (`Git tag context`, `Release URL context`, `checksum lookup context`, `argument parsing context`, `shell command argument context`, `safe filename context`) still take part in propagation — they can carry other contexts backward through edges — but have no dedicated hard-error check yet. Adding a new context-specific policy means adding a rule that reads that context name from `reachableContextsByVariable`; it does not require changing the graph shape.
 

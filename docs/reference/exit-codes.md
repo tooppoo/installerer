@@ -1,6 +1,10 @@
 # installerer CLI Exit Codes
 
-See [docs/adr/20260703T132416Z_cli-exit-code-contract.md](adr/20260703T132416Z_cli-exit-code-contract.md) for the decision record.
+<!-- AUTO-GENERATED FILE — DO NOT EDIT. -->
+<!-- Source of truth: `packages/cli/src/exitCodes.ts` -->
+<!-- Regenerate with: bun run docs:generate -->
+
+See [the CLI exit code contract ADR](../adr/20260703T132416Z_cli-exit-code-contract.md) for the decision record.
 
 | Exit Code | Cause                       |
 | --------- | --------------------------- |
