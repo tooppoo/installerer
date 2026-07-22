@@ -27,7 +27,7 @@ import {
 
 const packageRoot = path.dirname(import.meta.dir);
 const repoRoot = path.join(packageRoot, "..", "..");
-const outDir = path.join(packageRoot, "dist", "npm");
+const outDir = path.join(packageRoot, "dist");
 const binDir = path.join(outDir, "bin");
 const entrypoint = path.join(packageRoot, "src", "node", "main.ts");
 const bundlePath = path.join(binDir, NPM_CLI_BIN_NAME);
