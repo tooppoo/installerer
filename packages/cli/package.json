@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/package.json",
   "name": "@philomagi/installerer",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "description": "installerer CLI: generate a self-contained install.sh from a KDL config.",
   "keywords": [
     "cli",
