@@ -19,13 +19,13 @@
     "url": "git+https://github.com/tooppoo/installerer.git"
   },
   "bin": {
-    "installerer": "dist/bin/installerer.js"
+    "installerer": "./bin/installerer.js"
   },
   "files": [
-    "dist/package.json",
-    "dist/README.md",
-    "dist/LICENSE",
-    "dist/bin/installerer.js"
+    "package.json",
+    "README.md",
+    "LICENSE",
+    "bin/installerer.js"
   ],
   "type": "module",
   "publishConfig": {
