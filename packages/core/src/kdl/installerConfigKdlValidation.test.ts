@@ -95,7 +95,7 @@ describe("validateInstallerConfigKdl", () => {
     expect(diagnostic?.reason).toBe("Duplicate target entry.");
   });
 
-  test("returns warnings with a KDL-facing path, not the domain path validateInstallerConfig reports", () => {
+  describe("returns warnings with a KDL-facing path, not the domain path validateInstallerConfig reports", () => {
     const result = validate(`
       installerer {
         source owner="tooppoo" repo="git-kura"
@@ -107,19 +107,25 @@ describe("validateInstallerConfigKdl", () => {
         }
       }
     `);
-
-    expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("unreachable");
-    expect(result.warnings.length).toBeGreaterThan(0);
-    for (const warning of result.warnings) {
+
+    test("returns ok with at least one warning", () => {
+      expect(result.ok).toBe(true);
+      expect(result.warnings.length).toBeGreaterThan(0);
+    });
+
+    test.each([...result.warnings])("warning at $path uses a KDL-facing path", (warning) => {
       expect(warning.path).toStartWith("installerer.");
       expect(warning.path).not.toStartWith("$.");
-    }
-    expect(result.warnings).toContainEqual({
-      path: "installerer.archive.name-template",
-      reason:
-        "Archive filename starts with '-'. The generated installer uses fixed local paths, but external tools may interpret this as an option.",
-      recommended: "Prefix the filename with the repository or binary name.",
+    });
+
+    test("reports the leading-dash filename warning at the KDL archive.name-template path", () => {
+      expect(result.warnings).toContainEqual({
+        path: "installerer.archive.name-template",
+        reason:
+          "Archive filename starts with '-'. The generated installer uses fixed local paths, but external tools may interpret this as an option.",
+        recommended: "Prefix the filename with the repository or binary name.",
+      });
     });
   });
 

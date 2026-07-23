@@ -50,10 +50,14 @@ describe("fixture-driven installer generation", () => {
 
       test("produces archive filename previews for every target", () => {
         expect(result.archivePreviews).toHaveLength(result.config.targets.length);
-        for (const preview of result.archivePreviews) {
-          expect(preview.latestName.length).toBeGreaterThan(0);
-        }
       });
+
+      test.each([...result.archivePreviews])(
+        "produces a non-empty archive filename preview (#%#)",
+        (preview) => {
+          expect(preview.latestName.length).toBeGreaterThan(0);
+        },
+      );
     });
   }
 });
@@ -72,15 +76,18 @@ describe("fixture-driven rejection paths", () => {
   });
 
   for (const fixture of invalidFixtures) {
-    test(`${fixture.category}/${fixture.name} is rejected with classified errors`, () => {
+    describe(`${fixture.category}/${fixture.name} is rejected with classified errors`, () => {
       const result = validateInstallerConfig(fixture.config);
 
-      expect(result.ok).toBe(false);
+      test("is rejected", () => {
+        expect(result.ok).toBe(false);
+      });
+
       if (result.ok) {
         return;
       }
 
-      for (const expected of fixture.expectedErrors) {
+      test.each([...fixture.expectedErrors])("reports a classified error at $path", (expected) => {
         const match = result.errors.find(
           (error) => error.path === expected.path && error.reason.includes(expected.reasonIncludes),
         );
@@ -96,7 +103,7 @@ describe("fixture-driven rejection paths", () => {
         // Every reported error carries a field path, reason, and expectation.
         expect(match.path.startsWith("$")).toBe(true);
         expect(match.reason.length).toBeGreaterThan(0);
-      }
+      });
     });
   }
 

@@ -34,14 +34,15 @@ describe("release-artifacts manifest", () => {
     expect(pairs.sort()).toEqual([...EXPECTED_OS_ARCH_PAIRS].sort());
   });
 
-  test("packages every target as a tar.gz containing only the installerer executable", () => {
-    for (const target of manifest.targets) {
+  test.each([...manifest.targets])(
+    "packages $os/$arch as a tar.gz containing only the installerer executable",
+    (target) => {
       expect(target.archive).toBe("tar.gz");
       expect(target.archive_files).toEqual([
         { path: `${manifest.build_dist}/installerer`, dest: "installerer" },
       ]);
-    }
-  });
+    },
+  );
 
   // wf-cross-platform-build's "Package archive" step runs `rm -rf dist` as its own scratch-directory setup, so build_dist must not live under dist/ or the freshly built binary is deleted before it can be archived.
   test("keeps build output outside the reusable workflow's dist/ scratch directory", () => {
