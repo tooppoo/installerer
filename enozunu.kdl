@@ -33,6 +33,14 @@ enozunu config-version=1 {
           path "common/skills/cli-output-design"
         }
       }
+
+      skill "reportage" {
+        git {
+          url "https://github.com/tooppoo/catalog-agent-tools"
+          branch "main"
+          path "common/skills/reportage"
+        }
+      }
     }
   }
 
@@ -42,13 +50,15 @@ enozunu config-version=1 {
       use-skills "documentation-writing" \
         "subagent-review-loop" \
         "code-comment" \
-        "cli-output-design"
+        "cli-output-design" \
+        "reportage"
     }
     codex {
       use-skills "documentation-writing" \
         "subagent-review-loop" \
         "code-comment" \
-        "cli-output-design"
+        "cli-output-design" \
+        "reportage"
     }
   }
 }
