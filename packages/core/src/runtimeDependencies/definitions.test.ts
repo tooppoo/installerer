@@ -31,11 +31,12 @@ describe("runtime dependency definitions", () => {
     ]);
   });
 
-  test("every base dependency is a single-command check", () => {
-    for (const dependency of BASE_COMMAND_DEPENDENCIES) {
+  test.each([...BASE_COMMAND_DEPENDENCIES])(
+    "base dependency $id is a single-command check",
+    (dependency) => {
       expect(dependency.check.type).toBe("command");
-    }
-  });
+    },
+  );
 
   test("archive format command names match the archive-format dependencies", () => {
     expect(ARCHIVE_FORMAT_DEPENDENCIES["tar.gz"].check).toEqual({

@@ -36,19 +36,18 @@ describe("topLevelHelpText", () => {
     );
   });
 
-  test("lists only generator-only commands, not package-installer-like commands", () => {
+  describe("lists only generator-only commands, not package-installer-like commands", () => {
     const commands = topLevelHelpFrame.commands ?? [];
-    const forbidden = [
+
+    test.each([
       "installerer install",
       "installerer run",
       "installerer exec",
       "installerer upgrade",
       "installerer uninstall",
-    ];
-
-    for (const command of forbidden) {
+    ])("does not list the package-installer-like command %p", (command) => {
       expect(commands).not.toContain(command);
-    }
+    });
   });
 
   test("lists -h, --help and -v, --version in options", () => {
@@ -79,11 +78,10 @@ describe("topLevelHelpText", () => {
     expect(text).toContain("sh ./install.sh");
   });
 
-  test("uses a placeholder owner/repo since no config is loaded at the top level", () => {
-    const examples = topLevelHelpFrame.examples ?? [];
-
-    for (const example of examples) {
+  test.each([...(topLevelHelpFrame.examples ?? [])])(
+    "uses a placeholder owner/repo since no config is loaded at the top level: %p",
+    (example) => {
       expect(example).not.toMatch(/raw\.githubusercontent\.com\/(?!<owner>\/<repo>)/);
-    }
-  });
+    },
+  );
 });

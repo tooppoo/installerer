@@ -711,30 +711,31 @@ describe("isValidGitTagName", () => {
     expect(isValidGitTagName("release/v1.2.3")).toBe(true);
   });
 
-  test("rejects empty names, path-like names, ref syntax, lock suffixes, and unsafe chars", () => {
-    for (const tag of [
-      "",
-      "latest",
-      "/v1.2.3",
-      "v1.2.3/",
-      "v1.2.3.",
-      "@",
-      "release//v1.2.3",
-      "release..v1.2.3",
-      "release@{v1.2.3",
-      ".hidden/v1.2.3",
-      "release.lock",
-      "v1.2.3~",
-      "v1.2.3^",
-      "v1.2.3:",
-      "v1.2.3?",
-      "v1.2.3*",
-      "v1.2.3[",
-      "v1.2.3\\",
-      "v1.2.3 ",
-      "v1.2.3\u007f",
-    ]) {
+  test.each([
+    "",
+    "latest",
+    "/v1.2.3",
+    "v1.2.3/",
+    "v1.2.3.",
+    "@",
+    "release//v1.2.3",
+    "release..v1.2.3",
+    "release@{v1.2.3",
+    ".hidden/v1.2.3",
+    "release.lock",
+    "v1.2.3~",
+    "v1.2.3^",
+    "v1.2.3:",
+    "v1.2.3?",
+    "v1.2.3*",
+    "v1.2.3[",
+    "v1.2.3\\",
+    "v1.2.3 ",
+    "v1.2.3\u007f",
+  ])(
+    "rejects empty names, path-like names, ref syntax, lock suffixes, and unsafe chars: %p",
+    (tag) => {
       expect(isValidGitTagName(tag)).toBe(false);
-    }
-  });
+    },
+  );
 });

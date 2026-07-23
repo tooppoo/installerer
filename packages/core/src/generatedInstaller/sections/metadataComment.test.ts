@@ -84,7 +84,7 @@ describe("renderMetadataComment", () => {
     expect(comment).not.toMatch(/"binary"\s*:/);
   });
 
-  test("escapes control characters instead of letting them break the comment block", () => {
+  describe("escapes control characters instead of letting them break the comment block", () => {
     const hostile: InstallerConfig = {
       ...baseConfig,
       binary: {
@@ -98,10 +98,13 @@ describe("renderMetadataComment", () => {
     // Every non-blank line of the comment block must still start with "#":
     // a raw newline in a config value must not produce an executable line.
     const lines = comment.split("\n").filter((line) => line.length > 0);
-    for (const line of lines) {
+    test.each(lines)("keeps every non-blank line as a comment: %p", (line) => {
       expect(line.startsWith("#")).toBe(true);
-    }
-    expect(comment).toContain('binary.name: safe\\nrm -rf "$HOME"');
+    });
+
+    test("escapes the embedded newline instead of emitting an executable line", () => {
+      expect(comment).toContain('binary.name: safe\\nrm -rf "$HOME"');
+    });
   });
 
   test("is emitted after the header and before the runtime constants", () => {
