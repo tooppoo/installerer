@@ -1,0 +1,26 @@
+{
+  "description": "binary.pathInArchive whose whole value begins with '-' is rejected so an extraction tool cannot read it as an option.",
+  "config": {
+    "owner": "tooppoo",
+    "repo": "rellog",
+    "binary": {
+      "name": "rellog",
+      "pathInArchive": "-x"
+    },
+    "archive": {
+      "format": "zip",
+      "nameTemplate": "{repo}_{version}_{target}.zip"
+    },
+    "checksum": {
+      "fileName": "checksums.txt",
+      "algorithm": "sha256"
+    },
+    "targets": [{ "os": "linux", "arch": "x86_64" }]
+  },
+  "expectedErrors": [
+    {
+      "path": "$.binary.pathInArchive",
+      "reasonIncludes": "must not start with a hyphen"
+    }
+  ]
+}

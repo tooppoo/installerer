@@ -446,6 +446,60 @@ describe("failure handling", () => {
   });
 });
 
+/**
+ * Config validation rejects a leading-hyphen `binary.pathInArchive`, so the generator never emits one.
+ * Overwriting the emitted constant lets these tests exercise the generated runtime's own `validate_binary_path_in_archive` guard directly, on a value the config layer would have blocked upstream.
+ */
+function scriptWithRawBinaryPath(config: unknown, rawPath: string): string {
+  const script = testScript(config);
+  const replaced = script.replace(
+    /^BINARY_PATH_IN_ARCHIVE=.*$/m,
+    `BINARY_PATH_IN_ARCHIVE='${rawPath}'`,
+  );
+  // Guard against the constant name drifting: a no-op replace would silently
+  // run the original safe path and pass for the wrong reason.
+  expect(replaced).not.toBe(script);
+  return replaced;
+}
+
+describe("generated runtime binary-path leading-hyphen guard", () => {
+  const pinArgs = ["--version", "v1.0.0"];
+
+  test.each(["-x", "-d", "-binary"])(
+    "rejects a whole-value leading hyphen (%j) before any network access",
+    async (rawPath) => {
+      const env = createInstallerRunEnv();
+      const run = await env.run(scriptWithRawBinaryPath(WITH_VERSION_CONFIG, rawPath), {
+        args: pinArgs,
+      });
+
+      expect(run.status).toBe(1);
+      expect(run.stderr).toContain("must not start with a hyphen");
+      expectRequests([]);
+      expect(run.leftoverTmpEntries).toEqual([]);
+    },
+  );
+
+  test("allows a hyphen that only starts a later segment and extracts bin/-binary", async () => {
+    const archive = buildArchive("tar.gz", [{ path: "bin/-binary", content: PINNED_BINARY }]);
+    const assetName = "demo_v1.0.0_linux_x86_64.tar.gz";
+    server.setTaggedRelease(OWNER, REPO, "v1.0.0", {
+      [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
+      [assetName]: archive,
+    });
+
+    const env = createInstallerRunEnv();
+    const run = await env.run(scriptWithRawBinaryPath(WITH_VERSION_CONFIG, "bin/-binary"), {
+      args: pinArgs,
+    });
+
+    expect(run.stderr).toBe("");
+    expect(run.status).toBe(0);
+    expectInstalledBinary(env.defaultInstallDir, "demo", PINNED_BINARY);
+    expect(run.leftoverTmpEntries).toEqual([]);
+  });
+});
+
 describe("unsupported target simulation via uname shim", () => {
   test("unsupported OS fails before any network access", async () => {
     const env = createInstallerRunEnv();

@@ -271,8 +271,48 @@ describe("installer config validation", () => {
     }
   });
 
-  test("rejects malformed and unknown archive template placeholders", () => {
-    for (const nameTemplate of ["{repo", "repo}", "{}", "{{repo}}", "{asset}"]) {
+  describe("binary.pathInArchive leading hyphen policy", () => {
+    const configFor = (format: "tar.gz" | "zip", pathInArchive: string) => ({
+      ...validConfig,
+      binary: { name: "rellog", pathInArchive },
+      archive: {
+        format,
+        nameTemplate: `{repo}_{version}_{os}_{arch}.${format}`,
+      },
+    });
+
+    describe.each(["tar.gz", "zip"] as const)("%s", (format) => {
+      test.each(["-x", "-d", "-binary"])(
+        "rejects a whole-value leading hyphen: %j",
+        (pathInArchive) => {
+          const result = validateInstallerConfig(configFor(format, pathInArchive));
+
+          expect(result.ok).toBe(false);
+          if (!result.ok) {
+            expect(result.errors).toContainEqual(
+              expect.objectContaining({
+                path: "$.binary.pathInArchive",
+                reason: expect.stringContaining("must not start with a hyphen"),
+              }),
+            );
+          }
+        },
+      );
+
+      test.each(["bin/-binary", "bin/sub/-x"])(
+        "allows a hyphen that only starts a later segment: %j",
+        (pathInArchive) => {
+          const result = validateInstallerConfig(configFor(format, pathInArchive));
+
+          expect(result.ok).toBe(true);
+        },
+      );
+    });
+  });
+
+  test.each(["{repo", "repo}", "{}", "{{repo}}", "{asset}"])(
+    "rejects malformed or unknown archive template placeholder %j",
+    (nameTemplate) => {
       const result = validateInstallerConfig({
         ...validConfig,
         archive: {
@@ -282,8 +322,8 @@ describe("installer config validation", () => {
       });
 
       expect(result.ok).toBe(false);
-    }
-  });
+    },
+  );
 
   test("allows an archive.nameTemplate to contain {version}", () => {
     const result = validateInstallerConfig({
