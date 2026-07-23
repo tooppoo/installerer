@@ -447,10 +447,8 @@ describe("failure handling", () => {
 });
 
 /**
- * Config validation rejects a leading-hyphen `binary.pathInArchive`, so the
- * generator never emits one. Overwriting the emitted constant lets these
- * tests exercise the generated runtime's own `validate_binary_path_in_archive`
- * guard directly, on a value the config layer would have blocked upstream.
+ * Config validation rejects a leading-hyphen `binary.pathInArchive`, so the generator never emits one.
+ * Overwriting the emitted constant lets these tests exercise the generated runtime's own `validate_binary_path_in_archive` guard directly, on a value the config layer would have blocked upstream.
  */
 function scriptWithRawBinaryPath(config: unknown, rawPath: string): string {
   const script = testScript(config);
@@ -467,8 +465,9 @@ function scriptWithRawBinaryPath(config: unknown, rawPath: string): string {
 describe("generated runtime binary-path leading-hyphen guard", () => {
   const pinArgs = ["--version", "v1.0.0"];
 
-  for (const rawPath of ["-x", "-d", "-binary"]) {
-    test(`rejects a whole-value leading hyphen (${rawPath}) before any network access`, async () => {
+  test.each(["-x", "-d", "-binary"])(
+    "rejects a whole-value leading hyphen (%j) before any network access",
+    async (rawPath) => {
       const env = createInstallerRunEnv();
       const run = await env.run(scriptWithRawBinaryPath(WITH_VERSION_CONFIG, rawPath), {
         args: pinArgs,
@@ -478,8 +477,8 @@ describe("generated runtime binary-path leading-hyphen guard", () => {
       expect(run.stderr).toContain("must not start with a hyphen");
       expectRequests([]);
       expect(run.leftoverTmpEntries).toEqual([]);
-    });
-  }
+    },
+  );
 
   test("allows a hyphen that only starts a later segment and extracts bin/-binary", async () => {
     const archive = buildArchive("tar.gz", [{ path: "bin/-binary", content: PINNED_BINARY }]);

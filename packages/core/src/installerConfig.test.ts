@@ -281,31 +281,33 @@ describe("installer config validation", () => {
       },
     });
 
-    for (const format of ["tar.gz", "zip"] as const) {
-      describe(format, () => {
-        for (const pathInArchive of ["-x", "-d", "-binary"]) {
-          test(`rejects a whole-value leading hyphen: ${pathInArchive}`, () => {
-            const result = validateInstallerConfig(configFor(format, pathInArchive));
+    describe.each(["tar.gz", "zip"] as const)("%s", (format) => {
+      test.each(["-x", "-d", "-binary"])(
+        "rejects a whole-value leading hyphen: %j",
+        (pathInArchive) => {
+          const result = validateInstallerConfig(configFor(format, pathInArchive));
 
-            expect(result.ok).toBe(false);
-            if (!result.ok) {
-              expect(result.errors).toContainEqual(
-                expect.objectContaining({
-                  path: "$.binary.pathInArchive",
-                  reason: expect.stringContaining("must not start with a hyphen"),
-                }),
-              );
-            }
-          });
-        }
+          expect(result.ok).toBe(false);
+          if (!result.ok) {
+            expect(result.errors).toContainEqual(
+              expect.objectContaining({
+                path: "$.binary.pathInArchive",
+                reason: expect.stringContaining("must not start with a hyphen"),
+              }),
+            );
+          }
+        },
+      );
 
-        test("allows a hyphen that only starts a later segment: bin/-binary", () => {
-          const result = validateInstallerConfig(configFor(format, "bin/-binary"));
+      test.each(["bin/-binary", "bin/sub/-x"])(
+        "allows a hyphen that only starts a later segment: %j",
+        (pathInArchive) => {
+          const result = validateInstallerConfig(configFor(format, pathInArchive));
 
           expect(result.ok).toBe(true);
-        });
-      });
-    }
+        },
+      );
+    });
   });
 
   test("rejects malformed and unknown archive template placeholders", () => {
