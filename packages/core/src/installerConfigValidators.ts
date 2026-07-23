@@ -264,6 +264,18 @@ export function validateArchiveRelativePath(
       expected: "relative ASCII path segments using A-Z a-z 0-9 . _ -",
     });
   }
+
+  // Only the whole value's leading hyphen is rejected, not a per-segment one:
+  // the extracted path reaches `tar`/`unzip` as a single argument, so `-x`
+  // would be misparsed as an option, while `bin/-binary` stays an operand.
+  if (value.startsWith("-")) {
+    errors.push({
+      path,
+      reason:
+        "Archive path must not start with a hyphen; an extraction tool could read it as an option.",
+      expected: "a path whose first character is not '-'",
+    });
+  }
 }
 
 function validateInstallDir(value: string, path: string, errors: ValidationError[]) {

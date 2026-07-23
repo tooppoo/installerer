@@ -164,7 +164,7 @@ A missing checksum entry or checksum mismatch is a hard error.
 
 ## Archive Extraction Policy
 
-`binary.pathInArchive` is treated as an archive-relative file path. The runtime rejects empty paths, absolute paths, directory paths, backslash paths, and `.` or `..` path segments.
+`binary.pathInArchive` is treated as an archive-relative file path. The runtime rejects empty paths, absolute paths, directory paths, backslash paths, `.` or `..` path segments, and any path whose whole value begins with `-`. This validation runs before `tar`/`unzip` is invoked and reaches the same conclusion as the config-time check, so an unsafe path is rejected consistently at both stages.
 
 The runtime extracts only the configured binary entry.
 
@@ -179,6 +179,8 @@ For `zip`:
 ```sh
 unzip -q "$archive_path" "$BINARY_PATH_IN_ARCHIVE" -d "$extract_dir"
 ```
+
+The whole-value leading-hyphen rule keeps the extracted path from being read as a `tar`/`unzip` option. The `zip` command passes the member name without a `--` separator, so a value such as `-x` or `-d` would otherwise be parsed as an option rather than an archive member, breaking the extract-only-the-configured-entry policy. A hyphen inside a later segment, such as `bin/-binary`, is allowed because the argument as a whole still does not begin with `-`.
 
 If the entry is missing, extraction fails with a clear error. The MVP does not inspect every other archive entry.
 

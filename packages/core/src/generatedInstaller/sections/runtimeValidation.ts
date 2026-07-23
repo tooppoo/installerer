@@ -18,6 +18,7 @@ validate_binary_path_in_archive() {
   path=$1
   [ -n "$path" ] || fail "binary.pathInArchive is empty"
   case "$path" in
+    -*) fail "binary.pathInArchive must not start with a hyphen: $path" ;;
     /*|*/|*\\\\*) fail "binary.pathInArchive must be a relative file path: $path" ;;
   esac
   old_ifs=$IFS

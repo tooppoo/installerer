@@ -271,6 +271,43 @@ describe("installer config validation", () => {
     }
   });
 
+  describe("binary.pathInArchive leading hyphen policy", () => {
+    const configFor = (format: "tar.gz" | "zip", pathInArchive: string) => ({
+      ...validConfig,
+      binary: { name: "rellog", pathInArchive },
+      archive: {
+        format,
+        nameTemplate: `{repo}_{version}_{os}_{arch}.${format}`,
+      },
+    });
+
+    for (const format of ["tar.gz", "zip"] as const) {
+      describe(format, () => {
+        for (const pathInArchive of ["-x", "-d", "-binary"]) {
+          test(`rejects a whole-value leading hyphen: ${pathInArchive}`, () => {
+            const result = validateInstallerConfig(configFor(format, pathInArchive));
+
+            expect(result.ok).toBe(false);
+            if (!result.ok) {
+              expect(result.errors).toContainEqual(
+                expect.objectContaining({
+                  path: "$.binary.pathInArchive",
+                  reason: expect.stringContaining("must not start with a hyphen"),
+                }),
+              );
+            }
+          });
+        }
+
+        test("allows a hyphen that only starts a later segment: bin/-binary", () => {
+          const result = validateInstallerConfig(configFor(format, "bin/-binary"));
+
+          expect(result.ok).toBe(true);
+        });
+      });
+    }
+  });
+
   test("rejects malformed and unknown archive template placeholders", () => {
     for (const nameTemplate of ["{repo", "repo}", "{}", "{{repo}}", "{asset}"]) {
       const result = validateInstallerConfig({
