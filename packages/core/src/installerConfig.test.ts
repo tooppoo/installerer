@@ -310,8 +310,9 @@ describe("installer config validation", () => {
     });
   });
 
-  test("rejects malformed and unknown archive template placeholders", () => {
-    for (const nameTemplate of ["{repo", "repo}", "{}", "{{repo}}", "{asset}"]) {
+  test.each(["{repo", "repo}", "{}", "{{repo}}", "{asset}"])(
+    "rejects malformed or unknown archive template placeholder %j",
+    (nameTemplate) => {
       const result = validateInstallerConfig({
         ...validConfig,
         archive: {
@@ -321,8 +322,8 @@ describe("installer config validation", () => {
       });
 
       expect(result.ok).toBe(false);
-    }
-  });
+    },
+  );
 
   test("allows an archive.nameTemplate to contain {version}", () => {
     const result = validateInstallerConfig({
