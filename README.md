@@ -32,6 +32,16 @@ curl -fsSL https://raw.githubusercontent.com/tooppoo/installerer/refs/heads/main
 npm install -g @philomagi/installerer
 ```
 
+### Install from devcontainer feature
+
+https://github.com/tooppoo/catalog-devcontainer-features/tree/main/src/installerer
+
+```json
+"features": {
+    "ghcr.io/tooppoo/catalog-devcontainer-features/installerer:0": {}
+}
+```
+
 ## Documentation
 
 [The documentation index](docs/README.md) explains each documentation area and its audience:
