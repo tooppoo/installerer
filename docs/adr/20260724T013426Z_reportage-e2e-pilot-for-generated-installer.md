@@ -26,8 +26,8 @@ Run a deliberately small reportage pilot alongside the existing Bun e2e:
   `curl` appends each requested URL to a workspace-local `curl.log` (asserted byte-exact and in order) and serves files from a workspace-local `served/` mirror of the GitHub URL path; `uname` pins the target to linux/x86_64; `installer` is an executable wrapper delegating to the intentionally non-executable snapshot.
   No test may perform real network access.
 - The suite is Linux-only by design and may assume GNU coreutils; there is no BSD fallback.
-- The suite runs through `just e2e`, which must refuse to run against any reportage version other than the pinned one (`REPORTAGE_VERSION` in the `Justfile`), because reportage is pre-1.0 and minor releases may change DSL or config semantics.
-  CI provisions the pinned version via `scripts/dev/setup-reportage.sh` and runs the recipe as a dedicated step; the recipe stays out of `_check` so hosts without reportage still pass `just check`.
+- The suite runs through `just e2e`, which assumes a provisioned reportage binary and performs no availability or version check of its own.
+  The version is pinned at provisioning time instead: CI installs it via `scripts/dev/setup-reportage.sh` (reportage is pre-1.0, so minor releases may change DSL or config semantics) and runs the recipe as a dedicated step; the recipe stays out of `_check` so hosts without reportage still pass `just check`.
 - Behavior the pilot cannot express stays in the Bun e2e: generating scripts from many configs dynamically, real curl/HTTP fidelity, and the production-script static contract assertions.
 
 Expansion beyond the three cases, or replacement of the Bun e2e, requires a follow-up decision that weighs the pilot's observed fidelity and maintenance cost; abandoning the pilot means removing the `.repor` suite, the shims, `reportage.kdl`, and the Justfile/CI wiring together.
@@ -58,7 +58,7 @@ Rejected: it would re-introduce a generation step and the test-only URL seam int
 ### Negative Consequences
 
 - Two e2e harnesses cover overlapping behavior; until the follow-up decision, changes to the with-version tar.gz flow may need edits in both.
-- The version pin means reportage upgrades are a deliberate chore (bump `REPORTAGE_VERSION` in the `Justfile` and `scripts/dev/setup-reportage.sh`, refresh the version-matched docs cache, re-verify the suite).
+- The version pin means reportage upgrades are a deliberate chore (bump the pin in `scripts/dev/setup-reportage.sh`, refresh the version-matched docs cache, re-verify the suite).
 
 ### Neutral Consequences
 

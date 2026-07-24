@@ -15,13 +15,9 @@ fmt:
 fmt-fix:
   bun run format
 
-# reportage is pre-1.0, so minor releases may change DSL/config semantics; the e2e suite is written and reviewed against exactly this version (see docs/adr/20260724T013426Z_reportage-e2e-pilot-for-generated-installer.md)
-REPORTAGE_VERSION := "0.0.6"
-
 # Pilot reportage e2e alongside the Bun e2e; not in _check so hosts without reportage still pass `just check` — CI runs this as a dedicated step
 [group('check')]
 e2e:
-  @reportage --version | grep -qxF "reportage {{ REPORTAGE_VERSION }}" || { printf '%s\n' "e2e requires reportage {{ REPORTAGE_VERSION }}, got: $(reportage --version 2>/dev/null || echo 'reportage not installed')" >&2; exit 1; }
   reportage
 
 [private]
