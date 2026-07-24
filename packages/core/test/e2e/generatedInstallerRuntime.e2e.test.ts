@@ -11,6 +11,7 @@ import {
   checksumRow,
   createInstallerRunEnv,
   rewriteBaseUrlForTest,
+  sha256Hex,
 } from "../helpers/runtimeE2e";
 import { assertGeneratedInstallerContract } from "../helpers/staticAssertions";
 
@@ -423,6 +424,10 @@ describe("failure handling", () => {
     expect(run.status).toBe(1);
     expect(run.stderr).toContain(`checksum entry not found for ${assetName}`);
     expect(run.stderr).not.toContain("failed to extract");
+    // A row that is absent is its own diagnosis, never reported as a malformed
+    // value or as a mismatch (issue #43).
+    expect(run.stderr).not.toContain("malformed checksum");
+    expect(run.stderr).not.toContain("archive checksum mismatch");
     expect(readFileSync(existing, "utf8")).toBe("existing binary\n");
     expect(run.leftoverTmpEntries).toEqual([]);
   });
@@ -441,6 +446,143 @@ describe("failure handling", () => {
 
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("failed to extract bin/demo");
+    expect(existsSync(join(env.defaultInstallDir, "demo"))).toBe(false);
+    expect(run.leftoverTmpEntries).toEqual([]);
+  });
+});
+
+/**
+ * The generated runtime picks `sha256sum` when it exists and falls back to
+ * `shasum`. Rewriting the value the first branch assigns runs the fallback
+ * backend on a host that has both — a PATH shim could not, since it cannot hide
+ * an existing command from `command -v`.
+ */
+function scriptWithShasumBackend(config: unknown): string {
+  // Without a real shasum the runs below would fail as "archive checksum
+  // mismatch", which reads as a product bug rather than a missing test tool.
+  expect(Bun.which("shasum")).not.toBeNull();
+
+  const script = testScript(config);
+  const selection = "CHECKSUM_COMMAND='sha256sum'";
+  // A drifted or duplicated assignment would leave the sha256sum backend
+  // running and pass every assertion below for the wrong reason.
+  expect(script.split(selection).length - 1).toBe(1);
+  return script.replace(selection, "CHECKSUM_COMMAND='shasum'");
+}
+
+/** Both checksum backends must reach identical accept/reject results (issue #43). */
+const CHECKSUM_BACKENDS = [
+  { backend: "sha256sum", build: testScript },
+  { backend: "shasum", build: scriptWithShasumBackend },
+];
+
+for (const { backend, build } of CHECKSUM_BACKENDS) {
+  describe(`expected checksum format validation under the ${backend} backend (issue #43)`, () => {
+    const archive = buildArchive("tar.gz", [{ path: "bin/demo", content: PINNED_BINARY }]);
+    const assetName = "demo_v1.0.0_linux_x86_64.tar.gz";
+    const pinArgs = ["--version", "v1.0.0"];
+    const digest = sha256Hex(archive);
+    const checksumRequest = `/${OWNER}/${REPO}/releases/download/v1.0.0/${CHECKSUM_FILE_NAME}`;
+    const archiveRequest = `/${OWNER}/${REPO}/releases/download/v1.0.0/${assetName}`;
+
+    /** Publishes the real archive under a checksum row carrying the given token. */
+    function serveChecksumToken(token: string): void {
+      server.setTaggedRelease(OWNER, REPO, "v1.0.0", {
+        [CHECKSUM_FILE_NAME]: `${token}  ${assetName}\n`,
+        [assetName]: archive,
+      });
+    }
+
+    test.each([
+      { casing: "uppercase", token: digest.toUpperCase() },
+      {
+        casing: "mixed-case",
+        token: [...digest]
+          .map((char, index) => (index % 2 === 0 ? char.toUpperCase() : char))
+          .join(""),
+      },
+    ])("accepts a $casing 64-hex checksum and installs", async ({ token }) => {
+      // An all-digit digest would make this token equal to the lowercase one
+      // and silently re-test the already covered path.
+      expect(token).not.toBe(digest);
+      serveChecksumToken(token);
+
+      const env = createInstallerRunEnv();
+      const run = await env.run(build(WITH_VERSION_CONFIG), { args: pinArgs });
+
+      expect(run.stderr).toBe("");
+      expect(run.status).toBe(0);
+      expectInstalledBinary(env.defaultInstallDir, "demo", PINNED_BINARY);
+      expectRequests([checksumRequest, archiveRequest]);
+      expect(run.leftoverTmpEntries).toEqual([]);
+    });
+
+    test.each([
+      { shape: "63 characters", token: digest.slice(0, 63) },
+      { shape: "65 characters", token: `${digest}0` },
+      { shape: "a non-hex character", token: `${digest.slice(0, 63)}g` },
+    ])("rejects a checksum of $shape without downloading the archive", async ({ token }) => {
+      serveChecksumToken(token);
+
+      const env = createInstallerRunEnv();
+      const existing = placeExistingBinary(env.defaultInstallDir, "demo", "existing binary\n");
+      const run = await env.run(build(WITH_VERSION_CONFIG), { args: pinArgs });
+
+      expect(run.status).toBe(1);
+      expect(run.stderr).toContain(
+        `malformed checksum for ${assetName}: expected 64 hexadecimal characters`,
+      );
+      // Kept distinct from the neighbouring checksum error classes.
+      expect(run.stderr).not.toContain("archive checksum mismatch");
+      expect(run.stderr).not.toContain("checksum entry not found");
+      // The rejected Release value is never echoed back into the diagnostic.
+      expect(run.stderr).not.toContain(token);
+      // No archive request: the failure precedes the transfer.
+      expectRequests([checksumRequest]);
+      expect(run.stderr).not.toContain("failed to extract");
+      expect(readFileSync(existing, "utf8")).toBe("existing binary\n");
+      expect(run.leftoverTmpEntries).toEqual([]);
+    });
+
+    test("a well-formed checksum that the archive does not match is a mismatch, not malformed", async () => {
+      serveChecksumToken("0".repeat(64));
+
+      const env = createInstallerRunEnv();
+      const existing = placeExistingBinary(env.defaultInstallDir, "demo", "existing binary\n");
+      const run = await env.run(build(WITH_VERSION_CONFIG), { args: pinArgs });
+
+      expect(run.status).toBe(1);
+      expect(run.stderr).toContain("archive checksum mismatch");
+      expect(run.stderr).not.toContain("malformed checksum");
+      expect(run.stderr).not.toContain("failed to extract");
+      expectRequests([checksumRequest, archiveRequest]);
+      expect(readFileSync(existing, "utf8")).toBe("existing binary\n");
+      expect(run.leftoverTmpEntries).toEqual([]);
+    });
+  });
+}
+
+describe("shasum backend failure classification", () => {
+  test("a shasum that cannot compute a digest is a compute failure, not a mismatch", async () => {
+    const archive = buildArchive("tar.gz", [{ path: "bin/demo", content: PINNED_BINARY }]);
+    const assetName = "demo_v1.0.0_linux_x86_64.tar.gz";
+    server.setTaggedRelease(OWNER, REPO, "v1.0.0", {
+      [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
+      [assetName]: archive,
+    });
+
+    // The checksum file carries the archive's real digest, so a mismatch is
+    // impossible here: only a masked shasum failure could produce one.
+    const env = createInstallerRunEnv({
+      commandShims: { shasum: "#!/bin/sh\nexit 1\n" },
+    });
+    const run = await env.run(scriptWithShasumBackend(WITH_VERSION_CONFIG), {
+      args: ["--version", "v1.0.0"],
+    });
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("failed to compute archive checksum");
+    expect(run.stderr).not.toContain("archive checksum mismatch");
     expect(existsSync(join(env.defaultInstallDir, "demo"))).toBe(false);
     expect(run.leftoverTmpEntries).toEqual([]);
   });

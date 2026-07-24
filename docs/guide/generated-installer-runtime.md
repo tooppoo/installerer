@@ -158,9 +158,17 @@ awk -v name="$archive_asset_name" '$2 == name { print $1; found=1; exit } ...'
 
 The archive asset filename is not treated as a regular expression, glob, or shell pattern.
 
-If `sha256sum` exists, the script uses `sha256sum -c -`. Otherwise, if `shasum` exists, it runs `shasum -a 256` and compares the computed digest directly.
+The digest found by that lookup is checked for shape before the archive is downloaded. It is accepted only when it is exactly 64 characters long and every character is one of `0-9`, `a-f`, or `A-F`. The check uses an explicit character list rather than a named character class or a range, so the accepted set does not shift with the host locale. An accepted digest is then normalized to lowercase.
 
-A missing checksum entry or checksum mismatch is a hard error.
+If `sha256sum` exists, the script uses `sha256sum -c -`. Otherwise, if `shasum` exists, it runs `shasum -a 256` and compares the computed digest directly. Both compare against the normalized value, so a checksum file is accepted or rejected identically whichever command the host provides.
+
+Every checksum failure is a hard error, and each cause is reported as itself rather than collapsing into a mismatch:
+
+- No row for the archive asset filename, or a matching row carrying no digest field: `checksum entry not found for <asset>`.
+- A digest field that is not 64 hexadecimal characters: `malformed checksum for <asset>`. The install stops before the archive is downloaded, and the rejected value — release content the installer does not trust — is not echoed back; the message names the asset and the expected shape only.
+- A normalization step that fails on an otherwise well-formed digest: `failed to normalize the expected checksum for <asset>`. Reporting this separately keeps a validated digest from being silently replaced by an empty one.
+- A checksum command that cannot compute the archive's digest: `failed to compute archive checksum`. An unavailable or broken checksum command is a different problem from a bad download, so it is never reported as one.
+- A well-formed digest that the downloaded archive does not match: `archive checksum mismatch`.
 
 ## Archive Extraction Policy
 

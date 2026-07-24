@@ -43,11 +43,16 @@ export function rewriteBaseUrlForTest(script: string, baseUrl: string): string {
   return rewritten;
 }
 
+/** Lowercase SHA-256 hex digest, as a checksum file publishes it. */
+export function sha256Hex(bytes: Uint8Array): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(bytes);
+  return hasher.digest("hex");
+}
+
 /** `<sha256>  <filename>` rows, matching the documented checksum contract. */
 export function checksumRow(archiveBytes: Uint8Array, filename: string): string {
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(archiveBytes);
-  return `${hasher.digest("hex")}  ${filename}\n`;
+  return `${sha256Hex(archiveBytes)}  ${filename}\n`;
 }
 
 export type ArchiveEntry = {
@@ -110,6 +115,16 @@ export type InstallerRunEnv = {
   run(script: string, options?: InstallerRunOptions): Promise<InstallerRunResult>;
 };
 
+export type InstallerRunEnvOptions = {
+  /**
+   * Extra `command name -> shell script body` PATH shims. They are written
+   * alongside the `uname` shim into the directory prepended to PATH, so they
+   * shadow the host's real command — the only way to make a command the
+   * runtime already selected behave differently (for example, fail).
+   */
+  commandShims?: Record<string, string>;
+};
+
 /**
  * Creates an isolated run environment and returns a runner that executes a
  * (rewritten) installer script as a real `sh` process.
@@ -120,7 +135,7 @@ export type InstallerRunEnv = {
  * observable, and tests can pre-place files (for example an existing binary)
  * before running.
  */
-export function createInstallerRunEnv(): InstallerRunEnv {
+export function createInstallerRunEnv(options: InstallerRunEnvOptions = {}): InstallerRunEnv {
   const runDir = mkdtempSync(join(tmpdir(), "installerer-e2e-run-"));
   const home = join(runDir, "home");
   const tmpParent = join(runDir, "tmp");
@@ -138,6 +153,11 @@ esac
 `;
   writeFileSync(join(shimDir, "uname"), unameShim);
   chmodSync(join(shimDir, "uname"), 0o755);
+
+  for (const [command, body] of Object.entries(options.commandShims ?? {})) {
+    writeFileSync(join(shimDir, command), body);
+    chmodSync(join(shimDir, command), 0o755);
+  }
 
   return {
     home,

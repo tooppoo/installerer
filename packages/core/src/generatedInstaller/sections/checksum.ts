@@ -1,19 +1,55 @@
 /**
- * Verifies $archive_path against the entry for $archive_asset_name in
- * $checksum_path; the variables are set by download_and_install().
+ * Checksum handling, split across the archive download (issue #43): the
+ * expected value is looked up, format-checked, and normalized from
+ * $checksum_path alone, and only the final comparison needs the downloaded
+ * $archive_path. Both halves read variables download_and_install() sets.
  */
-export function renderVerifySha256(): string {
-  return `verify_sha256() {
+export function renderChecksumVerification(): string {
+  return `is_valid_sha256_hex() {
+  value=$1
+  [ "\${#value}" -eq 64 ] || return 1
+  # An explicit character list rather than [[:xdigit:]] or an a-f range: both a
+  # named class and a bracket range are locale-dependent, and this must accept
+  # exactly the same characters on every host.
+  case "$value" in
+    *[!0123456789ABCDEFabcdef]*) return 1 ;;
+  esac
+  return 0
+}
+
+# Runs before the archive download, so a checksum file that cannot verify
+# anything costs no transfer and a malformed value is reported as itself
+# instead of resurfacing later as a mismatch.
+resolve_expected_checksum() {
   expected_checksum=$(awk -v name="$archive_asset_name" '$2 == name { print $1; found=1; exit } END { if (!found) exit 1 }' "$checksum_path") \\
     || fail "checksum entry not found for $archive_asset_name"
+  [ -n "$expected_checksum" ] || fail "checksum entry not found for $archive_asset_name"
+  # The rejected value is Release content and is deliberately not echoed back;
+  # the asset name and the expected shape are what a maintainer acts on.
+  is_valid_sha256_hex "$expected_checksum" \\
+    || fail "malformed checksum for $archive_asset_name: expected 64 hexadecimal characters"
+  # Normalizing once here, not per backend, is what makes an uppercase checksum
+  # file behave identically under sha256sum -c and the shasum string compare.
+  # Guarded like every step above: an unguarded failure here would replace the
+  # just-validated value with an empty one, and the install would fail as a
+  # mismatch instead of naming the real cause.
+  expected_checksum=$(printf '%s' "$expected_checksum" | tr 'ABCDEF' 'abcdef') \\
+    || fail "failed to normalize the expected checksum for $archive_asset_name"
+}
+
+verify_sha256() {
   case "$CHECKSUM_COMMAND" in
     sha256sum)
       printf '%s  %s\\n' "$expected_checksum" "$archive_path" | sha256sum -c - >/dev/null \\
         || fail "archive checksum mismatch"
       ;;
     shasum)
-      actual_checksum=$(shasum -a 256 "$archive_path" | awk '{ print $1 }') \\
+      # Not piped into awk: a pipeline reports only its last command's status,
+      # so shasum's own failure would be masked and reported as a mismatch —
+      # the same error-class conflation the expected-value side avoids.
+      actual_checksum=$(shasum -a 256 "$archive_path") \\
         || fail "failed to compute archive checksum"
+      actual_checksum=\${actual_checksum%% *}
       [ "$actual_checksum" = "$expected_checksum" ] || fail "archive checksum mismatch"
       ;;
     *)
