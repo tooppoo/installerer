@@ -1,0 +1,13 @@
+#!/bin/sh
+# Pins target detection to linux/x86_64 so the e2e result does not depend on
+# the host machine. The installer only ever calls `uname -s` and `uname -m`;
+# anything else must fail loudly instead of silently answering.
+set -u
+case "${1:-}" in
+  -s) echo Linux ;;
+  -m) echo x86_64 ;;
+  *)
+    printf '%s\n' "uname shim: unsupported args: $*" >&2
+    exit 64
+    ;;
+esac

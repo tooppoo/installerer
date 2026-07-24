@@ -32,6 +32,11 @@ jobs:
       - name: check
         run: just check
 
+      # Dedicated step, not part of `just check`: hosts without the pinned
+      # reportage binary must still be able to run `just check` locally.
+      - name: e2e (reportage)
+        run: just e2e-reportage
+
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         with:
