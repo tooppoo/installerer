@@ -1,0 +1,5 @@
+#!/bin/sh
+# The committed snapshot is intentionally not executable, but a reportage
+# command's exec target must be; this wrapper stays executable and delegates.
+set -u
+exec sh -- "$(dirname -- "$0")/../../packages/core/test/snapshots/with-version-tar-gz.install.sh" "$@"

@@ -1,0 +1,164 @@
+document file {
+  title "Generated installer runtime e2e (with-version tar.gz snapshot)"
+
+  description ```
+  Pilot port of representative cases from generatedInstallerRuntime.e2e.test.ts, run against the committed snapshot with-version-tar-gz.install.sh instead of a freshly generated script.
+
+  `installer`, `curl`, and `uname` are registered commands (see reportage.kdl and shims/): `installer` delegates to the snapshot, `uname` pins the target to linux/x86_64, and `curl` records each requested URL in curl.log while serving files from the workspace-local served/ mirror, so no network access happens.
+
+  The snapshot's real config values (tooppoo/rellog, checksums.txt, linux/x86_64 asset label x64) determine the fixture names below.
+
+  The suite is Linux-only by design (the uname shim pins the target), so actions may assume GNU coreutils: `stat -c %a` and `sha256sum` have no BSD fallback.
+  ```
+}
+
+document case {
+  title "Latest install"
+
+  description ```
+  Success full path: the tag is resolved from a checksum-index scan and the install proceeds from that tag.
+
+  Asserts stdout/stderr/exit, the installed binary's content and 0755 mode, the exact ordered request log, and that the private TMPDIR workspace is left empty.
+  ```
+}
+
+case "latest install resolves the tag from a checksum-index scan, then installs from that tag" {
+  write <"payload/bin/rellog"> ```
+    #!/bin/sh
+    echo rellog latest fixture
+    ```
+  # An index-scan row only needs a matching filename; its hash is never checked.
+  write <"served/tooppoo/rellog/releases/latest/download/checksums.txt"> ```
+    0000000000000000000000000000000000000000000000000000000000000000  rellog_v2.0.0_linux_x64.tar.gz
+    ```
+
+  $ mkdir -p served/tooppoo/rellog/releases/download/v2.0.0 tmp
+  $ (cd payload && tar -czf ../served/tooppoo/rellog/releases/download/v2.0.0/rellog_v2.0.0_linux_x64.tar.gz bin/rellog)
+  # The tag-specific checksum file must carry the archive's real hash: sha256sum
+  # runs next to the archive so its output row is exactly "<hash>  <asset name>".
+  $ (cd served/tooppoo/rellog/releases/download/v2.0.0 && sha256sum rellog_v2.0.0_linux_x64.tar.gz > checksums.txt)
+  # HOME="$PWD" lands the default install dir ($HOME/.local/bin) inside the
+  # workspace; TMPDIR keeps the installer's mktemp workspace observable in tmp/.
+  $ HOME="$PWD" TMPDIR="$PWD/tmp" installer
+
+  assert {
+    exit 0
+    stderr empty
+    stdout contains "installerer: resolved latest version v2.0.0"
+    # The workspace-absolute prefix of the install path is dynamic, so the
+    # message is pinned by its invariant head and tail.
+    stdout contains "installed rellog to "
+    stdout contains "/.local/bin/rellog"
+    file <".local/bin/rellog"> text_equals ```
+    #!/bin/sh
+    echo rellog latest fixture
+    ```
+    file <"curl.log"> text_equals ```
+    https://github.com/tooppoo/rellog/releases/latest/download/checksums.txt
+    https://github.com/tooppoo/rellog/releases/download/v2.0.0/checksums.txt
+    https://github.com/tooppoo/rellog/releases/download/v2.0.0/rellog_v2.0.0_linux_x64.tar.gz
+    ```
+  }
+
+  $ stat -c %a .local/bin/rellog
+
+  assert {
+    exit 0
+    stdout text_equals "755\n"
+  }
+
+  $ ls -A tmp
+
+  assert {
+    exit 0
+    stdout empty
+  }
+}
+
+document case {
+  title "Pinned install"
+
+  description ```
+  Argument branch: `--version v1.0.0` must go straight to the tag-specific URLs and never request the latest-release checksum index.
+  ```
+}
+
+case "pinned install never touches the checksum index" {
+  write <"payload/bin/rellog"> ```
+    #!/bin/sh
+    echo rellog pinned fixture
+    ```
+
+  $ mkdir -p served/tooppoo/rellog/releases/download/v1.0.0 tmp
+  $ (cd payload && tar -czf ../served/tooppoo/rellog/releases/download/v1.0.0/rellog_v1.0.0_linux_x64.tar.gz bin/rellog)
+  $ (cd served/tooppoo/rellog/releases/download/v1.0.0 && sha256sum rellog_v1.0.0_linux_x64.tar.gz > checksums.txt)
+  $ HOME="$PWD" TMPDIR="$PWD/tmp" installer --version v1.0.0
+
+  assert {
+    exit 0
+    stderr empty
+    not {
+      stdout contains "resolved latest version"
+    }
+    stdout contains "installed rellog to "
+    stdout contains "/.local/bin/rellog"
+    file <".local/bin/rellog"> text_equals ```
+    #!/bin/sh
+    echo rellog pinned fixture
+    ```
+    file <"curl.log"> text_equals ```
+    https://github.com/tooppoo/rellog/releases/download/v1.0.0/checksums.txt
+    https://github.com/tooppoo/rellog/releases/download/v1.0.0/rellog_v1.0.0_linux_x64.tar.gz
+    ```
+  }
+
+  $ stat -c %a .local/bin/rellog
+
+  assert {
+    exit 0
+    stdout text_equals "755\n"
+  }
+
+  $ ls -A tmp
+
+  assert {
+    exit 0
+    stdout empty
+  }
+}
+
+document case {
+  title "No matching index candidate"
+
+  description ```
+  Failure boundary: when no index row matches the configured archive filename template, the installer must fail before issuing any tag-specific request and must not install anything.
+  ```
+}
+
+case "no candidate in the checksum index fails before any tag-specific request" {
+  # The only row targets darwin/arm64, so the linux/x64 template cannot match.
+  write <"served/tooppoo/rellog/releases/latest/download/checksums.txt"> ```
+    0000000000000000000000000000000000000000000000000000000000000000  rellog_v2.0.0_darwin_arm64.tar.gz
+    ```
+
+  $ mkdir -p tmp
+  $ HOME="$PWD" TMPDIR="$PWD/tmp" installer
+
+  assert {
+    exit 1
+    stderr contains "no release asset in checksums.txt"
+    not {
+      file <".local/bin/rellog"> exists
+    }
+    file <"curl.log"> text_equals ```
+    https://github.com/tooppoo/rellog/releases/latest/download/checksums.txt
+    ```
+  }
+
+  $ ls -A tmp
+
+  assert {
+    exit 0
+    stdout empty
+  }
+}

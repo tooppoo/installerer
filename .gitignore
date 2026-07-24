@@ -40,6 +40,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # other
 /tmp
 
+# reportage run artifacts (written under the invocation cwd)
+.reportage/
+
 # wrangler files
 .wrangler
 .dev.vars*

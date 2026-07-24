@@ -1,0 +1,21 @@
+reportage {
+  config {
+    version 1
+  }
+
+  commands {
+    command "installer" {
+      exec "e2e/shims/installer"
+    }
+    command "curl" {
+      exec "e2e/shims/curl"
+    }
+    command "uname" {
+      exec "e2e/shims/uname"
+    }
+  }
+
+  tests {
+    path "e2e/**/*.repor"
+  }
+}

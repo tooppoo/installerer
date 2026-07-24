@@ -1,0 +1,64 @@
+#!/bin/sh
+# Test double for the installer's `curl -fsSL <url> -o <path>` calls: append
+# each requested URL to ./curl.log (the request-order evidence the .repor
+# asserts on), then serve the file mirroring the URL path under ./served/.
+# Both paths are relative to the case workspace, which is the cwd of every
+# process the action starts. No network access ever happens.
+set -u
+
+url=
+out=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -fsSL)
+      shift
+      ;;
+    -o)
+      [ "$#" -ge 2 ] || { printf '%s\n' "curl shim: -o requires a value" >&2; exit 2; }
+      out=$2
+      shift 2
+      ;;
+    -*)
+      # Only the exact flags the installer uses are supported; anything else
+      # signals contract drift and must fail loudly, not be misparsed.
+      printf '%s\n' "curl shim: unsupported flag: $1" >&2
+      exit 2
+      ;;
+    *)
+      url=$1
+      shift
+      ;;
+  esac
+done
+
+[ -n "$url" ] || { printf '%s\n' "curl shim: no url given" >&2; exit 2; }
+
+printf '%s\n' "$url" >> curl.log
+
+path=${url#https://github.com/}
+if [ "$path" = "$url" ]; then
+  printf '%s\n' "curl shim: unsupported url: $url" >&2
+  exit 22
+fi
+
+# The URL path maps into served/ verbatim, so traversal or empty segments must
+# never escape the workspace-local mirror.
+case "/$path/" in
+  */../*|*/./*|*//*)
+    printf '%s\n' "curl shim: rejected url path: $path" >&2
+    exit 22
+    ;;
+esac
+
+src="served/$path"
+if [ ! -f "$src" ]; then
+  # Real `curl -f` exits 22 on an HTTP error status; keep that contract so the
+  # installer's download-failure handling is exercised unchanged.
+  exit 22
+fi
+
+if [ -n "$out" ]; then
+  cp -- "$src" "$out"
+else
+  cat -- "$src"
+fi

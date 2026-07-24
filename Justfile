@@ -15,6 +15,11 @@ fmt:
 fmt-fix:
   bun run format
 
+# Pilot reportage e2e alongside the Bun e2e; not in _check so hosts without reportage still pass `just check` — CI runs this as a dedicated step
+[group('check')]
+e2e:
+  reportage
+
 [private]
 _check:
   bun install --frozen-lockfile
