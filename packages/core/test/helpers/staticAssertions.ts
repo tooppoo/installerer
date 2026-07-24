@@ -129,7 +129,7 @@ function assertChecksumVerification(script: string): void {
   // Both backends compare against the same normalized value, so an uppercase
   // checksum file cannot be accepted by one and rejected by the other.
   expect(script).toContain(
-    `expected_checksum=$(printf '%s' "$expected_checksum" | tr 'ABCDEF' 'abcdef')`,
+    `expected_checksum=$(printf '%s' "$expected_checksum" | tr 'ABCDEF' 'abcdef') \\`,
   );
 }
 

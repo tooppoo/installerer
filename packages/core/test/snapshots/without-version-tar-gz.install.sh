@@ -559,7 +559,11 @@ resolve_expected_checksum() {
     || fail "malformed checksum for $archive_asset_name: expected 64 hexadecimal characters"
   # Normalizing once here, not per backend, is what makes an uppercase checksum
   # file behave identically under sha256sum -c and the shasum string compare.
-  expected_checksum=$(printf '%s' "$expected_checksum" | tr 'ABCDEF' 'abcdef')
+  # Guarded like every step above: an unguarded failure here would replace the
+  # just-validated value with an empty one, and the install would fail as a
+  # mismatch instead of naming the real cause.
+  expected_checksum=$(printf '%s' "$expected_checksum" | tr 'ABCDEF' 'abcdef') \
+    || fail "failed to normalize the expected checksum for $archive_asset_name"
 }
 
 verify_sha256() {
