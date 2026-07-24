@@ -20,8 +20,8 @@ REPORTAGE_VERSION := "0.0.6"
 
 # Pilot reportage e2e alongside the Bun e2e; not in _check so hosts without reportage still pass `just check` — CI runs this as a dedicated step
 [group('check')]
-e2e-reportage:
-  @reportage --version | grep -qxF "reportage {{ REPORTAGE_VERSION }}" || { printf '%s\n' "e2e-reportage requires reportage {{ REPORTAGE_VERSION }}, got: $(reportage --version 2>/dev/null || echo 'reportage not installed')" >&2; exit 1; }
+e2e:
+  @reportage --version | grep -qxF "reportage {{ REPORTAGE_VERSION }}" || { printf '%s\n' "e2e requires reportage {{ REPORTAGE_VERSION }}, got: $(reportage --version 2>/dev/null || echo 'reportage not installed')" >&2; exit 1; }
   reportage
 
 [private]

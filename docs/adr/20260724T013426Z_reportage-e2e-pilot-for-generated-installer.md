@@ -18,15 +18,15 @@ This ADR records the pilot's shape so that the coexistence of two e2e runners, a
 
 Run a deliberately small reportage pilot alongside the existing Bun e2e:
 
-- Port exactly three representative cases of the with-version tar.gz flow — latest install success, pinned install success, and the no-index-candidate failure — to [`packages/core/test/e2e/generatedInstallerRuntime.repor`](../../packages/core/test/e2e/generatedInstallerRuntime.repor).
+- Port exactly three representative cases of the with-version tar.gz flow — latest install success, pinned install success, and the no-index-candidate failure — to [`e2e/generatedInstallerRuntime.repor`](../../e2e/generatedInstallerRuntime.repor).
   The Bun e2e must keep running unchanged during the pilot; the `.repor` suite is additive evidence, not a replacement.
 - The system under test is the committed snapshot [`packages/core/test/snapshots/with-version-tar-gz.install.sh`](../../packages/core/test/snapshots/with-version-tar-gz.install.sh), not a freshly generated script.
   The snapshot cannot silently drift from the generator because the snapshot-match integration test regenerates and compares it; the `.repor` cases therefore assert against the snapshot's real configuration values (`tooppoo/rellog`, `checksums.txt`, linux/x86_64 asset label `x64`).
-- Network behavior is replaced by registered command shims under [`packages/core/test/e2e/shims/`](../../packages/core/test/e2e/shims/), wired in [`reportage.kdl`](../../reportage.kdl):
+- Network behavior is replaced by registered command shims under [`e2e/shims/`](../../e2e/shims/), wired in [`reportage.kdl`](../../reportage.kdl):
   `curl` appends each requested URL to a workspace-local `curl.log` (asserted byte-exact and in order) and serves files from a workspace-local `served/` mirror of the GitHub URL path; `uname` pins the target to linux/x86_64; `installer` is an executable wrapper delegating to the intentionally non-executable snapshot.
   No test may perform real network access.
 - The suite is Linux-only by design and may assume GNU coreutils; there is no BSD fallback.
-- The suite runs through `just e2e-reportage`, which must refuse to run against any reportage version other than the pinned one (`REPORTAGE_VERSION` in the `Justfile`), because reportage is pre-1.0 and minor releases may change DSL or config semantics.
+- The suite runs through `just e2e`, which must refuse to run against any reportage version other than the pinned one (`REPORTAGE_VERSION` in the `Justfile`), because reportage is pre-1.0 and minor releases may change DSL or config semantics.
   CI provisions the pinned version via `scripts/dev/setup-reportage.sh` and runs the recipe as a dedicated step; the recipe stays out of `_check` so hosts without reportage still pass `just check`.
 - Behavior the pilot cannot express stays in the Bun e2e: generating scripts from many configs dynamically, real curl/HTTP fidelity, and the production-script static contract assertions.
 
