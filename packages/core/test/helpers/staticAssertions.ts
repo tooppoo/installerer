@@ -110,6 +110,27 @@ function assertChecksumVerification(script: string): void {
   expect(script).toContain("sha256sum -c");
   expect(script).toContain("shasum -a 256");
   expect(script).toContain('fail "archive checksum mismatch"');
+
+  // A malformed expected checksum is its own error class, and the rejected
+  // value — Release content — never reaches the message (issue #43).
+  expect(script).toContain(
+    'fail "malformed checksum for $archive_asset_name: expected 64 hexadecimal characters"',
+  );
+
+  // Expected-checksum resolution sits between the two downloads, so a checksum
+  // file that cannot verify anything fails before the archive is transferred.
+  expect(script).toContain(
+    `  curl_download "$checksum_url" "$checksum_path" "checksum file"
+  resolve_expected_checksum
+  curl_download "$archive_url" "$archive_path" "archive"
+  verify_sha256`,
+  );
+
+  // Both backends compare against the same normalized value, so an uppercase
+  // checksum file cannot be accepted by one and rejected by the other.
+  expect(script).toContain(
+    `expected_checksum=$(printf '%s' "$expected_checksum" | tr 'ABCDEF' 'abcdef')`,
+  );
 }
 
 function assertRemoteLocalSeparation(script: string): void {

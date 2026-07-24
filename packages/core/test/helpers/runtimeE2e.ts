@@ -43,11 +43,16 @@ export function rewriteBaseUrlForTest(script: string, baseUrl: string): string {
   return rewritten;
 }
 
+/** Lowercase SHA-256 hex digest, as a checksum file publishes it. */
+export function sha256Hex(bytes: Uint8Array): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(bytes);
+  return hasher.digest("hex");
+}
+
 /** `<sha256>  <filename>` rows, matching the documented checksum contract. */
 export function checksumRow(archiveBytes: Uint8Array, filename: string): string {
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(archiveBytes);
-  return `${hasher.digest("hex")}  ${filename}\n`;
+  return `${sha256Hex(archiveBytes)}  ${filename}\n`;
 }
 
 export type ArchiveEntry = {

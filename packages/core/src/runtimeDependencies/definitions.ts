@@ -77,7 +77,8 @@ export const BASE_COMMAND_DEPENDENCIES: RuntimeDependencyDefinition[] = [
   {
     id: "tr",
     label: "tr",
-    reason: "Encodes URL path segments and canonicalizes OS names.",
+    reason:
+      "Encodes URL path segments, canonicalizes OS names, and normalizes expected checksums to lowercase.",
     check: { type: "command", command: "tr" },
   },
   {

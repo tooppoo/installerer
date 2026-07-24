@@ -14,6 +14,10 @@ import {
  * are known. Assumes the caller already set up the workspace (renderTempWorkspace)
  * — tmpdir must exist before a with-{version} latest install's checksum-index
  * fetch, which happens before this function's archive_asset_name is known.
+ *
+ * The step order is load-bearing: resolve_expected_checksum runs between the
+ * two downloads so an unusable checksum file fails without transferring the
+ * archive (issue #43).
  */
 export function renderDownloadAndInstall(): string {
   return `download_and_install() {
@@ -21,6 +25,7 @@ export function renderDownloadAndInstall(): string {
   checksum_url=$2
   archive_asset_name=$3
   curl_download "$checksum_url" "$checksum_path" "checksum file"
+  resolve_expected_checksum
   curl_download "$archive_url" "$archive_path" "archive"
   verify_sha256
   extract_archive

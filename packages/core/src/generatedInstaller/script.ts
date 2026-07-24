@@ -1,7 +1,7 @@
 import type { RenderContext } from "./renderContext";
 import { renderArchitectureLabel } from "./sections/architectureLabel";
 import { renderArchiveName, renderArchiveNamePrefixSuffix } from "./sections/archiveName";
-import { renderVerifySha256 } from "./sections/checksum";
+import { renderChecksumVerification } from "./sections/checksum";
 import { renderMain, renderMainInvocation, renderUsage } from "./sections/cli";
 import { renderConstants } from "./sections/constants";
 import { renderDependencies } from "./sections/dependencies";
@@ -51,7 +51,7 @@ export function composeInstallerScript(context: RenderContext): string {
     renderArchiveName(context),
     renderArchiveNamePrefixSuffix(context),
     renderCurlDownload(),
-    renderVerifySha256(),
+    renderChecksumVerification(),
     renderExtractArchive(),
     renderCleanup(),
     renderInstallBinary(),

@@ -35,7 +35,7 @@ Required commands:
 - awk: Encodes URL path segments and looks up checksum entries.
 - grep: Validates archive filenames.
 - od: Encodes URL path segments safely.
-- tr: Encodes URL path segments and canonicalizes OS names.
+- tr: Encodes URL path segments, canonicalizes OS names, and normalizes expected checksums to lowercase.
 - cut: Encodes URL path segments safely.
 - ls: Lists downloaded and extracted files for diagnostics.
 - tar: Extracts tar.gz archives.
