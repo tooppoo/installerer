@@ -44,8 +44,12 @@ verify_sha256() {
         || fail "archive checksum mismatch"
       ;;
     shasum)
-      actual_checksum=$(shasum -a 256 "$archive_path" | awk '{ print $1 }') \\
+      # Not piped into awk: a pipeline reports only its last command's status,
+      # so shasum's own failure would be masked and reported as a mismatch —
+      # the same error-class conflation the expected-value side avoids.
+      actual_checksum=$(shasum -a 256 "$archive_path") \\
         || fail "failed to compute archive checksum"
+      actual_checksum=\${actual_checksum%% *}
       [ "$actual_checksum" = "$expected_checksum" ] || fail "archive checksum mismatch"
       ;;
     *)

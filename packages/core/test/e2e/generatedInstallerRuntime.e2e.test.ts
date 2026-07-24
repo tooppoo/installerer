@@ -458,6 +458,10 @@ describe("failure handling", () => {
  * an existing command from `command -v`.
  */
 function scriptWithShasumBackend(config: unknown): string {
+  // Without a real shasum the runs below would fail as "archive checksum
+  // mismatch", which reads as a product bug rather than a missing test tool.
+  expect(Bun.which("shasum")).not.toBeNull();
+
   const script = testScript(config);
   const selection = "CHECKSUM_COMMAND='sha256sum'";
   // A drifted or duplicated assignment would leave the sha256sum backend
@@ -557,6 +561,32 @@ for (const { backend, build } of CHECKSUM_BACKENDS) {
     });
   });
 }
+
+describe("shasum backend failure classification", () => {
+  test("a shasum that cannot compute a digest is a compute failure, not a mismatch", async () => {
+    const archive = buildArchive("tar.gz", [{ path: "bin/demo", content: PINNED_BINARY }]);
+    const assetName = "demo_v1.0.0_linux_x86_64.tar.gz";
+    server.setTaggedRelease(OWNER, REPO, "v1.0.0", {
+      [CHECKSUM_FILE_NAME]: checksumRow(archive, assetName),
+      [assetName]: archive,
+    });
+
+    // The checksum file carries the archive's real digest, so a mismatch is
+    // impossible here: only a masked shasum failure could produce one.
+    const env = createInstallerRunEnv({
+      commandShims: { shasum: "#!/bin/sh\nexit 1\n" },
+    });
+    const run = await env.run(scriptWithShasumBackend(WITH_VERSION_CONFIG), {
+      args: ["--version", "v1.0.0"],
+    });
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("failed to compute archive checksum");
+    expect(run.stderr).not.toContain("archive checksum mismatch");
+    expect(existsSync(join(env.defaultInstallDir, "demo"))).toBe(false);
+    expect(run.leftoverTmpEntries).toEqual([]);
+  });
+});
 
 /**
  * Config validation rejects a leading-hyphen `binary.pathInArchive`, so the generator never emits one.
